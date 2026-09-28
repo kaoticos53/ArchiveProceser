@@ -58,7 +58,7 @@
     </StackPanel>
 
     <!-- Grupos acordeón del VM (expansión exclusiva gestionada por HandleGroupExpanded) -->
-    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer x:Name="ToolboxScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto">
       <ItemsControl x:Name="GroupsHost" ItemsSource="{x:Bind Vm.CategoryGroups}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>

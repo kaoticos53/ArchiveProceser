@@ -2,10 +2,12 @@ using System;
 using System.IO;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using FileFlow.App.Services;
 using FileFlow.App.Uno.Controls;
 using FileFlow.App.Uno.Platform;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
 using Microsoft.UI.Xaml;
@@ -22,9 +24,108 @@ namespace FileFlow.App.Uno;
 /// </summary>
 public sealed partial class MainWindow : Window
 {
+    /// <summary>Quién tiene el foco según el gestor, en palabras (tipo, nombre y ancestros).</summary>
+    private static string ReadFocused(UIElement root) => CanvasFocusTrace.Describe(
+        Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(root.XamlRoot), ancestors: 6);
+
+    /// <summary>
+    /// El enrutador del teclado del editor (hito 252): las teclas no consumidas por nadie van al lienzo.
+    /// El orden importa: primero el respeto por lo ya manejado, después el resolver único del lienzo.
+    /// </summary>
+    private void OnRootKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs e)
+    {
+        if (e.Handled || Canvas is null)
+        {
+            return;
+        }
+
+        bool consumed = Canvas.TryHandleShortcutKey(e.Key, e.OriginalSource);
+
+        // Lo que el lienzo no reclama llega al MENÚ PRINCIPAL (hito 258): las seis teclas que el escritorio
+        // liga a las órdenes del ciclo y del flujo en los KeyBinding de su ventana. Aquí la tabla del
+        // ControlBar es la que enruta, y el estado de los modificadores se lee del teclado de verdad.
+        if (!consumed && Bar.RouteShortcut(e.Key, IsDown(Windows.System.VirtualKey.Control),
+                IsDown(Windows.System.VirtualKey.Shift)))
+        {
+            consumed = true;
+        }
+
+        if (consumed)
+        {
+            e.Handled = true;
+        }
+
+        // El rastro (hito 252): con FILEFLOW_CANVAS_TRACE=1 esta línea es la prueba de que el atajo se
+        // resolvió SIN que el lienzo fuera dueño del foco, y de quién lo tenía cuando llegó.
+        CanvasFocusTrace.Write($"enrutado tecla={e.Key} consumido={consumed} "
+                             + $"enfocado={CanvasFocusTrace.Describe(
+                                 Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Content.XamlRoot), 3)}");
+    }
+
+    /// <summary>¿Está esa tecla pulsada ahora mismo? (los modificadores de los atajos del menú).</summary>
+    private static bool IsDown(Windows.System.VirtualKey key) =>
+        Microsoft.UI.Input.InputKeyboardSource
+            .GetKeyStateForCurrentThread(key)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+    /// <summary>El cuadro de mando del núcleo (sus órdenes las cumplen los manejadores de esta ventana).</summary>
+    private ControlBarViewModel? _controlBar;
+
+    /// <summary>
+    /// El catálogo de diálogos del host: por él se sirven las superficies que las órdenes del núcleo piden por
+    /// clave (<c>DialogKeys</c>) —la ventana de «Acerca de» y el DISEÑADOR DE DATASETS, que declara el nodo de
+    /// datos sintéticos—.
+    /// </summary>
+    private FileFlow.Sdk.Services.IWindowService? _windowService;
+
+    /// <summary>
+    /// El aviso de actualización que la comprobación de arranque encontró (hito 259): lo llama la aplicación
+    /// cuando su comprobación devuelve una novedad no ignorada, y <b>es el mismo camino del escritorio</b>
+    /// (<c>ControlBar.SetPendingUpdate</c>): el distintivo de la barra aparece con la versión nueva y su
+    /// comando abre el aviso. Sin esto, el servicio de ventanas serviría un aviso que nadie pide nunca.
+    /// </summary>
+    internal void ApplyPendingUpdate(FileFlow.Sdk.Services.AppUpdateInfo info) =>
+        _controlBar?.SetPendingUpdate(info);
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // El foco de TODA la ventana al rastro del hito 252 (con FILEFLOW_CANVAS_TRACE=1): el lienzo deja
+        // escrito quién tiene el foco al clicar, pero un robo POSTERIOR —el caso medido con puntero real:
+        // un ScrollViewer se lleva el foco ~0,5 s después del clic— sólo se ve escuchando en la raíz. El
+        // renglón dice el tipo, el nombre y los ancestros, que es lo que identifica al panel del ladrón.
+        if (CanvasFocusTrace.IsEnabled && Content is UIElement root)
+        {
+            // El evento CLR de la raíz (GotFocus burbujea): WinUI 3 no expone el campo `GotFocusEvent`
+            // para AddHandler, y aquí no hace falta que llegue lo ya marcado como manejado.
+            //
+            // Se registran DOS lecturas (hito 253): el origen del evento —quién RECIBE el foco, con su
+            // nombre, que es lo que identifica al ladrón— y una re-lectura un tick después, porque un
+            // elemento recién creado puede no estar todavía en el árbol visual cuando el evento ocurre.
+            root.GotFocus += (_, args) =>
+            {
+                CanvasFocusTrace.Write($"foco global -> src={CanvasFocusTrace.Describe(args.OriginalSource, 6)}"
+                                     + $" | gestor={ReadFocused(root)}");
+                root.DispatcherQueue.TryEnqueue(() =>
+                    CanvasFocusTrace.Write($"  foco +tick | src={CanvasFocusTrace.Describe(args.OriginalSource, 6)}"
+                                         + $" | gestor={ReadFocused(root)}"));
+            };
+        }
+
+        // ─── El teclado del editor NO depende del foco (hito 252) ───
+        //
+        // El lienzo resuelve los atajos en TryHandleShortcutKey, y aquí se le enrutan las teclas que nadie
+        // consumió —el burbujeo que el escritorio ya usaba en su vista de editor—. Hace falta porque el foco
+        // de este host no es propiedad estable del lienzo: el rastro con puntero real midió que el clic se lo
+        // entrega y ~0,5 s después un panel que reacciona a la selección se lo lleva (un ScrollViewer), y con
+        // el foco se iban Ctrl+Z, Ctrl+Y, Supr y F2. Se instala en la RAÍZ y sólo si el evento no viene ya
+        // consumido: un control que maneja su tecla (un botón con la barra espaciadora, un ListView) sigue
+        // mandando en la suya. El resolver del lienzo se salta por su cuenta lo que es de un cuadro de texto.
+        if (Content is UIElement keyboardRoot)
+        {
+            keyboardRoot.KeyDown += OnRootKeyDown;
+        }
 
         try
         {
@@ -42,6 +143,59 @@ public sealed partial class MainWindow : Window
             Toolbox.Vm = mainVm.Toolbox;
             Toolbox.Editor = mainVm.Editor;
             Inspector.Vm = mainVm.NodeInspector;
+
+            // Hito 255 — la superficie de AJUSTES del host: la vista es del host, el view model es el
+            // MISMO WorkflowSettingsViewModel portable que alimenta la ventana de ajustes del escritorio
+            // (almacenamiento y rutas, apariencia e idioma, rendimiento y herramientas externas).
+            Settings.Vm = SettingsPanel.CreateViewModel(services);
+
+            // Hito 257 — el MENÚ PRINCIPAL del host: la barra de control del escritorio y su cajón, sobre
+            // el MISMO ControlBarViewModel portable que el contenedor del núcleo ya resolvía (el del botón
+            // Ejecutar del hito 243). La barra y el cajón comparten la instancia: el botón «Menú» conmuta
+            // el estado (IsMenuOpen) y el cajón lo sigue, sin copia de la vista.
+            Bar.Vm = mainVm.ControlBar;
+            Drawer.Vm = mainVm.ControlBar;
+            Drawer.VersionText = mainVm.AppVersionDisplay;
+            _controlBar = mainVm.ControlBar;
+            _windowService = services.GetRequiredService<FileFlow.Sdk.Services.IWindowService>();
+
+            // Las dos entradas a los ajustes (la de la barra y la del cajón) abren la MISMA superficie.
+            Bar.SettingsRequested += OnOpenSettingsClicked;
+            Drawer.SettingsRequested += OnOpenSettingsClicked;
+
+            // Hito 258 — las órdenes de FLUJO: las pide el cajón por su entrada y la barra por su atajo
+            // (Ctrl+N / Ctrl+O / Ctrl+S), y las cumple ESTA ventana con los diálogos asíncronos del host
+            // más los métodos del view model portable que ya no dependen de un diálogo.
+            Bar.NewWorkflowRequested += OnNewWorkflowRequested;
+            Drawer.NewWorkflowRequested += OnNewWorkflowRequested;
+            Bar.LoadWorkflowRequested += OnLoadWorkflowRequested;
+            Drawer.LoadWorkflowRequested += OnLoadWorkflowRequested;
+            Bar.SaveWorkflowRequested += OnSaveWorkflowRequested;
+            Drawer.SaveWorkflowRequested += OnSaveWorkflowRequested;
+
+            // Hito 261 — el DISEÑADOR DE DATASETS: su superficie la declara el NODO de datos sintéticos al SDK
+            // (qué diálogo quiere y qué contiene), y la sirve el catálogo de diálogos de ESTE host con su
+            // propia vista sobre el view model portable del plugin. La lógica del diseñador no se copia.
+            Drawer.DataSetDesignerRequested += OnOpenDataSetDesigner;
+
+            // El INSPECTOR: el host arranca con el panel abierto —es una columna del marco, como hasta
+            // ahora— y su entrada de la barra y del cajón lo conmuta desde ahí. El view model del núcleo
+            // nace cerrado porque en el escritorio el panel es colapsable; el estado inicial es decisión
+            // del marco del host, y la conmutación sí es la del núcleo (ToggleInspectorCommand).
+            mainVm.NodeInspector.IsOpen = true;
+            mainVm.NodeInspector.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(NodeInspectorViewModel.IsOpen))
+                {
+                    Inspector.Visibility = mainVm.NodeInspector.IsOpen
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                }
+            };
+
+            // El renglón de la barra de estado sigue el ciclo desde la propia barra (sus PropertyChanged
+            // de IsRunning/IsDebugging/IsDryRun/IsWatching), que es el mismo view model que mueve los botones.
+            Bar.ExecutionStateChanged += (_, _) => RefreshExecutionStatus(mainVm.ControlBar);
 
             var loc = LocalizationManager.Instance;
             var core = loc.GetFormattedString(
@@ -66,6 +220,7 @@ public sealed partial class MainWindow : Window
 
             Title = "FileFlow Studio — Uno Platform";
 
+            RefreshFrameLocalization();
             BuildStatusBar(mainVm);
 
             // Localización en caliente (fase 3.5): los textos del marco se rescriben al cambiar el idioma.
@@ -129,14 +284,8 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        controlBar.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(ControlBarViewModel.IsRunning) or nameof(ControlBarViewModel.IsDryRun))
-            {
-                RefreshExecutionStatus(controlBar);
-            }
-        };
-
+        // El renglón sigue el ciclo por el evento de la BARRA (que escucha los mismos PropertyChanged del
+        // view model), y no por una segunda suscripción a este: una sola fuente para la misma línea.
         StatusBarHost.Children.Add(runButton);
         RefreshExecutionStatus(controlBar);
     }
@@ -165,6 +314,7 @@ public sealed partial class MainWindow : Window
     private void RefreshLocalizedTexts(int nodes, int canvasNodes, int catalogue)
     {
         var loc = LocalizationManager.Instance;
+        RefreshFrameLocalization();
         engineStatus.Text = loc.GetFormattedString(
             "Uno_HostCoreReady",
             "Núcleo portable listo: {0} nodos, MainViewModel resuelto.",
@@ -179,6 +329,159 @@ public sealed partial class MainWindow : Window
             "Uno_HostPanels",
             "Paneles montados: cajón con {0} tipos de nodo, inspector conectado a la selección.",
             catalogue);
+    }
+
+    /// <summary>
+    /// El punto de entrada a los ajustes: despliega la superficie del host. Es un botón de la cabecera
+    /// (no un ítem de un cajón) porque el cajón del escritorio —con sus órdenes de flujo y de ayuda— depende
+    /// de ventanas que este host todavía no tiene: lo que no llega queda declarado en el plan de la rebanada 5.
+    /// </summary>
+    private void OnOpenSettingsClicked(object sender, RoutedEventArgs e) => Settings.Open();
+
+    /// <summary>
+    /// El DISEÑADOR DE DATASETS (hito 261): la superficie la declara el NODO de datos sintéticos por el contrato
+    /// <c>INodeDialogSurfaceProvider</c> del SDK, así que esta mano no reimplementa nada —pregunta al view model
+    /// portable qué diálogo quiere y qué contiene, y se lo entrega al catálogo de diálogos del host, que pinta
+    /// su propia vista sobre ese MISMO view model—.
+    ///
+    /// <para>Cuando el nodo no está en el catálogo (el plugin del sistema de archivos no cargó), no se queda en
+    /// silencio: la orden se declina con su motivo, que es la misma regla que el resto del host.</para>
+    /// </summary>
+    private void OnOpenDataSetDesigner(object? sender, RoutedEventArgs e)
+    {
+        var bar = _controlBar;
+        if (bar is null)
+        {
+            return;
+        }
+
+        var surface = bar.GetDataSetDesignerSurface();
+        if (surface is null)
+        {
+            Platform.UnoWindowService.Decline("DataSetDesigner",
+                "ningún nodo del catálogo declara esa superficie (el plugin de sistema de archivos no está cargado)");
+            CanvasFocusTrace.Write("menu datos=declinado sin-superficie");
+            return;
+        }
+
+        // Los diálogos de ESTE host viajan en el contexto: el contenido de la superficie lo construye el nodo
+        // —un plugin, que no puede resolverlos— y sin ellos su borrado de datasets caería al doble nulo, que a
+        // una confirmación contesta «sí» sin preguntar. Es la misma entrega que hace el núcleo en las puertas
+        // de la fila y de la tarjeta.
+        object? payload = surface.CreateDialogPayload(new NodeCustomActionContext(
+            Dialogs: App.Services.GetRequiredService<IDialogService>()));
+        CanvasFocusTrace.Write("menu datos=abierto clave=" + surface.DialogKey);
+        _windowService.ShowWindow(surface.DialogKey, payload);
+    }
+
+    // ───────────────────────────────────────────────────────────────────────────────
+    // Las tres órdenes de FLUJO (hito 258): diálogo asíncrono del host + ViewModel portable
+    // ───────────────────────────────────────────────────────────────────────────────
+    //
+    // El comando del núcleo pide un diálogo SÍNCRONO (confirmación o fichero) que desde el hilo de UI
+    // devuelve falso/nulo en este host, así que el botón quedaría mudo. Estas tres manos eligen con las
+    // APIs asíncronas del host y llaman después al MISMO view model portable que el comando usa: la
+    // lógica del producto no se copia, sólo se cambia quién abre el diálogo.
+
+    private async void OnNewWorkflowRequested(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_controlBar is null)
+            {
+                return;
+            }
+
+            // La pregunta la hace el COMANDO del núcleo por el contrato ASÍNCRONO (hito 265). Hasta entonces
+            // la ventana confirmaba por su cuenta —el comando preguntaba por el contrato síncrono, que desde
+            // el hilo de UI devuelve falso—: era el host haciendo la pregunta del producto, y se quitó.
+            int before = _controlBar.Editor.Nodes.Count;
+            await _controlBar.NewWorkflowCommand.ExecuteAsync(null);
+            CanvasFocusTrace.Write("menu flujo=nuevo nodos=" + before + " -> " + _controlBar.Editor.Nodes.Count);
+            RefreshExecutionStatus(_controlBar);
+        }
+        catch (Exception ex)
+        {
+            engineStatus.Text = StatusLineWriter.Padded("flujo nuevo: EXCEPCION " + ex.GetType().Name
+                + ": " + ex.Message);
+        }
+    }
+
+    private async void OnLoadWorkflowRequested(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_controlBar is null)
+            {
+                return;
+            }
+
+            var loc = LocalizationManager.Instance;
+            var picker = App.Services.GetRequiredService<IFileDialogService>();
+            string? filePath = await picker.ShowOpenFileDialogAsync(
+                loc.GetString("LoadWorkflowBtn", "Cargar Flujo"),
+                "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*",
+                ".json");
+
+            if (string.IsNullOrEmpty(filePath))
+            {
+                CanvasFocusTrace.Write("menu flujo=cargar sin-ruta");
+                return;
+            }
+
+            await _controlBar.LoadWorkflowFromFileAsync(filePath);
+            CanvasFocusTrace.Write("menu flujo=cargado nodos=" + _controlBar.Editor.Nodes.Count);
+            RefreshExecutionStatus(_controlBar);
+        }
+        catch (Exception ex)
+        {
+            engineStatus.Text = StatusLineWriter.Padded("flujo cargado: EXCEPCION " + ex.GetType().Name
+                + ": " + ex.Message);
+        }
+    }
+
+    private async void OnSaveWorkflowRequested(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_controlBar is null)
+            {
+                return;
+            }
+
+            var loc = LocalizationManager.Instance;
+            var picker = App.Services.GetRequiredService<IFileDialogService>();
+            string? filePath = await picker.ShowSaveFileDialogAsync(
+                loc.GetString("SaveWorkflowBtn", "Guardar Flujo"),
+                "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*",
+                ".json",
+                "flujo.json");
+
+            if (string.IsNullOrEmpty(filePath))
+            {
+                CanvasFocusTrace.Write("menu flujo=guardar sin-ruta");
+                return;
+            }
+
+            await _controlBar.SaveWorkflowToFileAsync(filePath);
+            CanvasFocusTrace.Write("menu flujo=guardado ruta=" + Path.GetFileName(filePath));
+        }
+        catch (Exception ex)
+        {
+            engineStatus.Text = StatusLineWriter.Padded("flujo guardado: EXCEPCION " + ex.GetType().Name
+                + ": " + ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Los textos del marco con el idioma vigente: la barra de control y su cajón (cada uno aplica sus
+    /// claves del diccionario del host) y el renglón del núcleo. El cambio de idioma en caliente pasa por
+    /// aquí, que es <see cref="RefreshLocalizedTexts"/>.
+    /// </summary>
+    private void RefreshFrameLocalization()
+    {
+        Bar.RefreshLocalization();
+        Drawer.RefreshLocalization();
     }
 
     /// <summary>El error del último intento de carga del ejemplo (vacío si no hubo): visible para el sondeo.</summary>

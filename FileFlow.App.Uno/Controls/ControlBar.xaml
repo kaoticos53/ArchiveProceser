@@ -1,0 +1,254 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.ControlBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:FileFlow.App.Uno.Platform">
+
+  <!-- La visibilidad por contexto usa los mismos conversores que las tarjetas del lienzo. -->
+  <UserControl.Resources>
+    <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+    <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
+  </UserControl.Resources>
+
+  <!--
+    La BARRA DE CONTROL del host Uno: la misma barra del escritorio (ControlBarView.axaml) sobre el MISMO
+    view model portable (ControlBarViewModel, resuelto por el contenedor del núcleo), montada aquí como
+    control del host.
+
+    Tres islas semánticas, las del escritorio, con las entradas que en ESTE host tienen destino real:
+
+      1. Modos        → Modo Prueba (IsDryRun) y Vigilante (ToggleWatchModeCommand)
+      2. Ciclo        → Ejecutar / Depurar / Siguiente Paso / Continuar / Pausar / Detener
+      3. Herramientas → Deshacer / Rehacer / Revertir / Inspector, más el punto de entrada a los AJUSTES
+
+    LO QUE NO ESTÁ, Y POR QUÉ (nunca fingido): el botón de VFS y el aviso de actualización del escritorio
+    no se dibujan porque sus destinos no existen en este host — la ventana del explorador virtual vive en
+    IWindowService (aquí el Nulo declarado) y el host no tiene servicio de actualizaciones—. Tampoco se
+    dibujan las entradas del cajón cuyas órdenes mueren en un contrato síncrono de diálogo que este host no
+    puede cumplir desde el hilo de UI (Nuevo/Cargar/Guardar Flujo) ni las que abren ventanas que el host
+    todavía no tiene (Estudio de temas, Métricas, VFS, Diseñador de dataset, Manual, Ejemplos, Acerca de):
+    quedan declaradas en el plan de la rebanada 5 y en el informe de la sesión.
+
+    El ESTADO de cada entrada es el del view model, no una copia de la vista: la isla del ciclo enseña
+    Ejecutar/Depurar cuando no hay ejecución y Pausar/Detener mientras corre, y Deshacer/Rehacer se
+    deshabilitan cuando el editor dice que no se puede (CanUndo/CanRedo).
+
+    Los TEXTOS se aplican por código (ControlBar.xaml.cs → RefreshLocalization): el host resuelve sus
+    cadenas con LocalizationManager sobre SU diccionario (claves Uno_*), y las reescribe en caliente al
+    cambiar de idioma.
+  -->
+  <Border x:Name="BarHost"
+          Background="{StaticResource CanvasCardBrush}"
+          BorderBrush="{StaticResource CanvasBorderBrush}"
+          BorderThickness="0,0,0,1"
+          Padding="12,7">
+    <Grid ColumnSpacing="10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <!-- ── Marca y punto de entrada al menú ── -->
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Button x:Name="MenuButton" Click="OnMenuClicked"
+                Padding="8,4" FontSize="11" VerticalAlignment="Center"
+                Background="Transparent" BorderThickness="1"
+                BorderBrush="{StaticResource CanvasBorderBrush}"
+                AutomationProperties.AutomationId="ControlBarMenuButton">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="☰" FontSize="12" VerticalAlignment="Center"
+                       Foreground="{StaticResource CanvasTextBrush}" />
+            <TextBlock x:Name="MenuLabel" FontSize="11" VerticalAlignment="Center"
+                       Foreground="{StaticResource CanvasTextBrush}" />
+          </StackPanel>
+        </Button>
+
+        <Border Background="{StaticResource CanvasAccentPrimaryBrush}" CornerRadius="6"
+                Width="22" Height="22" VerticalAlignment="Center">
+          <TextBlock Text="⚡" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Foreground="{StaticResource CanvasOnAccentBrush}" />
+        </Border>
+
+        <TextBlock x:Name="BrandLabel" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+      </StackPanel>
+
+      <!-- ── Las tres islas, en el mismo orden que el escritorio ── -->
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+
+        <!-- Isla 1: modos y herramientas del espacio de trabajo -->
+        <Border Background="{StaticResource CanvasSurfaceBrush}"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="6,3">
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <CheckBox x:Name="DryRunToggle" FontSize="11" VerticalAlignment="Center"
+                      IsChecked="{Binding IsDryRun, Mode=TwoWay}"
+                      AutomationProperties.AutomationId="ControlBarDryRunToggle" />
+            <Button x:Name="WatchButton" Click="OnWatchClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    AutomationProperties.AutomationId="ControlBarWatchButton">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="👁" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock x:Name="WatchLabel" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+              </StackPanel>
+            </Button>
+
+            <!-- El EXPLORADOR VIRTUAL del escritorio: su isla aparece sólo cuando la última ejecución dejó
+                 archivos virtuales (HasVirtualFiles), el mismo estado de contexto que su botón allí. -->
+            <Button x:Name="VfsButton" Click="OnVfsClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    Visibility="{Binding HasVirtualFiles, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarVfsButton">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="📁" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasAccentGlowBrush}" />
+                <TextBlock x:Name="VfsLabel" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasAccentGlowBrush}" />
+              </StackPanel>
+            </Button>
+
+            <!-- El AVISO DE ACTUALIZACIÓN del escritorio: aparece cuando el arranque encontró una novedad
+                 (HasPendingUpdate) y lleva la versión nueva, como el distintivo de su barra. -->
+            <Button x:Name="UpdateBadge" Click="OnUpdateBadgeClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasSuccessBrush}"
+                    Visibility="{Binding HasPendingUpdate, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarUpdateBadge">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <TextBlock Text="🚀" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasSuccessBrush}" />
+                <TextBlock x:Name="UpdateLabel" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasSuccessBrush}" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Border>
+
+        <!-- Isla 2: el ciclo de vida del flujo (visibilidad por contexto) -->
+        <Border Background="{StaticResource CanvasSurfaceBrush}"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="6,3">
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <Button x:Name="RunButton" Click="OnRunClicked"
+                    Padding="10,3" FontSize="11" VerticalAlignment="Center"
+                    Background="{StaticResource CanvasSuccessBrush}" BorderThickness="0"
+                    Visibility="{Binding IsRunning, Converter={StaticResource InvBoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarRunButton">
+              <TextBlock x:Name="RunLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasOnAccentBrush}" />
+            </Button>
+
+            <Button x:Name="DebugButton" Click="OnDebugClicked"
+                    Padding="10,3" FontSize="11" VerticalAlignment="Center"
+                    Background="{StaticResource CanvasAccentPrimaryBrush}" BorderThickness="0"
+                    Visibility="{Binding IsRunning, Converter={StaticResource InvBoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarDebugButton">
+              <TextBlock x:Name="DebugLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasOnAccentBrush}" />
+            </Button>
+
+            <Button x:Name="StepButton" Click="OnStepClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="{StaticResource CanvasWarningBrush}" BorderThickness="0"
+                    Visibility="{Binding IsDebugging, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarStepButton">
+              <TextBlock x:Name="StepLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasOnAccentBrush}" />
+            </Button>
+
+            <Button x:Name="ContinueButton" Click="OnContinueClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="{StaticResource CanvasSuccessBrush}" BorderThickness="0"
+                    Visibility="{Binding IsDebugging, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarContinueButton">
+              <TextBlock x:Name="ContinueLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasOnAccentBrush}" />
+            </Button>
+
+            <Button x:Name="PauseButton" Click="OnPauseClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarPauseButton">
+              <TextBlock x:Name="PauseLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasTextBrush}" />
+            </Button>
+
+            <Button x:Name="StopButton" Click="OnStopClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="{StaticResource CanvasWarningBrush}" BorderThickness="0"
+                    Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}"
+                    AutomationProperties.AutomationId="ControlBarStopButton">
+              <TextBlock x:Name="StopLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasOnAccentBrush}" />
+            </Button>
+          </StackPanel>
+        </Border>
+
+        <!-- Isla 3: herramientas y vistas -->
+        <Border Background="{StaticResource CanvasSurfaceBrush}"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="6,3">
+          <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <Button x:Name="UndoButton" Click="OnUndoClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    IsEnabled="{Binding CanUndo}"
+                    AutomationProperties.AutomationId="ControlBarUndoButton">
+              <TextBlock x:Name="UndoLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasTextBrush}" />
+            </Button>
+
+            <Button x:Name="RedoButton" Click="OnRedoClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    IsEnabled="{Binding CanRedo}"
+                    AutomationProperties.AutomationId="ControlBarRedoButton">
+              <TextBlock x:Name="RedoLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasTextBrush}" />
+            </Button>
+
+            <Button x:Name="RollbackButton" Click="OnRollbackClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    AutomationProperties.AutomationId="ControlBarRollbackButton">
+              <TextBlock x:Name="RollbackLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasTextBrush}" />
+            </Button>
+
+            <Button x:Name="InspectorButton" Click="OnInspectorClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="Transparent" BorderThickness="1"
+                    BorderBrush="{StaticResource CanvasBorderBrush}"
+                    AutomationProperties.AutomationId="ControlBarInspectorButton">
+              <TextBlock x:Name="InspectorLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasTextBrush}" />
+            </Button>
+
+            <!-- El punto de entrada a los ajustes (hito 255) conserva su AutomationId: es el ancla que
+                 la sesión de la superficie usa para abrirla, y ahora vive en la barra como una entrada más. -->
+            <Button x:Name="SettingsButton" Click="OnSettingsClicked"
+                    Padding="8,3" FontSize="11" VerticalAlignment="Center"
+                    Background="{StaticResource CanvasAccentPrimaryBrush}" BorderThickness="0"
+                    AutomationProperties.AutomationId="SettingsButton">
+              <TextBlock x:Name="SettingsLabel" FontSize="11"
+                         Foreground="{StaticResource CanvasOnAccentBrush}" />
+            </Button>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

@@ -1,0 +1,255 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.ThemeCustomizerBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:FileFlow.App.Uno.Controls">
+
+  <!--
+    El ESTUDIO DE TEMAS del host Uno: el catálogo de temas del núcleo y su editor por secciones, sobre el
+    MISMO `ThemeCustomizerViewModel` portable que el escritorio
+    (`FileFlow.App/Views/Components/ThemeCustomizerWindow.axaml`).
+
+    EL EDITOR NO ESTÁ ESCRITO A MANO: las secciones y sus filas salen del catálogo del núcleo
+    (`Sections` → `Rows`), y cada fila escribe sobre la propiedad real del tema por su view model. Aquí sólo
+    hay tres plantillas —color, número y elección— y un selector que las reparte por el TIPO de la fila:
+    añadir un ajuste al catálogo del núcleo no toca este fichero.
+
+    LO QUE ESTE HOST NO DIBUJA, y por qué (tabla `DeclaredPendingParts` del code-behind, que la guardia
+    compara): Importar / Exportar —su camino pasa por el contrato SÍNCRONO de selección de fichero, que desde
+    el hilo de UI devuelve nulo y dejaría dos botones mudos— y la vista previa en vivo, cuyo diccionario de
+    tokens no es observable para los recursos de WinUI sin una copia por superficie. El color se edita aquí en
+    su campo hex con su muestra, en lugar del selector de color del escritorio (que es un componente de su
+    toolkit).
+
+    ELIMINAR SÍ SE DIBUJA (hito 265): su orden del view model pregunta por el contrato ASÍNCRONO de diálogos
+    (`IDialogService.ConfirmAsync`), que este host sí puede contestar, así que el botón dejó de ser un
+    destino sin camino y su fila salió de la tabla de pendientes.
+  -->
+  <UserControl.Resources>
+    <local:HexBrushConverter x:Key="HexBrush" />
+
+    <!-- Las tres plantillas del editor. El selector las reparte por el TIPO de la fila. -->
+    <DataTemplate x:Key="ThemeColorRowTemplate">
+      <Grid ColumnSpacing="6" Padding="0,3">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="230" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="120" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+        <Border Grid.Column="1" Width="18" Height="18" CornerRadius="3"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
+                Background="{Binding SelectedColorHex, Converter={StaticResource HexBrush}}"
+                AutomationProperties.AutomationId="ThemeStudioColorSwatch" />
+        <TextBox Grid.Column="2" FontSize="11" Padding="4,2"
+                 Text="{Binding SelectedColorHex, Mode=OneWay}"
+                 TextChanged="OnColorTextChanged" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ThemeNumberRowTemplate">
+      <Grid ColumnSpacing="6" Padding="0,3">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="230" />
+          <ColumnDefinition Width="90" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+        <TextBox Grid.Column="1" FontSize="11" Padding="4,2"
+                 Text="{Binding Value, Mode=OneWay}"
+                 TextChanged="OnNumberTextChanged" />
+        <TextBlock Grid.Column="2" FontSize="10" VerticalAlignment="Center"
+                   Foreground="{StaticResource CanvasSecondaryBrush}">
+          <Run Text="min " /><Run Text="{Binding Minimum}" />
+          <Run Text=" · max " /><Run Text="{Binding Maximum}" />
+          <Run Text=" · paso " /><Run Text="{Binding Step}" />
+        </TextBlock>
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="ThemeChoiceRowTemplate">
+      <Grid ColumnSpacing="6" Padding="0,3">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="230" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+        <ComboBox Grid.Column="1" FontSize="11" HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding Options}"
+                  SelectedItem="{Binding SelectedOption, Mode=TwoWay}"
+                  AutomationProperties.AutomationId="ThemeStudioChoiceBox" />
+      </Grid>
+    </DataTemplate>
+
+    <local:ThemeSettingRowTemplateSelector x:Key="ThemeRowSelector"
+                                           ColorTemplate="{StaticResource ThemeColorRowTemplate}"
+                                           NumberTemplate="{StaticResource ThemeNumberRowTemplate}"
+                                           ChoiceTemplate="{StaticResource ThemeChoiceRowTemplate}" />
+  </UserControl.Resources>
+
+  <Grid x:Name="StudioRoot" MinWidth="900" MinHeight="500"
+        AutomationProperties.AutomationId="ThemeStudioBody"
+        RowSpacing="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Cabecera -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+      <Border Background="{StaticResource CanvasPurpleBrush}" CornerRadius="6" Width="30" Height="30">
+        <TextBlock Text="🎨" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="{StaticResource CanvasOnAccentBrush}" />
+      </Border>
+      <StackPanel VerticalAlignment="Center">
+        <TextBlock x:Name="HeaderTitle" FontSize="15" FontWeight="Bold"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+        <TextBlock x:Name="HeaderSubtitle" FontSize="11"
+                   Foreground="{StaticResource CanvasSecondaryBrush}" />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Cuerpo: catálogo a la izquierda, editor a la derecha -->
+    <Grid Grid.Row="1" ColumnSpacing="10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="230" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Catálogo de temas (el del núcleo: CustomThemeService) -->
+      <Border Grid.Column="0" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="10">
+        <Grid RowSpacing="6">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <TextBlock Grid.Row="0" x:Name="CatalogLabel" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+
+          <ListView Grid.Row="1" x:Name="ThemeList" SelectionMode="Single"
+                    Background="Transparent" BorderThickness="0"
+                    ItemsSource="{Binding AvailableThemes}"
+                    SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="ThemeStudioThemeList">
+            <ListView.ItemTemplate>
+              <DataTemplate>
+                <!-- El nombre de automatización de la fila: sin él, el canal externo (lector de pantalla o
+                     driver de QA) lee el NOMBRE DEL TIPO del elemento en vez del tema que la fila enseña. -->
+                <StackPanel Spacing="1" Padding="0,3" AutomationProperties.Name="{Binding Name}">
+                  <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                             TextTrimming="CharacterEllipsis"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <TextBlock Text="{Binding Description}" FontSize="10"
+                             TextTrimming="CharacterEllipsis"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                </StackPanel>
+              </DataTemplate>
+            </ListView.ItemTemplate>
+          </ListView>
+
+          <StackPanel Grid.Row="2" Spacing="4">
+            <Button x:Name="NewButton" Click="OnNewClicked" HorizontalAlignment="Stretch" Padding="8,4"
+                    FontSize="12" AutomationProperties.AutomationId="ThemeStudioNewButton">
+              <TextBlock x:Name="NewLabel" FontSize="12" />
+            </Button>
+            <Button x:Name="DuplicateButton" Click="OnDuplicateClicked" HorizontalAlignment="Stretch"
+                    Padding="8,4" FontSize="12"
+                    AutomationProperties.AutomationId="ThemeStudioDuplicateButton">
+              <TextBlock x:Name="DuplicateLabel" FontSize="12" />
+            </Button>
+            <!-- Sólo un tema PROPIO se puede borrar: los de fábrica son inmutables, y el propio view model
+                 lo comprueba otra vez antes de preguntar. -->
+            <Button x:Name="DeleteButton" Click="OnDeleteClicked" HorizontalAlignment="Stretch"
+                    Padding="8,4" FontSize="12" IsEnabled="{Binding IsCustomTheme}"
+                    AutomationProperties.AutomationId="ThemeStudioDeleteButton">
+              <TextBlock x:Name="DeleteLabel" FontSize="12" />
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- Editor por secciones, generado desde el catálogo del núcleo -->
+      <Border Grid.Column="1" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="10">
+        <Grid RowSpacing="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8">
+            <TextBlock x:Name="NameLabel" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"
+                       Foreground="{StaticResource CanvasSecondaryBrush}" />
+            <TextBox x:Name="NameBox" FontSize="12" Width="260" Padding="6,4"
+                     Text="{Binding CurrentThemeName, Mode=TwoWay}"
+                     AutomationProperties.AutomationId="ThemeStudioNameBox" />
+            <TextBlock x:Name="BadgeText" FontSize="10" VerticalAlignment="Center"
+                       Foreground="{StaticResource CanvasAccentGlowBrush}" />
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="SectionsList" ItemsSource="{Binding Sections}"
+                          AutomationProperties.AutomationId="ThemeStudioSections">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="0,0,0,10" Spacing="4">
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold"
+                               Foreground="{StaticResource CanvasAccentGlowBrush}" />
+                    <ItemsControl ItemsSource="{Binding Rows}"
+                                  ItemTemplateSelector="{StaticResource ThemeRowSelector}"
+                                  AutomationProperties.AutomationId="ThemeStudioRowList">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Label}" FontSize="11"
+                                     Foreground="{StaticResource CanvasTextBrush}" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Pie: el estado del estudio y las órdenes que el host sí puede cumplir -->
+    <Grid Grid.Row="2" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <TextBlock x:Name="StatusText" Grid.Column="0" FontSize="11" VerticalAlignment="Center"
+                 TextWrapping="Wrap"
+                 Foreground="{StaticResource CanvasSecondaryBrush}"
+                 AutomationProperties.AutomationId="ThemeStudioStatusText" />
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button x:Name="ApplyButton" Click="OnApplyClicked" Padding="10,5" FontSize="12"
+                AutomationProperties.AutomationId="ThemeStudioApplyButton">
+          <TextBlock x:Name="ApplyLabel" FontSize="12" />
+        </Button>
+        <Button x:Name="SaveButton" Click="OnSaveAndApplyClicked" Padding="10,5" FontSize="12"
+                AutomationProperties.AutomationId="ThemeStudioSaveButton">
+          <TextBlock x:Name="SaveLabel" FontSize="12" />
+        </Button>
+        <Button x:Name="CloseButton" Click="OnCloseClicked" Padding="14,5" FontSize="12"
+                AutomationProperties.AutomationId="ThemeStudioCloseButton">
+          <TextBlock x:Name="CloseLabel" FontSize="12" />
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,586 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- ═══ Host frame (the strings the Uno shell paints) ═══
+       These are the SAME keys the host code cites with a hardcoded fallback. The dictionary is what turns
+       the fallback into two real languages: without it, choosing English in the settings surface re-cultured
+       the process and every text stayed Spanish (the fallback argument). -->
+
+  <data name="Uno_RunExecute" xml:space="preserve"><value>Run</value></data>
+  <data name="Uno_HostCoreReady" xml:space="preserve"><value>Portable core ready: {0} nodes, MainViewModel resolved.</value></data>
+  <data name="Uno_HostViewModel" xml:space="preserve"><value>Canvas mounted: {0} nodes in the graph.</value></data>
+  <data name="Uno_HostPanels" xml:space="preserve"><value>Panels mounted: toolbox with {0} node types, inspector wired to the selection.</value></data>
+
+  <!-- Node toolbox -->
+  <data name="Uno_ToolboxTitle" xml:space="preserve"><value>Nodes</value></data>
+  <data name="Uno_ToolboxSearch" xml:space="preserve"><value>Search node… (Ctrl+F)</value></data>
+  <data name="Uno_ToolboxViewMode" xml:space="preserve"><value>Compact / detailed view</value></data>
+
+  <!-- Node inspector -->
+  <data name="Uno_InspectorClose" xml:space="preserve"><value>Close</value></data>
+  <data name="Uno_InspectorTest" xml:space="preserve"><value>Test</value></data>
+  <data name="Uno_InspectorTabParams" xml:space="preserve"><value>Parameters</value></data>
+  <data name="Uno_InspectorTabSnapshots" xml:space="preserve"><value>Snapshots</value></data>
+  <data name="Uno_InspectorTabInputs" xml:space="preserve"><value>Inputs</value></data>
+  <data name="Uno_InspectorTabOutputs" xml:space="preserve"><value>Outputs</value></data>
+  <data name="Uno_InspectorTabDiff" xml:space="preserve"><value>Diff</value></data>
+  <data name="Uno_InspectorParams" xml:space="preserve"><value>Parameters</value></data>
+  <data name="Uno_InspectorTelemetry" xml:space="preserve"><value>Telemetry</value></data>
+  <data name="Uno_InspectorResetMetrics" xml:space="preserve"><value>Clear metrics</value></data>
+  <data name="Uno_InspectorTitle" xml:space="preserve"><value>Inspector</value></data>
+  <data name="Uno_InspectorEmpty" xml:space="preserve"><value>Select a node to inspect it.</value></data>
+  <data name="Uno_InspectorStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Uno_InspectorProcessed" xml:space="preserve"><value>Processed</value></data>
+  <data name="Uno_InspectorAvgLatency" xml:space="preserve"><value>Average latency</value></data>
+  <data name="Uno_InspectorTotalTime" xml:space="preserve"><value>Total time</value></data>
+  <data name="Uno_InspectorPeakRam" xml:space="preserve"><value>Peak memory</value></data>
+
+  <!-- ═══ Settings surface (the same four tabs of the desktop's WorkflowSettingsWindow) ═══ -->
+
+  <data name="Uno_Settings_Open" xml:space="preserve"><value>Settings</value></data>
+  <data name="Uno_Settings_OpenToolTip" xml:space="preserve"><value>Configure theme, language, paths, performance and external tools</value></data>
+  <data name="Uno_Settings_HeaderTitle" xml:space="preserve"><value>FileFlow Studio Settings</value></data>
+  <data name="Uno_Settings_HeaderSubtitle" xml:space="preserve"><value>Persistent global preferences for storage, appearance, performance and external tools.</value></data>
+  <data name="Uno_Settings_TabStorage" xml:space="preserve"><value>Storage &amp; Paths</value></data>
+  <data name="Uno_Settings_TabAppearance" xml:space="preserve"><value>Appearance &amp; Language</value></data>
+  <data name="Uno_Settings_TabPerformance" xml:space="preserve"><value>Performance &amp; Execution</value></data>
+  <data name="Uno_Settings_TabTools" xml:space="preserve"><value>External Tools</value></data>
+  <data name="Uno_Settings_Save" xml:space="preserve"><value>Save settings</value></data>
+  <data name="Uno_Settings_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Uno_Settings_Close" xml:space="preserve"><value>Close settings</value></data>
+  <data name="Uno_Settings_GlobalOutputDirTitle" xml:space="preserve"><value>Default global output path</value></data>
+  <data name="Uno_Settings_TempWorkingDirTitle" xml:space="preserve"><value>Temporary working directory</value></data>
+  <data name="Uno_Settings_ConflictStrategyTitle" xml:space="preserve"><value>Default file conflict strategy</value></data>
+  <data name="Uno_Settings_Browse" xml:space="preserve"><value>Browse</value></data>
+  <data name="Uno_Settings_EnableAutoSave" xml:space="preserve"><value>Enable automatic project auto-save</value></data>
+  <data name="Uno_Settings_AutoSaveInterval" xml:space="preserve"><value>Auto-save interval (minutes):</value></data>
+  <data name="Uno_Settings_AutoCleanIntermediate" xml:space="preserve"><value>Auto-clean intermediate temporary files on workflow completion</value></data>
+  <data name="Uno_Settings_CleanStaleTemp" xml:space="preserve"><value>Purge orphan temporary directories on application startup</value></data>
+  <data name="Uno_Settings_CleanTempNow" xml:space="preserve"><value>Clean temporary workspace now</value></data>
+  <data name="Uno_Settings_LanguageLabel" xml:space="preserve"><value>Language:</value></data>
+  <data name="Uno_Settings_DefaultThemeTitle" xml:space="preserve"><value>Default visual theme</value></data>
+  <data name="Uno_Settings_CompactToolbox" xml:space="preserve"><value>Start node toolbox in compact list mode</value></data>
+  <data name="Uno_Settings_AutoScrollConsole" xml:space="preserve"><value>Auto-scroll console on receiving log messages</value></data>
+  <data name="Uno_Settings_MaxLogEntries" xml:space="preserve"><value>Maximum lines in console:</value></data>
+  <data name="Uno_Settings_LinesUnlimited" xml:space="preserve"><value>lines (0 = unlimited)</value></data>
+  <data name="Uno_Settings_MaxCpuThreads" xml:space="preserve"><value>Maximum CPU threads:</value></data>
+  <data name="Uno_Settings_ThreadsLabel" xml:space="preserve"><value>threads</value></data>
+  <data name="Uno_Settings_DryRunDefault" xml:space="preserve"><value>Always start with dry-run (simulation) mode enabled</value></data>
+  <data name="Uno_Settings_LogLevelTitle" xml:space="preserve"><value>Minimum log level</value></data>
+  <data name="Uno_Settings_Checkpointing" xml:space="preserve"><value>Enable execution checkpoints to resume interrupted workflows</value></data>
+  <data name="Uno_Settings_ClearCheckpoints" xml:space="preserve"><value>Clear checkpoints</value></data>
+  <data name="Uno_Settings_AutoUnloadAi" xml:space="preserve"><value>Unload AI models when the workflow finishes</value></data>
+  <data name="Uno_Settings_ToolsTitle" xml:space="preserve"><value>System executable paths</value></data>
+  <data name="Uno_Settings_AutoDetect" xml:space="preserve"><value>Auto-detect tools</value></data>
+  <data name="Uno_Settings_Ffmpeg" xml:space="preserve"><value>FFmpeg (video / audio transcoding)</value></data>
+  <data name="Uno_Settings_Ffprobe" xml:space="preserve"><value>FFprobe (media metadata inspection)</value></data>
+  <data name="Uno_Settings_SevenZip" xml:space="preserve"><value>7-Zip (ZIP / 7z / RAR archives)</value></data>
+  <data name="Uno_Settings_Python" xml:space="preserve"><value>Python (scripts and CLI automation)</value></data>
+  <data name="Uno_Settings_Saved" xml:space="preserve"><value>Settings saved.</value></data>
+  <data name="Uno_Settings_Discarded" xml:space="preserve"><value>Changes discarded.</value></data>
+  <data name="Uno_ControlBar_Brand" xml:space="preserve"><value>FileFlow Studio</value></data>
+  <data name="Uno_ControlBar_Menu" xml:space="preserve"><value>Menu</value></data>
+  <data name="Uno_ControlBar_MenuToolTip" xml:space="preserve"><value>Open Main Navigation Menu</value></data>
+  <data name="Uno_ControlBar_DryRun" xml:space="preserve"><value>🧪 Dry-Run (Simulation)</value></data>
+  <data name="Uno_ControlBar_DryRunToolTip" xml:space="preserve"><value>Simulation mode: Runs the workflow without modifying or deleting real files on disk</value></data>
+  <data name="Uno_ControlBar_Watcher" xml:space="preserve"><value>Watchdog</value></data>
+  <data name="Uno_ControlBar_WatchToolTip" xml:space="preserve"><value>Starts or stops real-time Watchdog Mode to automatically process files as they arrive in source folders.</value></data>
+  <data name="Uno_ControlBar_Run" xml:space="preserve"><value>▶ Run Flow</value></data>
+  <data name="Uno_ControlBar_Debug" xml:space="preserve"><value>🐞 Debug</value></data>
+  <data name="Uno_ControlBar_StepNext" xml:space="preserve"><value>⏭ Step Next</value></data>
+  <data name="Uno_ControlBar_StepNextToolTip" xml:space="preserve"><value>Step to next node (F10)</value></data>
+  <data name="Uno_ControlBar_Continue" xml:space="preserve"><value>⏯ Continue</value></data>
+  <data name="Uno_ControlBar_ContinueToolTip" xml:space="preserve"><value>Continue normal execution (F5)</value></data>
+  <data name="Uno_ControlBar_Pause" xml:space="preserve"><value>⏸ Pause</value></data>
+  <data name="Uno_ControlBar_PauseToolTip" xml:space="preserve"><value>Pause or resume workflow</value></data>
+  <data name="Uno_ControlBar_Stop" xml:space="preserve"><value>⏹ Stop</value></data>
+  <data name="Uno_ControlBar_StopToolTip" xml:space="preserve"><value>Stop execution (Shift+F5)</value></data>
+  <data name="Uno_ControlBar_Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Uno_ControlBar_UndoToolTip" xml:space="preserve"><value>Undo last canvas action (Ctrl+Z)</value></data>
+  <data name="Uno_ControlBar_Redo" xml:space="preserve"><value>Redo</value></data>
+  <data name="Uno_ControlBar_RedoToolTip" xml:space="preserve"><value>Redo last undone action (Ctrl+Y)</value></data>
+  <data name="Uno_ControlBar_Rollback" xml:space="preserve"><value>Rollback</value></data>
+  <data name="Uno_ControlBar_RollbackToolTip" xml:space="preserve"><value>Rollback disk changes from last execution</value></data>
+  <data name="Uno_ControlBar_Inspector" xml:space="preserve"><value>🔍 Inspector</value></data>
+  <data name="Uno_ControlBar_InspectorToolTip" xml:space="preserve"><value>Open / Close Node Data Inspector</value></data>
+  <data name="Uno_ControlBar_SettingsToolTip" xml:space="preserve"><value>Settings</value></data>
+  <data name="Uno_Drawer_Subtitle" xml:space="preserve"><value>Workflow Engine v1.0</value></data>
+  <data name="Uno_Drawer_CloseToolTip" xml:space="preserve"><value>Close menu</value></data>
+  <data name="Uno_Drawer_AppearanceLanguage" xml:space="preserve"><value>APPEARANCE &amp; LANGUAGE</value></data>
+  <data name="Uno_Drawer_ThemeLabel" xml:space="preserve"><value>Visual Theme:</value></data>
+  <data name="Uno_Drawer_LanguageLabel" xml:space="preserve"><value>Language:</value></data>
+  <data name="Uno_Drawer_PanelsTools" xml:space="preserve"><value>PANELS &amp; TOOLS</value></data>
+  <data name="Uno_Drawer_Settings" xml:space="preserve"><value>Settings</value></data>
+
+  <!-- Hito 258 — las secciones que el cajón del escritorio tiene y este host no dibujaba: GESTIÓN DE
+       FLUJOS (Nuevo / Cargar / Guardar, que este host cumple por su canal asíncrono) y AYUDA Y
+       RECURSOS (Manual, Ejemplos y Acerca de, ya cumplidas por sus órdenes canónicas). Los valores se
+       COPIAN del diccionario del escritorio, clave por clave: la guardia exige la igualdad al carácter. -->
+  <data name="Uno_Drawer_FlowManagement" xml:space="preserve"><value>FLOW MANAGEMENT</value></data>
+  <data name="Uno_Drawer_NewWorkflow" xml:space="preserve"><value>New Workflow</value></data>
+  <data name="Uno_Drawer_LoadWorkflow" xml:space="preserve"><value>Load Workflow...</value></data>
+  <data name="Uno_Drawer_SaveWorkflow" xml:space="preserve"><value>Save Workflow...</value></data>
+  <data name="Uno_Drawer_HelpResources" xml:space="preserve"><value>HELP &amp; RESOURCES</value></data>
+  <data name="Uno_Drawer_UserManual" xml:space="preserve"><value>User Manual</value></data>
+  <data name="Uno_Drawer_UserManualToolTip" xml:space="preserve"><value>Open detailed User Manual (PDF)</value></data>
+  <data name="Uno_Drawer_ExampleFlows" xml:space="preserve"><value>Example Flows</value></data>
+  <data name="Uno_Drawer_ExampleFlowsToolTip" xml:space="preserve"><value>Explore folder with included example workflows</value></data>
+  <data name="Uno_Drawer_About" xml:space="preserve"><value>About FileFlow Studio</value></data>
+  <data name="Uno_Drawer_AboutToolTip" xml:space="preserve"><value>View application information, version, author and repository</value></data>
+
+  <!-- La ventana «Acerca de», que este host sirve como superficie propia -->
+  <data name="Uno_About_Title" xml:space="preserve"><value>About FileFlow Studio</value></data>
+  <data name="Uno_About_Subtitle" xml:space="preserve"><value>Intelligent File Automation and DAG Engine</value></data>
+  <data name="Uno_About_Description" xml:space="preserve"><value>Directed Acyclic Graph (DAG) workflow engineering platform with extensible plugins, asynchronous high-performance processing, non-destructive file pipelines, and responsive layer decoupling.</value></data>
+  <data name="Uno_About_Accept" xml:space="preserve"><value>Accept</value></data>
+
+  <!-- Rebanada 5.3 — los DIÁLOGOS DE NODO del host (el editor de texto de un parámetro y el selector
+       de variables). Los valores se COPIAN del diccionario del escritorio, clave por clave: el mismo
+       texto que ya ve el usuario en la otra aplicación, con la guardia exigiendo la igualdad. -->
+  <data name="Uno_Dialog_TextEditor_Title" xml:space="preserve"><value>Text &amp; Prompt Editor</value></data>
+  <data name="Uno_Dialog_TextEditor_InsertVar" xml:space="preserve"><value>Insert Variable ({x})</value></data>
+  <data name="Uno_Dialog_TextEditor_Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Uno_Dialog_TextEditor_Preview" xml:space="preserve"><value>⚡ Real-Time Evaluated Preview:</value></data>
+  <data name="Uno_Dialog_TextEditor_VariablesHeader" xml:space="preserve"><value>🔍 Context Variables and Metadata:</value></data>
+  <data name="Uno_Dialog_TextEditor_Save" xml:space="preserve"><value>✓ Save &amp; Apply</value></data>
+  <data name="Uno_Dialog_Cancel" xml:space="preserve"><value>✕ Cancel</value></data>
+  <data name="Uno_Dialog_OpenEditorToolTip" xml:space="preserve"><value>Expanded Text &amp; Prompt Editor</value></data>
+  <data name="Uno_Dialog_InsertVariableToolTip" xml:space="preserve"><value>Insert variable dynamically ({x})</value></data>
+  <data name="Uno_Dialog_VarPicker_Title" xml:space="preserve"><value>Variable &amp; Expression Catalog</value></data>
+  <data name="Uno_Dialog_VarPicker_SearchPlaceholder" xml:space="preserve"><value>Search by variable name, description, or category...</value></data>
+  <data name="Uno_Dialog_VarPicker_Insert" xml:space="preserve"><value>Insert Variable</value></data>
+  <data name="Uno_Dialog_VarPicker_NoResults" xml:space="preserve"><value>No matching variables found</value></data>
+  <data name="Uno_Dialog_VarPicker_DetailTitle" xml:space="preserve"><value>Variable Details</value></data>
+  <data name="Uno_Dialog_VarPicker_TokenLabel" xml:space="preserve"><value>Token / Syntax:</value></data>
+  <data name="Uno_Dialog_VarPicker_DescriptionLabel" xml:space="preserve"><value>Description:</value></data>
+  <data name="Uno_Dialog_VarPicker_CategoryLabel" xml:space="preserve"><value>Category:</value></data>
+  <data name="Uno_Dialog_VarPicker_SourceLabel" xml:space="preserve"><value>Node Source:</value></data>
+  <data name="Uno_Dialog_VarPicker_SampleLabel" xml:space="preserve"><value>Evaluated Preview (Sample):</value></data>
+  <data name="Uno_Dialog_VarPicker_CopyToken" xml:space="preserve"><value>Copy Token</value></data>
+
+  <!-- Las claves CANÓNICAS del catálogo de variables que el view model PORTABLE compone por su cuenta
+       (el recuento, la pista de inserción y las medallas): viajan en el VM, que las pide a
+       LocalizationManager por su nombre, y este host no puede registrar el diccionario del escritorio
+       (no referencia su ensamblado). Se declaran aquí con el MISMO valor: sin ellas, en inglés el
+       usuario vería el respaldo castellano del VM. -->
+  <data name="VarPicker_CountFormat" xml:space="preserve"><value>Showing {0} of {1} variables</value></data>
+  <data name="VarPicker_SelectVariableHint" xml:space="preserve"><value>Select a variable from the list to view its description and preview</value></data>
+  <data name="VarPicker_UpstreamCountBadge" xml:space="preserve"><value>🔗 {0} upstream node(s)</value></data>
+  <data name="VarPicker_SystemBadge" xml:space="preserve"><value>🌐 Global</value></data>
+  <data name="ToggleParametersToolTip" xml:space="preserve"><value>Show/Hide Parameters</value></data>
+  <data name="Common_Accept" xml:space="preserve"><value>Accept</value></data>
+  <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Common_Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Common_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Drawer_CustomizeTheme" xml:space="preserve"><value>Customize Visual Theme...</value></data>
+  <data name="Drawer_CustomizeThemeToolTip" xml:space="preserve"><value>Open Theme Customizer Studio</value></data>
+  <data name="Drawer_DataSetDesigner" xml:space="preserve"><value>Synthetic Datasets</value></data>
+  <data name="Drawer_DataSetDesignerToolTip" xml:space="preserve"><value>Open the Synthetic Data Sets Designer</value></data>
+  <data name="Drawer_MetricsDashboard" xml:space="preserve"><value>Metrics &amp; Performance</value></data>
+  <data name="Drawer_MetricsDashboardToolTip" xml:space="preserve"><value>Open centralized flow profiling and metrics dashboard</value></data>
+  <data name="MetricsDashboard_Title" xml:space="preserve"><value>Flow Profiler &amp; Performance Dashboard</value></data>
+  <data name="Metrics_AccumulatedDuration" xml:space="preserve"><value>Accumulated Flow Time</value></data>
+  <data name="Metrics_AvgLatency" xml:space="preserve"><value>⚡ Avg Latency</value></data>
+  <data name="Metrics_BottleneckAlert" xml:space="preserve"><value>Workflow bottleneck ({0})</value></data>
+  <data name="Metrics_BottleneckThreshold" xml:space="preserve"><value>&gt; 25% flow time</value></data>
+  <data name="Metrics_Bottlenecks" xml:space="preserve"><value>⚠️ Bottlenecks</value></data>
+  <data name="Metrics_ColAvgRam" xml:space="preserve"><value>Avg RAM</value></data>
+  <data name="Metrics_ColBottleneck" xml:space="preserve"><value>Bottleneck</value></data>
+  <data name="Metrics_ColBytes" xml:space="preserve"><value>Data</value></data>
+  <data name="Metrics_ColCategory" xml:space="preserve"><value>Category</value></data>
+  <data name="Metrics_ColDuration" xml:space="preserve"><value>Duration (ms)</value></data>
+  <data name="Metrics_ColGpu" xml:space="preserve"><value>GPU</value></data>
+  <data name="Metrics_ColInvocations" xml:space="preserve"><value>Invocations</value></data>
+  <data name="Metrics_ColItems" xml:space="preserve"><value>Items</value></data>
+  <data name="Metrics_ColNode" xml:space="preserve"><value>Node</value></data>
+  <data name="Metrics_ColPeakRam" xml:space="preserve"><value>Peak RAM</value></data>
+  <data name="Metrics_ColRollingLatency" xml:space="preserve"><value>Lat. (8 ops)</value></data>
+  <data name="Metrics_ColStatus" xml:space="preserve"><value>Status</value></data>
+  <data name="Metrics_ColTimePercent" xml:space="preserve"><value>% Time</value></data>
+  <data name="Metrics_ColTotalLatency" xml:space="preserve"><value>Total Lat.</value></data>
+  <data name="Metrics_CpuHardware" xml:space="preserve"><value>🖥️ CPU &amp; Hardware</value></data>
+  <data name="Metrics_DirectMlAcc" xml:space="preserve"><value>DirectML Acceleration</value></data>
+  <data name="Metrics_ErrorsLabel" xml:space="preserve"><value>Errors: </value></data>
+  <data name="Metrics_EstimatedRam" xml:space="preserve"><value>💾 Estimated RAM</value></data>
+  <data name="Metrics_Executions" xml:space="preserve"><value>Total Executions</value></data>
+  <data name="Metrics_ExportCsv" xml:space="preserve"><value>Export CSV</value></data>
+  <data name="Metrics_ExportJson" xml:space="preserve"><value>Export JSON</value></data>
+  <data name="Metrics_ExportSuccess" xml:space="preserve"><value>Metrics exported successfully.</value></data>
+  <data name="Metrics_FilteredCount" xml:space="preserve"><value>filtered</value></data>
+  <data name="Metrics_GpuOps" xml:space="preserve"><value>🎮 GPU Operations</value></data>
+  <data name="Metrics_ItemsProcessed" xml:space="preserve"><value>📦 Items</value></data>
+  <data name="Metrics_NodesCountSuffix" xml:space="preserve"><value>nodes</value></data>
+  <data name="Metrics_NodesInCanvas" xml:space="preserve"><value>Canvas Nodes</value></data>
+  <data name="Metrics_PeakLabel" xml:space="preserve"><value>Peak: </value></data>
+  <data name="Metrics_PerItemNode" xml:space="preserve"><value>Per Item / Node</value></data>
+  <data name="Metrics_PerformanceRanking" xml:space="preserve"><value>📋 Comparative Performance Ranking</value></data>
+  <data name="Metrics_RamDistribution" xml:space="preserve"><value>💾 RAM Allocation (%)</value></data>
+  <data name="Metrics_RamPerItem" xml:space="preserve"><value>💾 RAM / Item</value></data>
+  <data name="Metrics_ResetAll" xml:space="preserve"><value>Reset All</value></data>
+  <data name="Metrics_ResetNode" xml:space="preserve"><value>Reset Node Metrics</value></data>
+  <data name="Metrics_ResetNodeMetrics" xml:space="preserve"><value>Reset Node Metrics</value></data>
+  <data name="Metrics_RollingHistory" xml:space="preserve"><value>📈 Rolling History (Last 8 operations)</value></data>
+  <data name="Metrics_SearchPlaceholder" xml:space="preserve"><value>Search node or category...</value></data>
+  <data name="Metrics_SlowestNodeLabel" xml:space="preserve"><value>Slowest node</value></data>
+  <data name="Metrics_TimeDistribution" xml:space="preserve"><value>⏱️ Time Distribution (%)</value></data>
+  <data name="Metrics_TotalAllocations" xml:space="preserve"><value>Total Allocations</value></data>
+  <data name="Metrics_TotalBytesProcessed" xml:space="preserve"><value>Data processed</value></data>
+  <data name="Metrics_TotalInvocations" xml:space="preserve"><value>📦 Invocations</value></data>
+  <data name="Metrics_TotalItemsProcessed" xml:space="preserve"><value>Items processed</value></data>
+  <data name="Metrics_TotalLabel" xml:space="preserve"><value>Total: </value></data>
+  <data name="Metrics_TotalTime" xml:space="preserve"><value>⏱️ Total Time</value></data>
+  <data name="Metrics_TotalWorkflowDuration" xml:space="preserve"><value>Total workflow duration</value></data>
+  <data name="ThemeCustomizer_AvailableThemes" xml:space="preserve"><value>AVAILABLE THEMES</value></data>
+  <data name="ThemeCustomizer_BaseFontSize" xml:space="preserve"><value>Base Size:</value></data>
+  <data name="ThemeCustomizer_CodeFontFamily" xml:space="preserve"><value>Monospaced Font (Code/Expressions):</value></data>
+  <data name="ThemeCustomizer_CornerRadius" xml:space="preserve"><value>Corner Radius:</value></data>
+  <data name="ThemeCustomizer_DarkMode" xml:space="preserve"><value>Dark Mode (enables Windows immersive title bar)</value></data>
+  <data name="ThemeCustomizer_DeleteBtn" xml:space="preserve"><value>Delete theme</value></data>
+  <data name="ThemeCustomizer_DuplicateBtn" xml:space="preserve"><value>Duplicate</value></data>
+  <data name="ThemeCustomizer_ExportBtn" xml:space="preserve"><value>Export...</value></data>
+  <data name="ThemeCustomizer_GeneralInfo" xml:space="preserve"><value>GENERAL INFORMATION</value></data>
+  <data name="ThemeCustomizer_HeaderSubtitle" xml:space="preserve"><value>Customize color palettes, fonts, corner radiuses, and effects with instant real-time live preview.</value></data>
+  <data name="ThemeCustomizer_HeaderTitle" xml:space="preserve"><value>Visual Theme Customization Studio</value></data>
+  <data name="ThemeCustomizer_ImportBtn" xml:space="preserve"><value>Import...</value></data>
+  <data name="ThemeCustomizer_LivePreviewSubtitle" xml:space="preserve"><value>(Changes reflect instantly in real time)</value></data>
+  <data name="ThemeCustomizer_LivePreviewTitle" xml:space="preserve"><value>Live preview</value></data>
+  <data name="ThemeCustomizer_NewBtn" xml:space="preserve"><value>New</value></data>
+  <data name="ThemeCustomizer_NodeShadowBlur" xml:space="preserve"><value>Node Shadow Blur:</value></data>
+  <data name="ThemeCustomizer_SaveAndApply" xml:space="preserve"><value>Save &amp; apply</value></data>
+  <data name="ThemeCustomizer_SectionAccents" xml:space="preserve"><value>ACCENT COLORS &amp; STATUSES</value></data>
+  <data name="ThemeCustomizer_SectionBackgrounds" xml:space="preserve"><value>BACKGROUNDS &amp; SURFACES</value></data>
+  <data name="ThemeCustomizer_SectionTextsBorders" xml:space="preserve"><value>TEXTS &amp; BORDERS</value></data>
+  <data name="ThemeCustomizer_SectionTypography" xml:space="preserve"><value>TYPOGRAPHY &amp; STYLES</value></data>
+  <data name="ThemeCustomizer_SectionWireGradient" xml:space="preserve"><value>NODE CONNECTOR WIRE (GRADIENT)</value></data>
+  <data name="ThemeCustomizer_TestInApp" xml:space="preserve"><value>Test in app</value></data>
+  <data name="ThemeCustomizer_TestInAppToolTip" xml:space="preserve"><value>Temporarily applies this theme to workspace to test it</value></data>
+  <data name="ThemeCustomizer_ThemeName" xml:space="preserve"><value>Theme Name:</value></data>
+  <data name="ThemeCustomizer_UiFontFamily" xml:space="preserve"><value>UI Font Family:</value></data>
+  <data name="ThemeCustomizer_WindowTitle" xml:space="preserve"><value>Theme Customization Studio - FileFlow</value></data>
+  <data name="ThemeStudio_BadgeBuiltIn" xml:space="preserve"><value>FACTORY</value></data>
+  <data name="ThemeStudio_BadgeCustom" xml:space="preserve"><value>CUSTOM</value></data>
+  <data name="ThemeStudio_ConfirmDelete" xml:space="preserve"><value>Delete the custom theme '{0}'?</value></data>
+  <data name="ThemeStudio_ConfirmDeleteTitle" xml:space="preserve"><value>Confirm deletion</value></data>
+  <data name="ThemeStudio_CopySuffix" xml:space="preserve"><value>(Copy)</value></data>
+  <data name="ThemeStudio_CustomSuffix" xml:space="preserve"><value>(Custom)</value></data>
+  <data name="ThemeStudio_DefaultNewThemeDescription" xml:space="preserve"><value>Custom theme created by the user.</value></data>
+  <data name="ThemeStudio_DefaultNewThemeName" xml:space="preserve"><value>My Custom Theme</value></data>
+  <data name="ThemeStudio_ElevationSample" xml:space="preserve"><value>Elevation</value></data>
+  <data name="ThemeStudio_ErrorFormat" xml:space="preserve"><value>Theme error: {0}</value></data>
+  <data name="ThemeStudio_ErrorTitle" xml:space="preserve"><value>Theme error</value></data>
+  <data name="ThemeStudio_RadiusSample" xml:space="preserve"><value>Radius</value></data>
+  <data name="ThemeStudio_Section_Accents" xml:space="preserve"><value>ACCENTS &amp; STATUS</value></data>
+  <data name="ThemeStudio_Section_Borders" xml:space="preserve"><value>BORDERS &amp; GRID</value></data>
+  <data name="ThemeStudio_Section_Elevation" xml:space="preserve"><value>ELEVATION &amp; SHADOWS</value></data>
+  <data name="ThemeStudio_Section_Scrollbars" xml:space="preserve"><value>SCROLLBARS</value></data>
+  <data name="ThemeStudio_Section_Shape" xml:space="preserve"><value>SHAPE &amp; DENSITY</value></data>
+  <data name="ThemeStudio_Section_Surfaces" xml:space="preserve"><value>SURFACES</value></data>
+  <data name="ThemeStudio_Section_Text" xml:space="preserve"><value>TEXT</value></data>
+  <data name="ThemeStudio_Section_Typography" xml:space="preserve"><value>TYPOGRAPHY</value></data>
+  <data name="ThemeStudio_Section_Wire" xml:space="preserve"><value>NODE WIRE (GRADIENT)</value></data>
+  <data name="ThemeStudio_Set_AccentCyan" xml:space="preserve"><value>Cyan accent</value></data>
+  <data name="ThemeStudio_Set_AccentError" xml:space="preserve"><value>Error</value></data>
+  <data name="ThemeStudio_Set_AccentGlow" xml:space="preserve"><value>Accent glow</value></data>
+  <data name="ThemeStudio_Set_AccentHover" xml:space="preserve"><value>Accent on hover</value></data>
+  <data name="ThemeStudio_Set_AccentPrimary" xml:space="preserve"><value>Primary accent</value></data>
+  <data name="ThemeStudio_Set_AccentPurple" xml:space="preserve"><value>Purple accent</value></data>
+  <data name="ThemeStudio_Set_AccentSuccess" xml:space="preserve"><value>Success</value></data>
+  <data name="ThemeStudio_Set_AccentWarning" xml:space="preserve"><value>Warning</value></data>
+  <data name="ThemeStudio_Set_AppBackground" xml:space="preserve"><value>Application background</value></data>
+  <data name="ThemeStudio_Set_BaseFontSize" xml:space="preserve"><value>Base font size</value></data>
+  <data name="ThemeStudio_Set_BgCard" xml:space="preserve"><value>Card surface</value></data>
+  <data name="ThemeStudio_Set_BgDark" xml:space="preserve"><value>Base background</value></data>
+  <data name="ThemeStudio_Set_BgEditor" xml:space="preserve"><value>Canvas background</value></data>
+  <data name="ThemeStudio_Set_BgHeader" xml:space="preserve"><value>Header surface</value></data>
+  <data name="ThemeStudio_Set_BgHover" xml:space="preserve"><value>Hover surface</value></data>
+  <data name="ThemeStudio_Set_BgSurface" xml:space="preserve"><value>Panel surface</value></data>
+  <data name="ThemeStudio_Set_BorderDark" xml:space="preserve"><value>Strong border</value></data>
+  <data name="ThemeStudio_Set_BorderSubtle" xml:space="preserve"><value>Subtle border</value></data>
+  <data name="ThemeStudio_Set_CodeFontFamily" xml:space="preserve"><value>Monospaced font family</value></data>
+  <data name="ThemeStudio_Set_CornerRadius" xml:space="preserve"><value>Corner radius</value></data>
+  <data name="ThemeStudio_Set_FontFamily" xml:space="preserve"><value>Interface font family</value></data>
+  <data name="ThemeStudio_Set_GridLine" xml:space="preserve"><value>Canvas grid line</value></data>
+  <data name="ThemeStudio_Set_NodeShadowBlur" xml:space="preserve"><value>Shadow blur</value></data>
+  <data name="ThemeStudio_Set_NodeShadowOpacity" xml:space="preserve"><value>Shadow opacity</value></data>
+  <data name="ThemeStudio_Set_ScrollbarThumb" xml:space="preserve"><value>Scrollbar thumb</value></data>
+  <data name="ThemeStudio_Set_ScrollbarThumbHover" xml:space="preserve"><value>Scrollbar thumb (hover)</value></data>
+  <data name="ThemeStudio_Set_SpacingUnit" xml:space="preserve"><value>Spacing unit</value></data>
+  <data name="ThemeStudio_Set_TextMuted" xml:space="preserve"><value>Muted text</value></data>
+  <data name="ThemeStudio_Set_TextOnAccent" xml:space="preserve"><value>Text on accent</value></data>
+  <data name="ThemeStudio_Set_TextPrimary" xml:space="preserve"><value>Primary text</value></data>
+  <data name="ThemeStudio_Set_TextSecondary" xml:space="preserve"><value>Secondary text</value></data>
+  <data name="ThemeStudio_Set_WireColorEnd" xml:space="preserve"><value>Wire end</value></data>
+  <data name="ThemeStudio_Set_WireColorMid" xml:space="preserve"><value>Wire middle</value></data>
+  <data name="ThemeStudio_Set_WireColorStart" xml:space="preserve"><value>Wire start</value></data>
+  <data name="ThemeStudio_SpacingSample" xml:space="preserve"><value>Spacing</value></data>
+  <data name="ThemeStudio_Status_Applied" xml:space="preserve"><value>Theme '{0}' applied to the application live.</value></data>
+  <data name="ThemeStudio_Status_Created" xml:space="preserve"><value>New custom theme created.</value></data>
+  <data name="ThemeStudio_Status_Deleted" xml:space="preserve"><value>Theme deleted.</value></data>
+  <data name="ThemeStudio_Status_Duplicated" xml:space="preserve"><value>Theme duplicated as '{0}'.</value></data>
+  <data name="ThemeStudio_Status_Exported" xml:space="preserve"><value>Theme exported to '{0}'.</value></data>
+  <data name="ThemeStudio_Status_Imported" xml:space="preserve"><value>Theme '{0}' imported successfully.</value></data>
+  <data name="ThemeStudio_Status_Loaded" xml:space="preserve"><value>Theme loaded: {0}</value></data>
+  <data name="ThemeStudio_Status_Saved" xml:space="preserve"><value>Theme '{0}' saved.</value></data>
+  <data name="ThemeStudio_Status_SavedAs" xml:space="preserve"><value>Saved as custom theme: {0}</value></data>
+  <data name="ThemeStudio_TokenPreviewTitle" xml:space="preserve"><value>TOKEN SCALE</value></data>
+  <data name="Update_AvailableBadge" xml:space="preserve"><value>⚡ Update {0} available</value></data>
+  <data name="Update_BtnInstallAndRestart" xml:space="preserve"><value>🚀 Download &amp; Update Now</value></data>
+  <data name="Update_BtnOpenGitHub" xml:space="preserve"><value>🌐 View on GitHub</value></data>
+  <data name="Update_BtnRemindLater" xml:space="preserve"><value>Remind Me Later</value></data>
+  <data name="Update_BtnSkipVersion" xml:space="preserve"><value>Skip this Version</value></data>
+  <data name="Update_ChangelogTitle" xml:space="preserve"><value>What's New in this Release</value></data>
+  <data name="Update_ChecksumMismatchError" xml:space="preserve"><value>Security error: SHA-256 hash ({0}) does not match published hash ({1}). Update aborted.</value></data>
+  <data name="Update_ChecksumVerified" xml:space="preserve"><value>✅ Integrity verified successfully.</value></data>
+  <data name="Update_CurrentVersionLabel" xml:space="preserve"><value>Current Version:</value></data>
+  <data name="Update_DownloadingProgress" xml:space="preserve"><value>Downloading: {0:F1}% ({1:F1} MB / {2:F1} MB at {3:F1} MB/s)</value></data>
+  <data name="Update_HeaderTitle" xml:space="preserve"><value>New Version Available</value></data>
+  <data name="Update_NewVersionLabel" xml:space="preserve"><value>New Version:</value></data>
+  <data name="Update_NoCompatibleAssetFound" xml:space="preserve"><value>No compatible installer package found for your platform in this release.</value></data>
+  <data name="Update_PackagingFormatLabel" xml:space="preserve"><value>Packaging Format:</value></data>
+  <data name="Update_PublishedLabel" xml:space="preserve"><value>Release Date:</value></data>
+  <data name="Update_StatusChecking" xml:space="preserve"><value>Checking for updates on GitHub...</value></data>
+  <data name="Update_StatusError" xml:space="preserve"><value>Could not check for updates: {0}</value></data>
+  <data name="Update_StatusUpToDate" xml:space="preserve"><value>🟢 FileFlow Studio is up to date.</value></data>
+  <data name="Update_VerifyingChecksum" xml:space="preserve"><value>Verifying cryptographic SHA-256 integrity...</value></data>
+  <data name="Update_WindowTitle" xml:space="preserve"><value>Software Update — FileFlow Studio</value></data>
+  <data name="VfsExplorer_AllDirectories" xml:space="preserve"><value>📁 (All Folders)</value></data>
+  <data name="VfsExplorer_ColLinkedPath" xml:space="preserve"><value>Linked Path</value></data>
+  <data name="VfsExplorer_ColRole" xml:space="preserve"><value>Role</value></data>
+  <data name="VfsExplorer_ConfirmClear" xml:space="preserve"><value>Are you sure you want to clear all virtual files registered in the VFS?</value></data>
+  <data name="VfsExplorer_DestinationFolders" xml:space="preserve"><value>📤 Destination Folders</value></data>
+  <data name="VfsExplorer_HeaderSubtitle" xml:space="preserve"><value>Inspection of virtual folder structures, metadata, and pipeline simulation results</value></data>
+  <data name="VfsExplorer_HeaderTitle" xml:space="preserve"><value>Virtual File System Explorer</value></data>
+  <data name="VfsExplorer_IntermediateFolders" xml:space="preserve"><value>⚙️ Intermediate Files</value></data>
+  <data name="VfsExplorer_KpiDestination" xml:space="preserve"><value>📤 Destinations</value></data>
+  <data name="VfsExplorer_KpiSource" xml:space="preserve"><value>📥 Sources</value></data>
+  <data name="VfsExplorer_NoData" xml:space="preserve"><value>No virtual file system data found in the last execution.</value></data>
+  <data name="VfsExplorer_Role_All" xml:space="preserve"><value>All Roles</value></data>
+  <data name="VfsExplorer_Role_Destination" xml:space="preserve"><value>📤 Destination</value></data>
+  <data name="VfsExplorer_Role_Intermediate" xml:space="preserve"><value>⚙️ Intermediate</value></data>
+  <data name="VfsExplorer_Role_Source" xml:space="preserve"><value>📥 Source</value></data>
+  <data name="VfsExplorer_SourceFolders" xml:space="preserve"><value>📥 Source Folders</value></data>
+  <data name="VfsExplorer_Title" xml:space="preserve"><value>Virtual File System Explorer (VFS)</value></data>
+  <data name="VfsExplorer_TreeCopied" xml:space="preserve"><value>ASCII tree structure successfully copied to clipboard.</value></data>
+  <data name="Uno_ControlBar_VfsCount" xml:space="preserve"><value>VFS ({0})</value></data>
+  <data name="DataSetDesigner_WindowTitle" xml:space="preserve"><value>Synthetic Data Sets Designer</value></data>
+
+  <data name="DataSetDesigner_HeaderTitle" xml:space="preserve"><value>Synthetic Data &amp; Hierarchical Tree Designer</value></data>
+
+  <data name="DataSetDesigner_HeaderDesc" xml:space="preserve"><value>Create, customize and persist directory hierarchies, metadata and simulated compressed packages for testing.</value></data>
+
+  <data name="DataSetDesigner_SaveButton" xml:space="preserve"><value>Save Dataset</value></data>
+
+  <data name="DataSetDesigner_TabTree" xml:space="preserve"><value>File Explorer (Tree)</value></data>
+
+  <data name="DataSetDesigner_TabDsl" xml:space="preserve"><value>Fast Tree DSL</value></data>
+
+  <data name="DataSetDesigner_TabJson" xml:space="preserve"><value>Raw JSON</value></data>
+
+  <data name="DataSetDesigner_AddFile" xml:space="preserve"><value>Add File</value></data>
+
+  <data name="DataSetDesigner_AddFolder" xml:space="preserve"><value>Add Folder</value></data>
+
+  <data name="DataSetDesigner_AddArchive" xml:space="preserve"><value>Add Archive</value></data>
+
+  <data name="DataSetDesigner_RemoveNode" xml:space="preserve"><value>Delete</value></data>
+
+  <data name="DataSetDesigner_ExpandAll" xml:space="preserve"><value>Expand All</value></data>
+
+  <data name="DataSetDesigner_CollapseAll" xml:space="preserve"><value>Collapse All</value></data>
+
+  <data name="DataSetDesigner_InspectorTitle" xml:space="preserve"><value>Item Properties</value></data>
+
+  <data name="DataSetDesigner_InspectorNoSelection" xml:space="preserve"><value>Select a file or folder in the tree to inspect and edit its properties.</value></data>
+
+  <data name="DataSetDesigner_SearchPlaceholder" xml:space="preserve"><value>Search datasets...</value></data>
+
+  <data name="DataSetDesigner_NewButton" xml:space="preserve"><value>New</value></data>
+
+  <data name="DataSetDesigner_DuplicateButton" xml:space="preserve"><value>Duplicate</value></data>
+
+  <data name="DataSetDesigner_DeleteButton" xml:space="preserve"><value>Delete</value></data>
+
+  <data name="DataSetDesigner_DeleteToolTip" xml:space="preserve"><value>Delete the selected dataset</value></data>
+
+  <data name="DataSetDesigner_ImportButton" xml:space="preserve"><value>Import...</value></data>
+
+  <data name="DataSetDesigner_ExportButton" xml:space="preserve"><value>Export...</value></data>
+
+  <data name="DataSetDesigner_CatalogTitle" xml:space="preserve"><value>Dataset Catalog</value></data>
+
+  <data name="DataSetDesigner_NoDatasets" xml:space="preserve"><value>No dataset matches the search.</value></data>
+
+  <data name="DataSetDesigner_BuiltInBadge" xml:space="preserve"><value>Official · read-only</value></data>
+
+  <data name="DataSetDesigner_OfficialBadge" xml:space="preserve"><value>Official</value></data>
+
+  <data name="DataSetDesigner_SelectDataSet" xml:space="preserve"><value>Select or create a dataset to get started.</value></data>
+
+  <data name="DataSetDesigner_PropertiesTitle" xml:space="preserve"><value>Dataset Properties</value></data>
+
+  <data name="DataSetDesigner_NameLabel" xml:space="preserve"><value>Name</value></data>
+
+  <data name="DataSetDesigner_CategoryLabel" xml:space="preserve"><value>Category</value></data>
+
+  <data name="DataSetDesigner_DescriptionLabel" xml:space="preserve"><value>Description</value></data>
+
+  <data name="DataSetDesigner_AddArchiveEntry" xml:space="preserve"><value>Add Internal Entry</value></data>
+
+  <data name="DataSetDesigner_NodeNameLabel" xml:space="preserve"><value>Item name</value></data>
+
+  <data name="DataSetDesigner_NodeSizeLabel" xml:space="preserve"><value>Size (bytes)</value></data>
+
+  <data name="DataSetDesigner_NodePathLabel" xml:space="preserve"><value>Relative path</value></data>
+
+  <data name="DataSetDesigner_ArchiveEntriesTitle" xml:space="preserve"><value>Archive contents</value></data>
+
+  <data name="DataSetDesigner_RemoveEntryToolTip" xml:space="preserve"><value>Remove the archive entry</value></data>
+
+  <data name="DataSetDesigner_ApplyDsl" xml:space="preserve"><value>Apply DSL</value></data>
+
+  <data name="DataSetDesigner_ApplyJson" xml:space="preserve"><value>Apply JSON</value></data>
+
+  <data name="DataSetDesigner_EmptyTree" xml:space="preserve"><value>This dataset has no items yet. Add a file, a folder or an archive.</value></data>
+
+  <data name="DataSetDesigner_MetricsFiles" xml:space="preserve"><value>Files</value></data>
+
+  <data name="DataSetDesigner_MetricsFolders" xml:space="preserve"><value>Folders</value></data>
+
+  <data name="DataSetDesigner_MetricsSize" xml:space="preserve"><value>Total size</value></data>
+
+  <data name="DataSetDesigner_BadgeFolder" xml:space="preserve"><value>{0} files • {1}</value></data>
+
+  <data name="DataSetDesigner_BadgeArchiveEntry" xml:space="preserve"><value>Internal • {0}</value></data>
+
+  <data name="DataSetDesigner_BadgeArchive" xml:space="preserve"><value>{0} entries • {1}</value></data>
+
+  <data name="Settings_TabAiModels" xml:space="preserve"><value>AI Models</value></data>
+
+  <data name="Settings_AiModels_Title" xml:space="preserve"><value>Local Artificial Intelligence Models</value></data>
+
+  <data name="Settings_AiModels_Desc" xml:space="preserve"><value>Manage and download AI model weights for photo classification, face/object detection, OCR and Whisper transcription before running workflows.</value></data>
+
+  <data name="Settings_AiModels_DownloadAll" xml:space="preserve"><value>Download Missing</value></data>
+
+  <data name="Settings_AiModels_Refresh" xml:space="preserve"><value>Refresh</value></data>
+
+  <data name="Settings_AiModels_OpenDir" xml:space="preserve"><value>Open Folder</value></data>
+
+  <data name="Settings_AiModels_OpenDialog" xml:space="preserve"><value>Open Download Manager...</value></data>
+
+  <data name="AiModelManager_WindowTitle" xml:space="preserve"><value>AI Models Download Manager</value></data>
+
+  <data name="AiModelManager_HeaderTitle" xml:space="preserve"><value>Artificial Intelligence Models</value></data>
+
+  <data name="AiModelManager_HeaderSubtitle" xml:space="preserve"><value>Pre-download models for high-speed, interruption-free offline pipeline execution.</value></data>
+
+  <data name="AiModelManager_StatusInstalled" xml:space="preserve"><value>Downloaded</value></data>
+
+  <data name="AiModelManager_StatusMissing" xml:space="preserve"><value>Not downloaded</value></data>
+
+  <data name="AiModelManager_StatusDownloading" xml:space="preserve"><value>Downloading...</value></data>
+
+  <data name="AiModelManager_StatusError" xml:space="preserve"><value>Download error</value></data>
+
+  <data name="AiModelManager_BtnDownload" xml:space="preserve"><value>Download</value></data>
+
+  <data name="AiModelManager_BtnDelete" xml:space="preserve"><value>Delete</value></data>
+
+  <data name="AiModelManager_BtnConfigureUrls" xml:space="preserve"><value>Configure URLs</value></data>
+
+  <data name="AiModelManager_CustomUrlsBadge" xml:space="preserve"><value>{0} custom URL(s)</value></data>
+
+  <data name="AiModelManager_LastErrorTitle" xml:space="preserve"><value>The last download failed:</value></data>
+
+  <data name="AiModelManager_EmptyState" xml:space="preserve"><value>The model catalog is empty.</value></data>
+
+  <data name="AiModelManager_ConfirmDeleteMsg" xml:space="preserve"><value>Are you sure you want to delete the model '{0}' from the local disk?</value></data>
+
+  <data name="AiModelManager_ConfirmDeleteTitle" xml:space="preserve"><value>Delete Model</value></data>
+
+  <data name="Settings_CustomUrlsActiveToolTip" xml:space="preserve"><value>Custom download URLs active</value></data>
+
+  <data name="Settings_ConfigureUrlsToolTip" xml:space="preserve"><value>Configure download URLs and alternative mirrors</value></data>
+
+  <data name="Settings_DeleteModelToolTip" xml:space="preserve"><value>Delete model from disk</value></data>
+
+  <data name="Settings_AiModels_Downloading" xml:space="preserve"><value>Downloading models...</value></data>
+
+  <data name="Settings_AiModels_DirLabel" xml:space="preserve"><value>Models folder: </value></data>
+
+  <data name="Settings_TabUpdates" xml:space="preserve"><value>Updates</value></data>
+
+  <data name="Settings_UpdatesTitle" xml:space="preserve"><value>Application Updates</value></data>
+
+  <data name="Settings_UpdatesDesc" xml:space="preserve"><value>Manage automatic update checks and release channels (Stable / Beta).</value></data>
+
+  <data name="Settings_UpdateChannelTitle" xml:space="preserve"><value>Update Channel:</value></data>
+
+  <data name="Settings_AutoCheckUpdates" xml:space="preserve"><value>Check for updates automatically on application startup</value></data>
+
+  <data name="Settings_CheckUpdatesNowBtn" xml:space="preserve"><value>Check for Updates Now</value></data>
+
+  <data name="Settings_LastUpdateCheck" xml:space="preserve"><value>Last checked: {0}</value></data>
+
+  <data name="AiModelUrls_Title" xml:space="preserve"><value>Configure Download URLs</value></data>
+  <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure one or more download URLs for this model. If a link fails or changes, the engine will automatically try the next mirror.</value></data>
+  <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>Download URLs (one per line, in priority order):</value></data>
+  <data name="AiModelUrls_TestBtn" xml:space="preserve"><value>🔍 Test Connection</value></data>
+  <data name="AiModelUrls_ResetBtn" xml:space="preserve"><value>🔄 Reset to Defaults</value></data>
+  <data name="AiModelUrls_SaveBtn" xml:space="preserve"><value>💾 Save URLs</value></data>
+  <data name="AiModelUrls_CancelBtn" xml:space="preserve"><value>Cancel</value></data>
+  <data name="AiModelUrls_StatusCustom" xml:space="preserve"><value>🔧 Custom</value></data>
+  <data name="AiModelUrls_StatusDefault" xml:space="preserve"><value>📦 Official / Default</value></data>
+  <data name="Uno_AiModelUrls_RequiredWarning" xml:space="preserve"><value>You must specify at least one valid download URL for this model.</value></data>
+<data name="PresetManager_Category" xml:space="preserve"><value>Category</value></data>
+<data name="PresetManager_DeleteBtn" xml:space="preserve"><value>🗑 Delete</value></data>
+<data name="PresetManager_Description" xml:space="preserve"><value>Short Description</value></data>
+<data name="PresetManager_FfmpegArgs" xml:space="preserve"><value>FFmpeg CLI Arguments</value></data>
+<data name="PresetManager_FormTitle" xml:space="preserve"><value>✏️ Preset Details &amp; Configuration</value></data>
+<data name="PresetManager_HeaderSubtitle" xml:space="preserve"><value>Create, edit, customize, and manage audio and video conversion presets for the transcoding node.</value></data>
+<data name="PresetManager_HeaderTitle" xml:space="preserve"><value>🎬 Media Transcoding Preset Manager</value></data>
+<data name="PresetManager_MsgDefaultCannotDelete" xml:space="preserve"><value>Default system presets cannot be deleted.</value></data>
+<data name="PresetManager_MsgDeleteConfirm" xml:space="preserve"><value>Are you sure you want to delete preset '{0}'?</value></data>
+<data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>Do you want to reset all presets to system default values?</value></data>
+<data name="PresetManager_MsgSaveSuccess" xml:space="preserve"><value>Preset saved successfully.</value></data>
+<data name="PresetManager_NewBtn" xml:space="preserve"><value>➕ New</value></data>
+<data name="PresetManager_NewPresetDescription" xml:space="preserve"><value>Description of the new preset...</value></data>
+<data name="PresetManager_NewPresetName" xml:space="preserve"><value>New Custom Preset</value></data>
+<data name="PresetManager_OutputExt" xml:space="preserve"><value>Output Extension</value></data>
+<data name="PresetManager_PresetName" xml:space="preserve"><value>Preset Name</value></data>
+<data name="PresetManager_ResetBtn" xml:space="preserve"><value>🔄 Reset Defaults</value></data>
+<data name="PresetManager_ResetToolTip" xml:space="preserve"><value>Reset preset library to default system values</value></data>
+<data name="PresetManager_SavePreset" xml:space="preserve"><value>💾 Save Preset Changes</value></data>
+<data name="PresetManager_WindowTitle" xml:space="preserve"><value>Media Preset Manager (FFmpeg)</value></data>
+<data name="Node_Param_OpenPresetManager" xml:space="preserve"><value>Open Preset Manager (Create, Edit, Delete Presets)</value></data>
+</root>

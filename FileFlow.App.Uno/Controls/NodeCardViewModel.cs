@@ -3,6 +3,7 @@ using System.ComponentModel;
 using FileFlow.App.Services;
 using FileFlow.App.Uno.Platform;
 using FileFlow.App.ViewModels;
+using FileFlow.Sdk.Localization;
 using Material.Icons;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -89,6 +90,22 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
     public Microsoft.UI.Xaml.Media.Geometry ExpansionCardIconGeometry
         => MaterialIconKindToGeometryConverter.ToGeometry(MaterialIconKind.ExpansionCard);
 
+    /// <summary>
+    /// El glifo del conmutador de parámetros de la cabecera (chevron arriba con el panel desplegado, abajo
+    /// con la tarjeta plegada): el estado es del núcleo —la misma <c>IsExpanded</c> que el escritorio
+    /// conmutaba— y la tarjeta sólo lo pinta.
+    /// </summary>
+    public Microsoft.UI.Xaml.Media.Geometry ExpandIconGeometry
+        => MaterialIconKindToGeometryConverter.ToGeometry(
+            _node.IsExpanded ? MaterialIconKind.ChevronUp : MaterialIconKind.ChevronDown);
+
+    /// <summary>
+    /// El rótulo del conmutador de parámetros, con la MISMA clave del escritorio (la tarjeta es mobiliario
+    /// del host, no del plugin: su texto vive en el diccionario del host, en los dos idiomas).
+    /// </summary>
+    public string ParametersToggleToolTip
+        => LocalizationManager.Instance.GetString("ToggleParametersToolTip", "Mostrar/Ocultar parámetros");
+
     /// <summary>La visibilidad de las acciones rápidas (el Count>0 de Avalonia).</summary>
     public bool HasCustomActions => _node.CustomActions?.Count > 0;
 
@@ -138,7 +155,10 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
             or nameof(NodeViewModel.ExecutionStatus) or nameof(NodeViewModel.IsSelected)
             // El renombrado (fase 3.2): sin estos dos, F2 cambia el estado en el núcleo y la caja de
             // edición NUNCA aparece en el árbol (el refresco agregado de la tarjeta no se entera).
-            or nameof(NodeViewModel.IsEditingTitle) or nameof(NodeViewModel.EditingTitleText))
+            or nameof(NodeViewModel.IsEditingTitle) or nameof(NodeViewModel.EditingTitleText)
+            // El panel de parámetros y sus acciones rápidas cuelgan de IsExpanded: sin esto, conmutar
+            // cambia el estado en el núcleo y la tarjeta sigue pintando el chevron de antes.
+            or nameof(NodeViewModel.IsExpanded))
         {
             // string.Empty refresca todos los bindings de la tarjeta: los estados viajan juntos.
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(string.Empty));

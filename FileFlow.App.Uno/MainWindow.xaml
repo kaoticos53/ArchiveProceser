@@ -11,13 +11,10 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <Border Grid.Row="0" Background="#161B22" Padding="16,10">
-      <StackPanel Orientation="Horizontal" Spacing="12">
-        <TextBlock Text="FileFlow Studio" FontSize="16" FontWeight="SemiBold" Foreground="#F0F6FC" />
-        <TextBlock Text="Uno Platform — editor (rebanada 4)" Opacity="0.7" VerticalAlignment="Center"
-                   FontSize="12" Foreground="#F0F6FC" />
-      </StackPanel>
-    </Border>
+    <!-- El MENÚ PRINCIPAL del host (hito 257): la barra de control del escritorio —marca, botón de menú y
+         las tres islas (modos · ciclo · herramientas)— sobre el MISMO ControlBarViewModel del núcleo. Su
+         punto de entrada a los ajustes conserva el AutomationId «SettingsButton» del hito 255. -->
+    <controls:ControlBar x:Name="Bar" Grid.Row="0" />
 
     <!-- Las tres zonas del editor de escritorio: cajón de herramientas | lienzo | inspector -->
     <Grid Grid.Row="1">
@@ -45,5 +42,15 @@
                    Foreground="#F0F6FC" />
       </StackPanel>
     </Border>
+
+    <!-- El cajón del menú principal (hito 257): el «menú» de la barra, desplegado sobre toda la ventana
+         como el del escritorio (velo + panel de 320 px a la izquierda) y con el mismo estado
+         (ControlBar.IsMenuOpen) que conmuta el botón «Menú». -->
+    <controls:MainMenuDrawer x:Name="Drawer" Grid.Row="0" Grid.RowSpan="3" />
+
+    <!-- La superficie de ajustes (hito 255): se despliega sobre TODA la ventana, como el cajón del
+         escritorio, y vive en su propio control — el host aporta la vista, el núcleo el view model.
+         Es la última hija de la raíz para que quede POR ENCIMA del marco (y del cajón del menú). -->
+    <controls:SettingsPanel x:Name="Settings" Grid.Row="0" Grid.RowSpan="3" />
   </Grid>
 </Window>

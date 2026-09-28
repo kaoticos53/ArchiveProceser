@@ -1,5 +1,8 @@
 param (
     [switch]$SelfCheck,
+    [switch]$SelfCheckSettings,
+    [switch]$SelfCheckControlBar,
+    [switch]$SelfCheckDialogs,
     [switch]$SelfCheckUia,
     [string]$Configuration = "Debug",
     [Parameter(ValueFromRemainingArguments = $true)]
@@ -14,8 +17,11 @@ param (
 # incrementales obsoletos de XAML mintieron a la bisección en el hito 233).
 #
 # Los modos de sondeo ESPERAN el proceso y heredan su exit code (el veredicto):
-#   .\run-uno-fast.ps1 -SelfCheck      -> exit 0 = verificado
-#   .\run-uno-fast.ps1 -SelfCheckUia   -> exit 0 = verificado (hijo python observando)
+#   .\run-uno-fast.ps1 -SelfCheck          -> exit 0 = verificado
+#   .\run-uno-fast.ps1 -SelfCheckDialogs    -> exit 0 = verificado (paneles de nodo: editor y variables)
+#   .\run-uno-fast.ps1 -SelfCheckControlBar -> exit 0 = verificado (barra de control y su cajón)
+#   .\run-uno-fast.ps1 -SelfCheckSettings  -> exit 0 = verificado (superficie de AJUSTES, modo propio)
+#   .\run-uno-fast.ps1 -SelfCheckUia       -> exit 0 = verificado (hijo python observando)
 
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
@@ -45,9 +51,12 @@ if (-not (Test-Path $exePath)) {
 
 $binDir = Split-Path -Parent $exePath
 
-if ($SelfCheck)    { $AppArgs = @("--selfcheck")     + $AppArgs }
-if ($SelfCheckUia) { $AppArgs = @("--selfcheck-uia") + $AppArgs }
-$waitForExit = $SelfCheck -or $SelfCheckUia
+if ($SelfCheck)        { $AppArgs = @("--selfcheck")          + $AppArgs }
+if ($SelfCheckSettings){ $AppArgs = @("--selfcheck-settings") + $AppArgs }
+if ($SelfCheckControlBar) { $AppArgs = @("--selfcheck-controlbar") + $AppArgs }
+if ($SelfCheckDialogs)    { $AppArgs = @("--selfcheck-dialogs") + $AppArgs }
+if ($SelfCheckUia)     { $AppArgs = @("--selfcheck-uia")      + $AppArgs }
+$waitForExit = $SelfCheck -or $SelfCheckSettings -or $SelfCheckControlBar -or $SelfCheckDialogs -or $SelfCheckUia
 
 Write-Host "`n[OK] Iniciando el host Uno ($Configuration)..." -ForegroundColor Green
 

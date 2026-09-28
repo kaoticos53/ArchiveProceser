@@ -1,0 +1,62 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.AboutDialogBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    La ventana «Acerca de» del host Uno: la misma información que la del escritorio
+    (`FileFlow.App/Views/AboutDialogWindow.axaml`), servida por el servicio de ventanas del host dentro
+    de su única ventana —WinUI no necesita una segunda ventana para esto y el host no las tiene—.
+
+    Los rótulos salen del diccionario del host (`Uno_About_*`, copiados del escritorio) y la versión de
+    la MISMA fuente que el pie del cajón (`AppVersionInfo.DisplayVersion`). Las insignias dicen lo que
+    este host es: .NET 10 y Uno Platform sobre WinUI 3 —no «Avalonia UI»—, porque una insignia que
+    nombra otro framework es una mentira pequeña y gratuita.
+  -->
+  <StackPanel x:Name="AboutRoot" Spacing="10" MinWidth="440"
+              AutomationProperties.AutomationId="AboutBody">
+    <StackPanel Orientation="Horizontal" Spacing="12">
+      <Border Background="{StaticResource CanvasAccentPrimaryBrush}" CornerRadius="8"
+              Width="46" Height="46">
+        <TextBlock Text="⚡" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="{StaticResource CanvasOnAccentBrush}" />
+      </Border>
+      <StackPanel VerticalAlignment="Center" Spacing="2">
+        <TextBlock Text="FileFlow Studio" FontSize="18" FontWeight="Bold"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+        <TextBlock x:Name="VersionText" FontSize="11"
+                   Foreground="{StaticResource CanvasSecondaryBrush}"
+                   AutomationProperties.AutomationId="AboutVersionText" />
+      </StackPanel>
+    </StackPanel>
+
+    <StackPanel Orientation="Horizontal" Spacing="6">
+      <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="4" Padding="8,3"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+        <TextBlock Text=".NET 10.0" FontSize="10" FontWeight="SemiBold"
+                   Foreground="{StaticResource CanvasAccentGlowBrush}" />
+      </Border>
+      <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="4" Padding="8,3"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+        <TextBlock Text="Uno Platform · WinUI 3" FontSize="10" FontWeight="SemiBold"
+                   Foreground="{StaticResource CanvasAccentPrimaryBrush}" />
+      </Border>
+      <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="4" Padding="8,3"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+        <TextBlock Text="DAG Flow Engine" FontSize="10" FontWeight="SemiBold"
+                   Foreground="{StaticResource CanvasWarningBrush}" />
+      </Border>
+    </StackPanel>
+
+    <TextBlock x:Name="SubtitleText" FontSize="11" FontWeight="SemiBold"
+               TextWrapping="Wrap"
+               Foreground="{StaticResource CanvasTextBrush}" />
+
+    <TextBlock x:Name="DescriptionText" FontSize="11" TextWrapping="Wrap" LineHeight="18"
+               Foreground="{StaticResource CanvasTextBrush}"
+               AutomationProperties.AutomationId="AboutDescriptionText" />
+
+    <TextBlock Text="© 2026 RGLara. MIT License." FontSize="10"
+               Foreground="{StaticResource CanvasSecondaryBrush}" />
+  </StackPanel>
+</UserControl>

@@ -1,0 +1,87 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.AiModelUrlsConfigBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:platform="using:FileFlow.App.Uno.Platform"
+    mc:Ignorable="d">
+
+  <UserControl.Resources>
+    <platform:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+
+  <StackPanel Spacing="10" Width="620">
+
+    <!-- Cabecera: la categoría y el nombre del modelo vienen del view model portable -->
+    <Border Background="{StaticResource CanvasCardBrush}" BorderThickness="1" CornerRadius="6" Padding="12,9">
+      <StackPanel Spacing="2">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="3" Padding="6,1"
+                  VerticalAlignment="Center">
+            <TextBlock x:Name="CategoryBadge" Text="{Binding Category}" FontSize="10" FontWeight="Bold"
+                       AutomationProperties.AutomationId="AiModelUrlsCategory" />
+          </Border>
+          <TextBlock x:Name="ModelNameText" Text="{Binding ModelName}" FontSize="14" FontWeight="SemiBold"
+                     VerticalAlignment="Center"
+                     AutomationProperties.AutomationId="AiModelUrlsModelName" />
+        </StackPanel>
+        <TextBlock x:Name="SubtitleText" FontSize="11" TextWrapping="Wrap"
+                   Foreground="{StaticResource CanvasMutedBrush}" />
+      </StackPanel>
+    </Border>
+
+    <!-- El editor: la caja es el Text del view model, en dos sentidos -->
+    <Border Background="{StaticResource CanvasCardBrush}" BorderThickness="1" CornerRadius="6" Padding="12">
+      <StackPanel Spacing="6">
+        <Grid>
+          <TextBlock x:Name="UrlsLabel" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock x:Name="UrlsCountText" Text="{Binding UrlsCountText}" FontSize="10" HorizontalAlignment="Right"
+                     VerticalAlignment="Center" Foreground="{StaticResource CanvasMutedBrush}"
+                     AutomationProperties.AutomationId="AiModelUrlsCountText" />
+        </Grid>
+
+        <!-- UpdateSourceTrigger=PropertyChanged: en WinUI el enlace de TextBox.Text escribe al PERDER EL FOCO
+             por defecto, y el recuento de URLs del editor —que el escritorio actualiza al teclear— se quedaba
+             con el valor viejo hasta cerrar la caja. Es la misma semántica que el enlace del escritorio. -->
+        <TextBox x:Name="UrlsBox" Text="{Binding UrlsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                 TextWrapping="NoWrap" Height="150" FontSize="12" Padding="8,6"
+                 FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                 AutomationProperties.AutomationId="AiModelUrlsTextBox" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="TestButton" Padding="10,5" Command="{Binding TestUrlsCommand}"
+                  AutomationProperties.AutomationId="AiModelUrlsTestButton">
+            <TextBlock x:Name="TestLabel" FontSize="11" />
+          </Button>
+          <Button x:Name="ResetButton" Padding="10,5" Command="{Binding ResetToDefaultsCommand}"
+                  AutomationProperties.AutomationId="AiModelUrlsResetButton">
+            <TextBlock x:Name="ResetLabel" FontSize="11" />
+          </Button>
+          <Border x:Name="StatusBadge" Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="3"
+                  Padding="8,4" VerticalAlignment="Center">
+            <TextBlock x:Name="StatusBadgeText" Text="{Binding StatusBadgeText}" FontSize="10" FontWeight="SemiBold"
+                       AutomationProperties.AutomationId="AiModelUrlsStatusBadge" />
+          </Border>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- El aviso del propio editor cuando no acepta lo escrito. El view model lo pide por IDialogService
+         (igual que el escritorio), pero WinUI sólo admite un ContentDialog a la vez y este ya está abierto,
+         así que el host lo dice DENTRO del editor en vez de dejar la ventana abierta sin explicación. -->
+    <TextBlock x:Name="RequiredNote" FontSize="11" TextWrapping="Wrap" Visibility="Collapsed"
+               AutomationProperties.AutomationId="AiModelUrlsRequiredNote" />
+
+    <!-- Los resultados de la prueba, cuando los hay (el panel lo enciende el view model) -->
+    <Border x:Name="ResultsPanel" Background="{StaticResource CanvasSurfaceBrush}" BorderThickness="1" CornerRadius="6"
+            Padding="10,8" MaxHeight="110"
+            Visibility="{Binding HasTestResults, Converter={StaticResource BoolToVisibility}}">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <TextBlock x:Name="ResultsText" Text="{Binding TestResultsText}" FontSize="10" TextWrapping="Wrap"
+                   FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                   AutomationProperties.AutomationId="AiModelUrlsResultsText" />
+      </ScrollViewer>
+    </Border>
+  </StackPanel>
+</UserControl>

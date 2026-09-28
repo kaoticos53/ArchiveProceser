@@ -1,6 +1,9 @@
 param (
     [switch]$NoBuild,
     [switch]$SelfCheck,
+    [switch]$SelfCheckSettings,
+    [switch]$SelfCheckControlBar,
+    [switch]$SelfCheckDialogs,
     [switch]$SelfCheckUia,
     [string]$Configuration = "Debug",
     [string]$MsBuildPath = "C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin\MSBuild.exe",
@@ -19,6 +22,12 @@ param (
 #   .\run-uno.ps1                       compila (MSBuild VS) y lanza la app
 #   .\run-uno.ps1 -NoBuild              lanza sin compilar
 #   .\run-uno.ps1 -SelfCheck            sondeo interno en runtime (exit 0 = verificado)
+#   .\run-uno.ps1 -SelfCheckDialogs    sondeo de los PANELES DE NODO (el editor de texto y el catálogo
+#                                      de variables que abren las filas del inspector)
+#   .\run-uno.ps1 -SelfCheckControlBar sondeo de la BARRA DE CONTROL y su cajón (modo propio: su ciclo
+#                                       mueve el documento, y las sondas del lienzo no lo toleran)
+#   .\run-uno.ps1 -SelfCheckSettings    sondeo de la superficie de AJUSTES (modo propio: su medición
+#                                       cambia tema e idioma, y las sondas del lienzo no lo toleran)
 #   .\run-uno.ps1 -SelfCheckUia         sondeo UIA EXTERNO (hijo python; exit 0 = verificado)
 #   .\run-uno.ps1 -- --selfcheck        (equivalente por argumento directo de la app)
 
@@ -26,9 +35,12 @@ $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
 
 # El modo de sondeo pasa el argumento a la app y ESPERA el proceso (el veredicto es el exit code).
-if ($SelfCheck)   { $AppArgs = @("--selfcheck")     + $AppArgs }
-if ($SelfCheckUia){ $AppArgs = @("--selfcheck-uia") + $AppArgs }
-$waitForExit = $SelfCheck -or $SelfCheckUia
+if ($SelfCheck)        { $AppArgs = @("--selfcheck")          + $AppArgs }
+if ($SelfCheckSettings){ $AppArgs = @("--selfcheck-settings") + $AppArgs }
+if ($SelfCheckControlBar) { $AppArgs = @("--selfcheck-controlbar") + $AppArgs }
+if ($SelfCheckDialogs)    { $AppArgs = @("--selfcheck-dialogs") + $AppArgs }
+if ($SelfCheckUia)     { $AppArgs = @("--selfcheck-uia")      + $AppArgs }
+$waitForExit = $SelfCheck -or $SelfCheckSettings -or $SelfCheckControlBar -or $SelfCheckDialogs -or $SelfCheckUia
 
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host "  FileFlow Studio - Host Uno (WinUI 3)   " -ForegroundColor Cyan

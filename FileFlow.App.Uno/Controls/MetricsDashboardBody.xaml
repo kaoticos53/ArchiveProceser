@@ -1,0 +1,206 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.MetricsDashboardBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    El PANEL DE MÉTRICAS del host Uno: la misma información que la ventana del escritorio
+    (`FileFlow.App/Views/Components/WorkflowMetricsDashboardWindow.axaml`) sobre el MISMO
+    `WorkflowMetricsDashboardViewModel` portable. No hay una sola cifra calculada aquí: las tarjetas leen
+    sus propiedades ya formateadas por el view model y la tabla lee sus filas.
+
+    DOS DIFERENCIAS DECLARADAS con el escritorio:
+      1. El escritorio abre una VENTANA no modal; este host la sirve como superficie dentro de la suya
+         (el mismo criterio que «Acerca de», hito 258).
+      2. La tabla del escritorio es un `DataGrid` con columnas que NO construye el host (WinUI no lo
+         trae): aquí son dos plantillas —cabecera y fila— con los mismos campos, y las columnas que el
+         escritorio declara pero no enlazan a nada (tamaño y fecha del fichero) no se dibujan.
+  -->
+  <Grid x:Name="MetricsRoot" MinWidth="900" MinHeight="520"
+        AutomationProperties.AutomationId="MetricsDashboardBody"
+        RowSpacing="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Cabecera -->
+    <Grid Grid.Row="0" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <Border Background="{StaticResource CanvasAccentPrimaryBrush}" CornerRadius="6"
+                Width="30" Height="30">
+          <TextBlock Text="📊" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Foreground="{StaticResource CanvasOnAccentBrush}" />
+        </Border>
+        <TextBlock x:Name="HeaderTitle" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+        <Button x:Name="RefreshButton" Click="OnRefreshClicked" Padding="10,5" FontSize="12"
+                AutomationProperties.AutomationId="MetricsRefreshButton">
+          <TextBlock x:Name="RefreshLabel" FontSize="12" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <!-- Tarjetas KPI: los cuatro números del view model, ya formateados por él -->
+    <Grid Grid.Row="1" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="12,9">
+        <StackPanel Spacing="3">
+          <TextBlock x:Name="KpiDurationLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock x:Name="KpiDurationValue" FontSize="18" FontWeight="Bold"
+                     Text="{Binding TotalWorkflowDurationText}"
+                     Foreground="{StaticResource CanvasAccentGlowBrush}"
+                     AutomationProperties.AutomationId="MetricsTotalDuration" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="12,9">
+        <StackPanel Spacing="3">
+          <TextBlock x:Name="KpiBytesLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock x:Name="KpiBytesValue" FontSize="18" FontWeight="Bold"
+                     Text="{Binding TotalBytesProcessedText}"
+                     Foreground="{StaticResource CanvasAccentPrimaryBrush}"
+                     AutomationProperties.AutomationId="MetricsTotalBytes" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="2" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="12,9">
+        <StackPanel Spacing="3">
+          <TextBlock x:Name="KpiItemsLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock x:Name="KpiItemsValue" FontSize="18" FontWeight="Bold"
+                     Text="{Binding TotalItemsProcessedCount}"
+                     Foreground="{StaticResource CanvasSuccessBrush}"
+                     AutomationProperties.AutomationId="MetricsTotalItems" />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="3" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="12,9">
+        <StackPanel Spacing="3">
+          <TextBlock x:Name="KpiSlowestLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock x:Name="KpiSlowestValue" FontSize="13" FontWeight="Bold"
+                     Text="{Binding SlowestNodeName}"
+                     TextTrimming="CharacterEllipsis"
+                     Foreground="{StaticResource CanvasWarningBrush}"
+                     AutomationProperties.AutomationId="MetricsSlowestNode" />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Tabla de nodos: cabecera + filas con las MISMAS columnas -->
+    <Border Grid.Row="2" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+            BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="4">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Padding="8,6" ColumnSpacing="6">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="120" />
+            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="70" />
+            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="80" />
+            <ColumnDefinition Width="90" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" x:Name="ColNode" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock Grid.Column="1" x:Name="ColCategory" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock Grid.Column="2" x:Name="ColDuration" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock Grid.Column="3" x:Name="ColItems" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock Grid.Column="4" x:Name="ColBytes" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock Grid.Column="5" x:Name="ColTimePercent" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <TextBlock Grid.Column="6" x:Name="ColStatus" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+        </Grid>
+
+        <ListView x:Name="NodeList" Grid.Row="1" SelectionMode="None"
+                  Background="Transparent" BorderThickness="0"
+                  ItemsSource="{Binding FilteredNodeRows}"
+                  AutomationProperties.AutomationId="MetricsNodeList">
+          <ListView.ItemTemplate>
+            <DataTemplate>
+              <!-- El nombre de automatización de la fila: sin él, el canal externo lee el nombre del TIPO del
+                   elemento en vez del nodo que la fila enseña. -->
+              <Grid Padding="4,3" ColumnSpacing="6" AutomationProperties.Name="{Binding NodeTitle}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="300" />
+                  <ColumnDefinition Width="120" />
+                  <ColumnDefinition Width="90" />
+                  <ColumnDefinition Width="70" />
+                  <ColumnDefinition Width="90" />
+                  <ColumnDefinition Width="80" />
+                  <ColumnDefinition Width="90" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding NodeTitle}" FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock Grid.Column="1" Text="{Binding Category}" FontSize="12"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource CanvasSecondaryBrush}" />
+                <TextBlock Grid.Column="2" Text="{Binding FormattedAvgDuration}" FontSize="12"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock Grid.Column="3" Text="{Binding ExecutionCount}" FontSize="12"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock Grid.Column="4" Text="{Binding ProcessedBytesText}" FontSize="12"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock Grid.Column="5" Text="{Binding TimePercentageText}" FontSize="12"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock Grid.Column="6" Text="{Binding Status}" FontSize="12"
+                           Foreground="{StaticResource CanvasSecondaryBrush}" />
+              </Grid>
+            </DataTemplate>
+          </ListView.ItemTemplate>
+        </ListView>
+      </Grid>
+    </Border>
+
+    <!-- Pie: el estado del análisis y el botón de cerrar (el modal es del host) -->
+    <Grid Grid.Row="3" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="StatusText" Grid.Column="0" FontSize="11" VerticalAlignment="Center"
+                 Text="{Binding ProfilingStatusMessage}"
+                 TextWrapping="Wrap"
+                 Foreground="{StaticResource CanvasSecondaryBrush}"
+                 AutomationProperties.AutomationId="MetricsStatusText" />
+      <Button x:Name="CloseButton" Grid.Column="1" Click="OnCloseClicked" Padding="14,6" FontSize="12"
+              AutomationProperties.AutomationId="MetricsCloseButton">
+        <TextBlock x:Name="CloseLabel" FontSize="12" />
+      </Button>
+    </Grid>
+  </Grid>
+</UserControl>

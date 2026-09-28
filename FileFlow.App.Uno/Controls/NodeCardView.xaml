@@ -64,11 +64,12 @@
               </Border.Background>
             </Border>
 
-            <!-- LÍNEA 1 · Identidad: icono del tipo, título, breakpoint, logging -->
+            <!-- LÍNEA 1 · Identidad: icono del tipo, título, breakpoint, logging, parámetros -->
             <Grid>
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
@@ -121,6 +122,23 @@
                         Data="{Binding ConsoleIconGeometry}" />
                 </Border>
               </Button>
+
+              <!-- Conmutador del panel de parámetros (el chevron del escritorio). Sin él la tarjeta no
+                   tiene forma de desplegarse, y el panel es el que trae las acciones rápidas del nodo
+                   —entre ellas el «🎬 Presets...» del nodo de transcodificación—: la puerta de la
+                   tarjeta quedaría dibujada y sin puerta. El estado es del NÚCLEO (la misma IsExpanded
+                   que el escritorio conmuta), así que aquí sólo se pinta y se conmuta. -->
+              <ToggleButton x:Name="ParametersToggle" Grid.Column="4"
+                            IsChecked="{Binding Node.IsExpanded, Mode=TwoWay}"
+                            AutomationProperties.AutomationId="NodeCardExpandToggle"
+                            AutomationProperties.Name="{Binding ParametersToggleToolTip}"
+                            ToolTipService.ToolTip="{Binding ParametersToggleToolTip}"
+                            Background="Transparent" BorderThickness="0" Padding="3,0" Margin="3,0,0,0"
+                            VerticalAlignment="Center">
+                <Path x:Name="ParametersIcon" Width="10" Height="10" Stretch="Uniform"
+                      Data="{Binding ExpandIconGeometry}"
+                      Fill="{StaticResource CanvasSecondaryBrush}" />
+              </ToggleButton>
             </Grid>
 
             <!-- LÍNEA 2 · Contexto: badge de categoría, LED de estado, texto de estado, cuello de botella -->
@@ -244,7 +262,7 @@
           </Grid>
 
           <!-- Panel de parámetros plegable (Blender inset): aparece con IsExpanded -->
-          <Border Margin="8,5,8,3" Background="{StaticResource CanvasSurfaceBrush}"
+          <Border x:Name="ParametersPanel" Margin="8,5,8,3" Background="{StaticResource CanvasSurfaceBrush}"
                   BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
                   CornerRadius="6" Padding="8,6"
                   Visibility="{Binding Node.IsExpanded, Converter={StaticResource BoolToVis}}">

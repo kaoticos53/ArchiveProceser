@@ -1,0 +1,548 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.SettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    La superficie de AJUSTES del host Uno: las mismas cuatro secciones que la ventana de ajustes del
+    escritorio, sobre el MISMO WorkflowSettingsViewModel portable (almacenamiento y rutas, apariencia e
+    idioma, rendimiento y ejecución, herramientas externas). Cada control escribe una propiedad del view
+    model; el guardado es el comando canónico del VM (UpdatePreferences + SetCulture + SetThemeById), así
+    que el host no tiene copia de la lógica de persistencia.
+
+    Los TEXTOS se aplican por código (SettingsPanel.xaml.cs → ApplyLocalization): el host resuelve sus
+    cadenas con LocalizationManager y las reescribe al cambiar de idioma, como el resto del marco.
+
+    LAS CUATRO SECCIONES VIVEN MATERIALIZADAS a la vez: la conmutación es de visibilidad (Collapsed), no de
+    creación. Un contenedor con carga perezosa (Pivot/TabControl) materializa el cuerpo de su pestaña en el
+    pase de layout siguiente, y este host paga dos cosas por ello: el primer clic de una pestaña llega a un
+    cuerpo a medio construir, y la conmutación programática desde el sondeo cae dentro de una medida (medido:
+    «Failed to assign to property ContentControl.Content» desde MeasureOverride con el Pivot). Con el
+    conmutador segmentado, los catálogos y enlaces de las cuatro secciones están vivos desde que el panel
+    existe y la conmutación es instantánea.
+  -->
+  <Grid x:Name="OverlayRoot" Visibility="Collapsed">
+    <!-- El velo: clic fuera = cancelar, como el backdrop del cajón del escritorio. -->
+    <Border x:Name="Scrim" Background="#A6000000" Tapped="OnScrimTapped"
+            AutomationProperties.AutomationId="SettingsScrim" />
+
+    <Border x:Name="PanelHost"
+            Width="800" Height="600"
+            HorizontalAlignment="Center" VerticalAlignment="Center"
+            Background="{StaticResource CanvasSurfaceBrush}"
+            BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" CornerRadius="10"
+            AutomationProperties.AutomationId="SettingsPanel">
+
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <Grid Grid.Row="0" Padding="18,14" ColumnSpacing="10"
+              Background="{StaticResource CanvasCardBrush}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel Grid.Column="0" Spacing="3">
+            <TextBlock x:Name="HeaderTitle" FontSize="15" FontWeight="SemiBold"
+                       Foreground="{StaticResource CanvasTextBrush}" />
+            <TextBlock x:Name="HeaderSubtitle" FontSize="11" TextWrapping="Wrap"
+                       Foreground="{StaticResource CanvasSecondaryBrush}" />
+          </StackPanel>
+          <Button x:Name="CloseButton" Grid.Column="1" Click="OnCloseClicked"
+                  VerticalAlignment="Top" Padding="8,4" FontSize="11"
+                  AutomationProperties.AutomationId="SettingsCloseButton"
+                  Background="Transparent" BorderThickness="1"
+                  BorderBrush="{StaticResource CanvasBorderBrush}" />
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="14,10,14,0" RowSpacing="10">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <!-- Conmutador de secciones -->
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
+            <RadioButton x:Name="StorageTabButton" GroupName="SettingsSections" IsChecked="True"
+                         FontSize="12" Padding="10,4" Tag="Storage"
+                         Click="OnSectionClicked"
+                         AutomationProperties.AutomationId="SettingsTabStorage" />
+            <RadioButton x:Name="AppearanceTabButton" GroupName="SettingsSections"
+                         FontSize="12" Padding="10,4" Tag="Appearance"
+                         Click="OnSectionClicked"
+                         AutomationProperties.AutomationId="SettingsTabAppearance" />
+            <RadioButton x:Name="PerformanceTabButton" GroupName="SettingsSections"
+                         FontSize="12" Padding="10,4" Tag="Performance"
+                         Click="OnSectionClicked"
+                         AutomationProperties.AutomationId="SettingsTabPerformance" />
+            <RadioButton x:Name="ToolsTabButton" GroupName="SettingsSections"
+                         FontSize="12" Padding="10,4" Tag="Tools"
+                         Click="OnSectionClicked"
+                         AutomationProperties.AutomationId="SettingsTabTools" />
+            <RadioButton x:Name="AiModelsTabButton" GroupName="SettingsSections"
+                         FontSize="12" Padding="10,4" Tag="AiModels"
+                         Click="OnSectionClicked"
+                         AutomationProperties.AutomationId="SettingsTabAiModels" />
+            <RadioButton x:Name="UpdatesTabButton" GroupName="SettingsSections"
+                         FontSize="12" Padding="10,4" Tag="Updates"
+                         Click="OnSectionClicked"
+                         AutomationProperties.AutomationId="SettingsTabUpdates" />
+          </StackPanel>
+
+          <!-- Los seis cuerpos, todos materializados (sólo cambia la visibilidad) -->
+          <Grid Grid.Row="1">
+            <!-- ═══ 1. Almacenamiento y Rutas ═══ -->
+            <ScrollViewer x:Name="StoragePane" VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="12" Padding="2,4,2,12">
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="GlobalOutputLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="GlobalOutputBox" Grid.Column="0" FontSize="12"
+                             Text="{Binding GlobalOutputDir, Mode=TwoWay}" />
+                    <Button x:Name="BrowseGlobalOutputButton" Grid.Column="1" Click="OnBrowseFolderClicked"
+                            Tag="GlobalOutputDir" FontSize="11" Padding="10,4"
+                            AutomationProperties.AutomationId="SettingsBrowseGlobalOutputButton" />
+                  </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="TempDirLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TempDirBox" Grid.Column="0" FontSize="12"
+                             Text="{Binding TempWorkingDir, Mode=TwoWay}" />
+                    <Button x:Name="BrowseTempDirButton" Grid.Column="1" Click="OnBrowseFolderClicked"
+                            Tag="TempWorkingDir" FontSize="11" Padding="10,4"
+                            AutomationProperties.AutomationId="SettingsBrowseTempDirButton" />
+                  </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                  <TextBlock x:Name="ConflictLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <ComboBox x:Name="ConflictCombo" FontSize="12" MinWidth="380" HorizontalAlignment="Left"
+                            ItemsSource="{Binding ConflictStrategies}"
+                            SelectedValue="{Binding SelectedConflictStrategy, Mode=TwoWay}"
+                            SelectedValuePath="Code" DisplayMemberPath="DisplayName"
+                            AutomationProperties.AutomationId="SettingsConflictCombo" />
+                </StackPanel>
+
+                <CheckBox x:Name="AutoSaveCheck" FontSize="12"
+                          IsChecked="{Binding EnableAutoSave, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsAutoSaveCheck" />
+
+                <Grid ColumnSpacing="8" Margin="24,0,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock x:Name="AutoSaveIntervalLabel" Grid.Column="0" FontSize="11"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <NumberBox x:Name="AutoSaveIntervalBox" Grid.Column="1" FontSize="12"
+                             SpinButtonPlacementMode="Compact"
+                             ValueChanged="OnAutoSaveIntervalChanged"
+                             AutomationProperties.AutomationId="SettingsAutoSaveIntervalBox" />
+                </Grid>
+
+                <CheckBox x:Name="AutoCleanCheck" FontSize="12"
+                          IsChecked="{Binding AutoCleanIntermediateTempFiles, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsAutoCleanCheck" />
+                <CheckBox x:Name="CleanStaleCheck" FontSize="12"
+                          IsChecked="{Binding CleanStaleTempOnStartup, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsCleanStaleCheck" />
+                <Button x:Name="CleanTempNowButton" HorizontalAlignment="Left" FontSize="11" Padding="10,4"
+                        Click="OnCleanTempNowClicked"
+                        AutomationProperties.AutomationId="SettingsCleanTempButton" />
+              </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ 2. Apariencia e Idioma ═══ -->
+            <ScrollViewer x:Name="AppearancePane" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="12" Padding="2,4,2,12">
+                <StackPanel Spacing="4">
+                  <TextBlock x:Name="LanguageLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <ComboBox x:Name="LanguageCombo" FontSize="12" MinWidth="260" HorizontalAlignment="Left"
+                            ItemsSource="{Binding AvailableLanguages}"
+                            SelectedValue="{Binding SelectedLanguage, Mode=TwoWay}"
+                            SelectedValuePath="Code" DisplayMemberPath="DisplayName"
+                            AutomationProperties.AutomationId="SettingsLanguageCombo" />
+                </StackPanel>
+
+                <StackPanel Spacing="4">
+                  <TextBlock x:Name="ThemeLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <ComboBox x:Name="ThemeCombo" FontSize="12" MinWidth="320" HorizontalAlignment="Left"
+                            ItemsSource="{Binding Themes}"
+                            SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
+                            DisplayMemberPath="Name"
+                            AutomationProperties.AutomationId="SettingsThemeCombo" />
+                </StackPanel>
+
+                <CheckBox x:Name="CompactToolboxCheck" FontSize="12"
+                          IsChecked="{Binding IsCompactToolbox, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsCompactToolboxCheck" />
+                <CheckBox x:Name="AutoScrollCheck" FontSize="12"
+                          IsChecked="{Binding AutoScrollConsole, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsAutoScrollCheck" />
+
+                <Grid ColumnSpacing="8" Margin="24,0,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock x:Name="MaxLogEntriesLabel" Grid.Column="0" FontSize="11"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <NumberBox x:Name="MaxLogEntriesBox" Grid.Column="1" FontSize="12"
+                             SpinButtonPlacementMode="Compact"
+                             ValueChanged="OnMaxLogEntriesChanged"
+                             AutomationProperties.AutomationId="SettingsMaxLogEntriesBox" />
+                  <TextBlock x:Name="LinesUnlimitedLabel" Grid.Column="2" FontSize="11"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                </Grid>
+              </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ 3. Rendimiento y Ejecución ═══ -->
+            <ScrollViewer x:Name="PerformancePane" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="12" Padding="2,4,2,12">
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock x:Name="MaxCpuThreadsLabel" Grid.Column="0" FontSize="11"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <NumberBox x:Name="MaxCpuThreadsBox" Grid.Column="1" FontSize="12"
+                             SpinButtonPlacementMode="Compact"
+                             ValueChanged="OnMaxCpuThreadsChanged"
+                             AutomationProperties.AutomationId="SettingsMaxCpuThreadsBox" />
+                  <TextBlock x:Name="ThreadsLabel" Grid.Column="2" FontSize="11"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                </Grid>
+
+                <CheckBox x:Name="DryRunCheck" FontSize="12"
+                          IsChecked="{Binding DefaultDryRunState, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsDryRunCheck" />
+
+                <StackPanel Spacing="4">
+                  <TextBlock x:Name="LogLevelLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <ComboBox x:Name="LogLevelCombo" FontSize="12" MinWidth="380" HorizontalAlignment="Left"
+                            ItemsSource="{Binding LogLevels}"
+                            SelectedValue="{Binding SelectedLogLevel, Mode=TwoWay}"
+                            SelectedValuePath="Code" DisplayMemberPath="DisplayName"
+                            AutomationProperties.AutomationId="SettingsLogLevelCombo" />
+                </StackPanel>
+
+                <CheckBox x:Name="CheckpointingCheck" FontSize="12"
+                          IsChecked="{Binding EnableCheckpointing, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsCheckpointingCheck" />
+                <Button x:Name="ClearCheckpointsButton" HorizontalAlignment="Left" FontSize="11"
+                        Padding="10,4" Click="OnClearCheckpointsClicked"
+                        AutomationProperties.AutomationId="SettingsClearCheckpointsButton" />
+
+                <CheckBox x:Name="AutoUnloadAiCheck" FontSize="12"
+                          IsChecked="{Binding AutoUnloadAiModelsOnCompletion, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsAutoUnloadAiCheck" />
+              </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ 4. Herramientas Externas ═══ -->
+            <ScrollViewer x:Name="ToolsPane" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="10" Padding="2,4,2,12">
+                <TextBlock x:Name="ToolsTitleLabel" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="FfmpegLabel" FontSize="11"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="FfmpegBox" Grid.Column="0" FontSize="12"
+                             Text="{Binding FfmpegPath, Mode=TwoWay}" />
+                    <Button x:Name="BrowseFfmpegButton" Grid.Column="1" Click="OnBrowseFileClicked"
+                            Tag="FfmpegPath" FontSize="11" Padding="10,4"
+                            AutomationProperties.AutomationId="SettingsBrowseFfmpegButton" />
+                  </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="FfprobeLabel" FontSize="11"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="FfprobeBox" Grid.Column="0" FontSize="12"
+                             Text="{Binding FfprobePath, Mode=TwoWay}" />
+                    <Button x:Name="BrowseFfprobeButton" Grid.Column="1" Click="OnBrowseFileClicked"
+                            Tag="FfprobePath" FontSize="11" Padding="10,4"
+                            AutomationProperties.AutomationId="SettingsBrowseFfprobeButton" />
+                  </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="SevenZipLabel" FontSize="11"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="SevenZipBox" Grid.Column="0" FontSize="12"
+                             Text="{Binding SevenZipPath, Mode=TwoWay}" />
+                    <Button x:Name="BrowseSevenZipButton" Grid.Column="1" Click="OnBrowseFileClicked"
+                            Tag="SevenZipPath" FontSize="11" Padding="10,4"
+                            AutomationProperties.AutomationId="SettingsBrowseSevenZipButton" />
+                  </Grid>
+                </StackPanel>
+
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="PythonLabel" FontSize="11"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="PythonBox" Grid.Column="0" FontSize="12"
+                             Text="{Binding PythonPath, Mode=TwoWay}" />
+                    <Button x:Name="BrowsePythonButton" Grid.Column="1" Click="OnBrowseFileClicked"
+                            Tag="PythonPath" FontSize="11" Padding="10,4"
+                            AutomationProperties.AutomationId="SettingsBrowsePythonButton" />
+                  </Grid>
+                </StackPanel>
+
+                <Button x:Name="AutoDetectButton" HorizontalAlignment="Left" FontSize="11" Padding="10,4"
+                        Click="OnAutoDetectClicked"
+                        AutomationProperties.AutomationId="SettingsAutoDetectButton" />
+              </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ 5. Modelos de IA ═══
+                 La misma superficie que la pestaña del escritorio: la lista de modelos con su estado, y por
+                 fila las órdenes del gestor (descargar, borrar, configurar URLs). El catálogo, el estado y las
+                 órdenes son del `AiModelManagerViewModel` portable; aquí sólo se pinta. -->
+            <ScrollViewer x:Name="AiModelsPane" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="10" Padding="2,4,2,12">
+                <TextBlock x:Name="AiModelsTitleLabel" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource CanvasTextBrush}" />
+                <TextBlock x:Name="AiModelsSubtitleLabel" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{StaticResource CanvasSecondaryBrush}" />
+
+                <Grid ColumnSpacing="8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0" Spacing="1">
+                    <TextBlock x:Name="AiModelsDirLabel" FontSize="10"
+                               Foreground="{StaticResource CanvasMutedBrush}" />
+                    <TextBlock x:Name="AiModelsDirText" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{StaticResource CanvasSecondaryBrush}"
+                               AutomationProperties.AutomationId="SettingsAiModelsDirText" />
+                  </StackPanel>
+                  <Button x:Name="AiModelsRefreshButton" Grid.Column="1" FontSize="11" Padding="10,4"
+                          Click="OnAiModelsRefreshClicked"
+                          AutomationProperties.AutomationId="SettingsAiModelsRefreshButton" />
+                  <Button x:Name="AiModelsDownloadMissingButton" Grid.Column="2" FontSize="11" Padding="10,4"
+                          Click="OnAiModelsDownloadMissingClicked"
+                          AutomationProperties.AutomationId="SettingsAiModelsDownloadMissingButton" />
+                  <Button x:Name="AiModelsOpenFolderButton" Grid.Column="3" FontSize="11" Padding="10,4"
+                          Click="OnAiModelsOpenFolderClicked"
+                          AutomationProperties.AutomationId="SettingsAiModelsOpenFolderButton" />
+                </Grid>
+
+                <ListView x:Name="AiModelsList" MaxHeight="330"
+                          ItemsSource="{Binding AiModelManager.Models}"
+                          SelectionMode="None"
+                          AutomationProperties.AutomationId="SettingsAiModelsList">
+                  <ListView.ItemTemplate>
+                    <DataTemplate>
+                      <Grid ColumnSpacing="8" Padding="0,5">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="Auto" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="1"
+                                    AutomationProperties.Name="{Binding Name}">
+                          <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" />
+                          <TextBlock Text="{Binding Description}" FontSize="10" TextWrapping="Wrap"
+                                     Foreground="{StaticResource CanvasMutedBrush}" />
+                          <TextBlock Text="{Binding ProgressText}" FontSize="10"
+                                     Foreground="{StaticResource CanvasSecondaryBrush}"
+                                     AutomationProperties.AutomationId="SettingsAiModelStatusText" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding DiskSizeLabel}" FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <Button Grid.Column="2" FontSize="11" Padding="8,3"
+                                Click="OnAiModelRowActionClicked" Tag="download"
+                                AutomationProperties.AutomationId="SettingsAiModelDownloadButton">
+                          <TextBlock Text="⬇" FontSize="11" />
+                        </Button>
+                        <!-- La acción que abre el editor de URLs por modelo (hito 262): el mismo puesto que
+                             ocupa en la fila del escritorio (entre descargar y borrar) y el MISMO comando
+                             canónico del gestor del núcleo, que pide el diálogo por el catálogo. -->
+                        <Button Grid.Column="3" FontSize="11" Padding="8,3"
+                                Click="OnAiModelRowActionClicked" Tag="urls"
+                                AutomationProperties.AutomationId="SettingsAiModelUrlsButton">
+                          <TextBlock Text="🔗" FontSize="11" />
+                        </Button>
+                        <Button Grid.Column="4" FontSize="11" Padding="8,3"
+                                Click="OnAiModelRowActionClicked" Tag="delete"
+                                AutomationProperties.AutomationId="SettingsAiModelDeleteButton">
+                          <TextBlock Text="🗑" FontSize="11" />
+                        </Button>
+                      </Grid>
+                    </DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+
+                <TextBlock x:Name="AiModelsEmptyLabel" FontSize="11" TextWrapping="Wrap"
+                           Foreground="{StaticResource CanvasMutedBrush}"
+                           AutomationProperties.AutomationId="SettingsAiModelsEmptyLabel" />
+
+                <Border x:Name="AiModelsErrorBox" Visibility="Collapsed"
+                        BorderBrush="{StaticResource CanvasWarningBrush}" BorderThickness="1"
+                        CornerRadius="4" Padding="8,5">
+                  <TextBlock x:Name="AiModelsErrorText" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{StaticResource CanvasTextBrush}"
+                             AutomationProperties.AutomationId="SettingsAiModelsErrorText" />
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══ 6. Actualizaciones ═══
+                 La pestaña del escritorio: versiones, canal, comprobación automática y la acción de comprobar
+                 ahora. Todo vive en el `WorkflowSettingsViewModel` portable (las mismas propiedades y los
+                 mismos comandos que su ventana), incluido el servicio de actualización del núcleo. -->
+            <ScrollViewer x:Name="UpdatesPane" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel Spacing="10" Padding="2,4,2,12">
+                <StackPanel Spacing="3">
+                  <TextBlock x:Name="UpdatesTitleLabel" FontSize="12" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <TextBlock x:Name="UpdatesDescLabel" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{StaticResource CanvasSecondaryBrush}" />
+                </StackPanel>
+
+                <Border Background="{StaticResource CanvasCardBrush}" CornerRadius="5" Padding="12,9"
+                        BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+                  <Grid ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="2">
+                      <TextBlock x:Name="UpdateCurrentVersionLabel" FontSize="10"
+                                 Foreground="{StaticResource CanvasMutedBrush}" />
+                      <TextBlock x:Name="UpdateCurrentVersionText" FontSize="12" FontWeight="SemiBold"
+                                 Text="{Binding CurrentVersionDisplay}"
+                                 AutomationProperties.AutomationId="SettingsUpdateCurrentVersion" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock x:Name="UpdatePackagingLabel" FontSize="10"
+                                 Foreground="{StaticResource CanvasMutedBrush}" />
+                      <TextBlock Text="{Binding PackagingFormatDisplay}" FontSize="11"
+                                 AutomationProperties.AutomationId="SettingsUpdatePackaging" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="2">
+                      <TextBlock x:Name="UpdateLastCheckLabel" FontSize="10"
+                                 Foreground="{StaticResource CanvasMutedBrush}" />
+                      <TextBlock Text="{Binding LastUpdateCheckDisplay}" FontSize="11"
+                                 AutomationProperties.AutomationId="SettingsUpdateLastCheck" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+
+                <StackPanel Spacing="4">
+                  <TextBlock x:Name="UpdateChannelLabel" FontSize="11" FontWeight="SemiBold"
+                             Foreground="{StaticResource CanvasTextBrush}" />
+                  <ComboBox x:Name="UpdateChannelCombo" Width="300" HorizontalAlignment="Left" FontSize="12"
+                            ItemsSource="{Binding UpdateChannels}"
+                            SelectedValue="{Binding SelectedUpdateChannel, Mode=TwoWay}"
+                            DisplayMemberPath="DisplayName"
+                            AutomationProperties.AutomationId="SettingsUpdateChannelCombo" />
+                </StackPanel>
+
+                <CheckBox x:Name="AutoCheckUpdatesCheck" FontSize="12"
+                          IsChecked="{Binding AutoCheckForUpdates, Mode=TwoWay}"
+                          AutomationProperties.AutomationId="SettingsAutoCheckUpdatesCheck" />
+
+                <Grid ColumnSpacing="10">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <Button x:Name="CheckUpdatesButton" Grid.Column="0" FontSize="11" Padding="12,5"
+                          Click="OnCheckUpdatesNowClicked"
+                          AutomationProperties.AutomationId="SettingsCheckUpdatesButton" />
+                  <TextBlock x:Name="CheckUpdatesStatusText" Grid.Column="1" FontSize="11"
+                             TextWrapping="Wrap" VerticalAlignment="Center"
+                             Text="{Binding CheckUpdatesStatusMessage}"
+                             Foreground="{StaticResource CanvasSecondaryBrush}"
+                             AutomationProperties.AutomationId="SettingsCheckUpdatesStatus" />
+                </Grid>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </Grid>
+
+        <!-- Pie: el estado del guardado y las dos salidas -->
+        <Grid Grid.Row="2" Padding="18,12" ColumnSpacing="10"
+              Background="{StaticResource CanvasCardBrush}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="StatusText" Grid.Column="0" FontSize="11" VerticalAlignment="Center"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+          <Button x:Name="CancelButton" Grid.Column="1" Click="OnCancelClicked" FontSize="12" Padding="12,5"
+                  AutomationProperties.AutomationId="SettingsCancelButton" />
+          <Button x:Name="SaveButton" Grid.Column="2" Click="OnSaveClicked" FontSize="12" Padding="12,5"
+                  Background="{StaticResource CanvasAccentPrimaryBrush}" BorderThickness="0"
+                  AutomationProperties.AutomationId="SettingsSaveButton" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

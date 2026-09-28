@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
@@ -38,11 +39,35 @@ public sealed class NodeInspectorPanel : UserControl
     private readonly TextBlock _paramsHeader;
     private readonly TextBlock _telemetryHeader;
     private readonly StackPanel _paramsHost = new() { Spacing = 4 };
+
+    /// <summary>
+    /// Los controles de las filas de parámetros por su AutomationId. Es la tabla que hace observable
+    /// la fila desde fuera: el driver externo (y la sonda en proceso) encuentra la caja de un parámetro
+    /// y las acciones de su fila por un ancla estable, sin descifrar el árbol.
+    /// </summary>
+    private readonly Dictionary<string, Control> _paramControls = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Las suscripciones vivo-parametro → caja de las filas materializadas. Se sueltan en cada reconstrucción
+    /// (la fila vieja se va con el nodo): sin soltarlas, el parámetro seguiría escribiendo en cajas muertas y
+    /// el árbol visual de la selección anterior no se podría recoger.
+    /// </summary>
+    private readonly List<(NodeParameterViewModel Param, PropertyChangedEventHandler Handler)> _rowValueSubscriptions = new();
     private readonly StackPanel _snapshotsHost = new() { Spacing = 6 };
     private readonly StackPanel _inputsHost = new() { Spacing = 6 };
     private readonly StackPanel _outputsHost = new() { Spacing = 6 };
     private readonly StackPanel _diffHost = new() { Spacing = 2 };
     private readonly Pivot _tabs = new();
+
+    /// <summary>
+    /// Los envoltorios DESPLAZABLES de las pestañas (hito 253), con nombre propio para que el rastro del
+    /// foco los pueda cantar: el elemento que se lleva el foco ~0,5 s después del clic NO tiene ancestros
+    /// en el árbol visual —los envoltorios de las pestañas no seleccionadas no están realizados— así que
+    /// un nombre es lo único que lo identifica. Un envoltorio de scroll no edita nada y no tiene por qué
+    /// ser dueño del teclado; su contenido (los editores) sí.
+    /// </summary>
+    private readonly List<ScrollViewer> _scrollPanes = new();
+
     private PivotItem? _paramsTabItem;
     private PivotItem? _snapshotsTabItem;
     private PivotItem? _inputsTabItem;
@@ -163,7 +188,13 @@ public sealed class NodeInspectorPanel : UserControl
         paramsGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         Grid.SetRow(_descriptionText, 0);
         Grid.SetRow(_paramsHeader, 1);
-        var paramsScroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _paramsHost };
+        var paramsScroll = new ScrollViewer
+        {
+            Name = "InspectorParamsScroll",
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = _paramsHost
+        };
+        _scrollPanes.Add(paramsScroll);
         Grid.SetRow(paramsScroll, 2);
         paramsGrid.Children.Add(_descriptionText);
         paramsGrid.Children.Add(_paramsHeader);
@@ -179,7 +210,7 @@ public sealed class NodeInspectorPanel : UserControl
         var snapshotsTab = new PivotItem
         {
             Header = loc.GetString("Uno_InspectorTabSnapshots", "Snapshots"),
-            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _snapshotsHost }
+            Content = NamedPane("InspectorSnapshotsScroll", _snapshotsHost)
         };
         AutomationProperties.SetAutomationId(snapshotsTab, "InspectorTabSnapshots");
 
@@ -188,21 +219,21 @@ public sealed class NodeInspectorPanel : UserControl
         var inputsTab = new PivotItem
         {
             Header = loc.GetString("Uno_InspectorTabInputs", "Entradas"),
-            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _inputsHost }
+            Content = NamedPane("InspectorInputsScroll", _inputsHost)
         };
         AutomationProperties.SetAutomationId(inputsTab, "InspectorTabInputs");
 
         var outputsTab = new PivotItem
         {
             Header = loc.GetString("Uno_InspectorTabOutputs", "Salidas"),
-            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _outputsHost }
+            Content = NamedPane("InspectorOutputsScroll", _outputsHost)
         };
         AutomationProperties.SetAutomationId(outputsTab, "InspectorTabOutputs");
 
         var diffTab = new PivotItem
         {
             Header = loc.GetString("Uno_InspectorTabDiff", "Diff"),
-            Content = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Content = _diffHost }
+            Content = NamedPane("InspectorDiffScroll", _diffHost)
         };
         AutomationProperties.SetAutomationId(diffTab, "InspectorTabDiff");
 
@@ -329,8 +360,47 @@ public sealed class NodeInspectorPanel : UserControl
         }
     }
 
+    /// <summary>
+    /// Crea el envoltorio desplazable de una pestaña con NOMBRE y lo registra. El nombre entra en el rastro
+    /// del foco (hito 253) y la lista es la que audita la sonda del selfcheck.
+    /// </summary>
+    private ScrollViewer NamedPane(string name, UIElement content)
+    {
+        var pane = new ScrollViewer
+        {
+            Name = name,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = content
+        };
+
+        _scrollPanes.Add(pane);
+        return pane;
+    }
+
+    /// <summary>Quién tiene el foco, en palabras, para el rastro del 253.</summary>
+    private string DescribeInspectorFocus()
+    {
+        try
+        {
+            return CanvasFocusTrace.Describe(
+                Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot), ancestors: 3);
+        }
+        catch (Exception ex)
+        {
+            return "sin consultar (" + ex.GetType().Name + ")";
+        }
+    }
+
     private void RefreshNode()
     {
+        // El rastro del foco (hito 253): la reconstrucción que sigue a la selección se anota con el nodo y
+        // la pestaña activa, para poder casarla con el cambio de foco del gestor. Los envoltorios de las
+        // pestañas llevan NOMBRE a propósito: el que se lleva el foco no tiene ancestros en el árbol visual
+        // (los de las pestañas no seleccionadas no están realizados), así que su nombre es lo único que lo
+        // identifica.
+        CanvasFocusTrace.Write($"inspector: refresco de nodo (pestaña={_tabs.SelectedIndex}, "
+                             + $"pestanas={_tabs.Items.Count}) antes={DescribeInspectorFocus()}");
+
         // El nodo anterior deja de notificar: el panel sólo vive del nodo inspeccionado.
         if (_inspected is not null)
         {
@@ -679,11 +749,60 @@ public sealed class NodeInspectorPanel : UserControl
         _body.Visibility = isOpen && _inspected is not null ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// Ata una CAJA DE TEXTO de una fila al parámetro en LOS DOS SENTIDOS: la caja escribe el valor (lo que
+    /// teclea el usuario) y el valor actualiza la caja (lo que escriben los DIÁLOGOS).
+    ///
+    /// <para><b>Por qué la vuelta no es un adorno.</b> El editor de texto y el catálogo de variables devuelven
+    /// el valor por el view model portable (<c>SaveResult</c>, <c>InsertVariableToken</c>), no por el teclado:
+    /// con sólo la ida, insertar «{FileName}» desde el catálogo cambiaba el parámetro del nodo y dejaba el
+    /// campo con el texto viejo — el usuario veía que no había pasado nada y volvía a insertarlo. Las filas de
+    /// casilla y desplegable no lo necesitan porque su enlace ya es bidireccional; estas cajas se atan a mano
+    /// porque el valor es un <c>object</c> y el texto quiere pasar por <c>ToString</c>.</para>
+    ///
+    /// <para>Las suscripciones se sueltan al reconstruir las filas (<see cref="_rowValueSubscriptions"/>): sin
+    /// eso, cada selección de nodo dejaría viva una suscripción del parámetro a una caja que ya no está.</para>
+    /// </summary>
+    private void WireBoxToParameter(TextBox box, NodeParameterViewModel p)
+    {
+        box.TextChanged += (_, _) =>
+        {
+            if (box.Text != (p.Value?.ToString() ?? string.Empty))
+            {
+                p.Value = box.Text;
+            }
+        };
+
+        void OnParameterChanged(object? _, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(NodeParameterViewModel.Value))
+            {
+                return;
+            }
+
+            string value = p.Value?.ToString() ?? string.Empty;
+            if (box.Text != value)
+            {
+                box.Text = value;
+            }
+        }
+
+        p.PropertyChanged += OnParameterChanged;
+        _rowValueSubscriptions.Add((p, OnParameterChanged));
+    }
+
     // ── La tabla de editores: los mismos flags del VM que el escritorio usa en su Selector ──
 
     private void RebuildParameters()
     {
+        foreach (var (param, handler) in _rowValueSubscriptions)
+        {
+            param.PropertyChanged -= handler;
+        }
+
+        _rowValueSubscriptions.Clear();
         _paramsHost.Children.Clear();
+        _paramControls.Clear();
         if (_inspected is null)
         {
             return;
@@ -726,6 +845,7 @@ public sealed class NodeInspectorPanel : UserControl
                 Margin = new Thickness(0, 0, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
+            Anchor("ParamToggle_" + p.Key, toggle);
             toggle.SetBinding(ToggleSwitch.IsOnProperty, new Binding
             {
                 Path = new PropertyPath(nameof(p.ValueAsBool)),
@@ -737,6 +857,7 @@ public sealed class NodeInspectorPanel : UserControl
         else if (p.IsSlider)
         {
             var slider = new Slider { Minimum = p.SliderMin, Maximum = p.SliderMax, StepFrequency = Math.Max(p.SliderStep, 0.01) };
+            Anchor("ParamSlider_" + p.Key, slider);
             slider.SetBinding(Slider.ValueProperty, new Binding
             {
                 Path = new PropertyPath(nameof(p.SliderValue)),
@@ -767,6 +888,7 @@ public sealed class NodeInspectorPanel : UserControl
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 FontSize = 12
             };
+            Anchor("ParamDropdown_" + p.Key, combo);
             combo.SetBinding(ComboBox.SelectedItemProperty, new Binding
             {
                 Path = new PropertyPath(nameof(p.Value)),
@@ -778,19 +900,15 @@ public sealed class NodeInspectorPanel : UserControl
         else if (p.HasBrowseButton)
         {
             var box = new TextBox { FontSize = 12 };
-            box.TextChanged += (_, _) =>
-            {
-                if (box.Text != (p.Value?.ToString() ?? string.Empty))
-                {
-                    p.Value = box.Text;
-                }
-            };
+            Anchor("ParamBox_" + p.Key, box);
+            WireBoxToParameter(box, p);
             var browse = new Button
             {
                 Content = "…",
                 Padding = new Thickness(8, 2, 8, 2),
                 FontSize = 12
             };
+            Anchor("ParamBrowse_" + p.Key, browse);
             browse.Click += (_, _) => p.BrowsePathCommand.Execute(null);
             var grid = new Grid { ColumnSpacing = 4 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -811,30 +929,25 @@ public sealed class NodeInspectorPanel : UserControl
                 FontSize = 12
             };
             ScrollViewer.SetVerticalScrollBarVisibility(box, ScrollBarVisibility.Auto);
-            box.TextChanged += (_, _) =>
-            {
-                if (box.Text != (p.Value?.ToString() ?? string.Empty))
-                {
-                    p.Value = box.Text;
-                }
-            };
+            Anchor("ParamBox_" + p.Key, box);
+            WireBoxToParameter(box, p);
             editor = box;
         }
         else
         {
             // Texto estándar y número: una caja (el número deja la validación al nodo, igual que la ficha).
             var box = new TextBox { FontSize = 12 };
-            box.TextChanged += (_, _) =>
-            {
-                if (box.Text != (p.Value?.ToString() ?? string.Empty))
-                {
-                    p.Value = box.Text;
-                }
-            };
+            Anchor("ParamBox_" + p.Key, box);
+            WireBoxToParameter(box, p);
             editor = box;
         }
 
-        root.Children.Add(editor);
+        // Las ACCIONES de la fila (rebanada 5.3): abrir el EDITOR enriquecido —sólo donde el valor es un
+        // texto largo, como la ficha del escritorio— e insertar una VARIABLE por el selector. Son la
+        // puerta del usuario a los dos diálogos del host: sin ellas los comandos del núcleo existirían y
+        // no habría quien los pulsara, que es exactamente el botón-que-no-hace-nada que este tramo viene
+        // a quitar.
+        root.Children.Add(WrapWithRowActions(p, editor));
 
         // El valor evaluado con su copia (la fila que el escritorio pinta bajo el campo).
         if (p.HasExpression)
@@ -870,6 +983,140 @@ public sealed class NodeInspectorPanel : UserControl
 
         return root;
     }
+
+    /// <summary>
+    /// Los DIÁLOGOS DE FILA que este host sirve, con el prefijo de AutomationId de su botón. Es la mitad
+    /// positiva de la tabla de paridad: cada orden de fila del escritorio tiene que estar aquí —dibujada— o
+    /// en <see cref="DeclaredPendingRowActions"/>. La mitad negativa no es adorno: un portado a medias se ve
+    /// igual desde dentro que un portado completo, y el usuario sólo descubre el hueco cuando busca el botón.
+    /// </summary>
+    internal static readonly (string Command, string Anchor, string What)[] HostRowActions =
+    [
+        ("BrowsePathCommand", "ParamBrowse_", "el explorador de rutas del núcleo (el botón «…» de las filas de ruta)"),
+        ("OpenTextEditorCommand", "ParamEditor_", "el editor de texto y prompts expandido (el botón «✎» del valor largo)"),
+        ("OpenVariableCatalogCommand", "ParamVariable_", "el catálogo de variables del núcleo: el botón «{x}» abre DIRECTO su primera entrada, el catálogo completo"),
+        ("OpenMediaPresetManagerCommand", "ParamPreset_", "el gestor de presets del nodo (el botón «🎬» de la fila del preset): la orden pide la superficie que DECLARA el nodo y la sirve el catálogo de diálogos de este host sobre su view model portable"),
+    ];
+
+    /// <summary>
+    /// Los diálogos que el escritorio abre desde una fila de parámetro y este host NO sirve, cada uno con su
+    /// razón. Lo que no llega queda declarado, nunca fingido.
+    /// </summary>
+    internal static readonly (string Command, string Reason)[] DeclaredPendingRowActions =
+    [
+        ("OpenVariablePickerCommand", "el menú emergente de variables del escritorio (el botón «{x}» despliega un menú con el catálogo agrupado): este host no tiene menú emergente y su «{x}» abre directamente el CATÁLOGO COMPLETO, que es la primera entrada de aquél"),
+        ("OpenPasswordManagerCommand", "abre el gestor de contraseñas, una ventana que este host todavía no tiene"),
+    ];
+
+    /// <summary>
+    /// Las ACCIONES de una fila de parámetro: la caja (que ya viene construida) más los botones que
+    /// abren los diálogos del host. Se envuelve SÓLO cuando la fila tiene alguna acción, así que el
+    /// resto de filas quedan exactamente como estaban.
+    ///
+    /// <para><b>Qué acción lleva cada fila</b>, con los mismos flags del VM que usa el escritorio: el
+    /// EDITOR de texto va en el valor largo (<c>IsMultiLine</c>) y el botón de VARIABLES en las filas
+    /// cuyo valor es texto —el multilínea, la ruta con explorar y el texto estándar—. El selector de
+    /// variables del host abre el CATÁLOGO COMPLETO (el mismo diálogo al que el escritorio llega por el
+    /// menú rápido del botón «{x}»): este host todavía no tiene el menú emergente, y ese paso de menos
+    /// está declarado.</para>
+    /// </summary>
+    private FrameworkElement WrapWithRowActions(NodeParameterViewModel p, FrameworkElement editor)
+    {
+        bool wantsEditor = p.IsMultiLine;
+        bool wantsVariables = p.IsMultiLine || p.HasBrowseButton || RowValueIsPlainText(p);
+        bool wantsPresets = p.IsMediaPreset;
+        if (!wantsEditor && !wantsVariables && !wantsPresets)
+        {
+            return editor;
+        }
+
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Top };
+        if (wantsEditor)
+        {
+            actions.Children.Add(RowActionButton(
+                "ParamEditor_" + p.Key,
+                "✎",
+                "Uno_Dialog_OpenEditorToolTip",
+                "Editor de Texto y Prompts Expandido",
+                p.OpenTextEditorCommand));
+        }
+
+        if (wantsVariables)
+        {
+            actions.Children.Add(RowActionButton(
+                "ParamVariable_" + p.Key,
+                "{x}",
+                "Uno_Dialog_InsertVariableToolTip",
+                "Insertar variable dinámicamente ({x})",
+                p.OpenVariableCatalogCommand));
+        }
+
+        // El GESTOR DE PRESETS: la misma fila que el escritorio marca con su «Presets» (la del editor de
+        // presets de medios). La orden es la de la fila —la misma que el escritorio—, y la cumple la
+        // superficie que declara el nodo: el host no reimplementa el gestor, lo sirve.
+        if (wantsPresets)
+        {
+            actions.Children.Add(RowActionButton(
+                "ParamPreset_" + p.Key,
+                "🎬",
+                "Node_Param_OpenPresetManager",
+                "Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)",
+                p.OpenMediaPresetManagerCommand));
+        }
+
+        var grid = new Grid { ColumnSpacing = 4 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        Grid.SetColumn(editor, 0);
+        Grid.SetColumn(actions, 1);
+        grid.Children.Add(editor);
+        grid.Children.Add(actions);
+        return grid;
+    }
+
+    /// <summary>
+    /// ¿La fila es de texto libre? Es el mismo resto del selector del escritorio: ni casilla, ni
+    /// deslizador, ni desplegable, ni ruta con explorar. Sólo esas filas llevan el botón de variables.
+    /// </summary>
+    private static bool RowValueIsPlainText(NodeParameterViewModel p) =>
+        !p.IsToggle && !p.IsSlider && !p.IsDropdown && !p.HasBrowseButton && !p.IsMultiLine;
+
+    /// <summary>Un botón de la fila: ejecuta el comando del VM y se localiza en caliente.</summary>
+    private Button RowActionButton(string automationId, string glyph, string tipKey, string tipFallback,
+        System.Windows.Input.ICommand command)
+    {
+        var button = new Button
+        {
+            Content = glyph,
+            Padding = new Thickness(8, 2, 8, 2),
+            FontSize = 11,
+            VerticalAlignment = VerticalAlignment.Top,
+        };
+        button.Click += (_, _) => command.Execute(null);
+        Anchor(automationId, button);
+
+        ToolTipService.SetToolTip(button, LocalizationManager.Instance.GetString(tipKey, tipFallback));
+        return button;
+    }
+
+    /// <summary>
+    /// Ancla un control de una fila: le pone su AutomationId Y lo deja en la tabla, que es la que
+    /// permite encontrarlo desde fuera (el driver externo por UIA y la sonda en proceso) sin descifrar
+    /// el árbol.
+    /// </summary>
+    private void Anchor(string automationId, Control control)
+    {
+        AutomationProperties.SetAutomationId(control, automationId);
+        _paramControls[automationId] = control;
+    }
+
+    /// <summary>El control de una fila de parámetro por su AutomationId (null si esa fila no lo tiene).</summary>
+    internal Control? ParameterControl(string automationId) =>
+        _paramControls.TryGetValue(automationId, out Control? control) ? control : null;
+
+    /// <summary>Los AutomationId de las filas materializadas AHORA, en orden (el censo que lee la sonda).</summary>
+    internal IReadOnlyList<string> ParameterControlIds =>
+        [.. _paramControls.Keys.OrderBy(id => id, StringComparer.Ordinal)];
 
     // ── Telemetría: el bloque que el escritorio muestra en su pestaña de telemetría ──
 

@@ -1,0 +1,439 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.DataSetDesignerBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:platform="using:FileFlow.App.Uno.Platform"
+    xmlns:sdk="using:FileFlow.Sdk.SyntheticData"
+    xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels">
+
+  <!--
+    El DISEÑADOR DE DATASETS SINTÉTICOS del host Uno: la misma superficie que la ventana del escritorio
+    (`FileFlow.Plugin.FileSystem/UI/Views/SyntheticDataSetDesignerWindow.axaml`), sobre el MISMO
+    `SyntheticDataSetDesignerViewModel` portable que vive en el plugin.
+
+    La frontera que este cuerpo cruza: esa ventana la monta el PROPIO plugin con el toolkit del escritorio, y
+    un host WinUI no puede montar una ventana ajena. Lo que sí se comparte es la LÓGICA —el view model
+    portable, su almacén y su parser—, así que el host pinta aquí su propia vista sobre ella. Ni una regla del
+    diseñador se reimplementa: cada botón es un comando del view model y cada dato, una de sus propiedades.
+
+    La clave del catálogo es `DialogKeys.DataSetDesigner`, la que declara el nodo de datos sintéticos por el
+    contrato `INodeDialogSurfaceProvider` del SDK: el nodo dice QUÉ diálogo quiere y QUÉ contiene, y cada host
+    lo sirve a su manera.
+  -->
+  <UserControl.Resources>
+    <platform:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    <platform:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid x:Name="DataSetRoot" MinWidth="960" MaxWidth="1080"
+        AutomationProperties.AutomationId="DataSetDesignerBody"
+        RowSpacing="8">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Cabecera: título, explicación y métricas del dataset elegido -->
+    <StackPanel Grid.Row="0" Spacing="2">
+      <TextBlock x:Name="HeaderTitle" FontSize="14" FontWeight="Bold"
+                 Foreground="{StaticResource CanvasTextBrush}" />
+      <TextBlock x:Name="HeaderDesc" FontSize="11" TextWrapping="Wrap"
+                 Foreground="{StaticResource CanvasSecondaryBrush}" />
+    </StackPanel>
+
+    <!-- Cuerpo: catálogo | árbol/DSL/JSON | inspector del nodo seleccionado -->
+    <Grid Grid.Row="1" ColumnSpacing="10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="300" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="270" />
+      </Grid.ColumnDefinitions>
+
+      <!-- ─────────────────────────── Catálogo de datasets ─────────────────────────── -->
+      <Border Grid.Column="0" Background="{StaticResource CanvasCardBrush}" CornerRadius="6" Padding="10"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+        <Grid RowSpacing="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <TextBlock Grid.Row="0" x:Name="CatalogTitle" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasTextBrush}" />
+
+          <TextBox Grid.Row="1" x:Name="DataSetSearchBox" FontSize="12"
+                   Text="{Binding SearchText, Mode=TwoWay}"
+                   AutomationProperties.AutomationId="DataSetSearchBox" />
+
+          <Grid Grid.Row="2">
+            <ListView x:Name="DataSetList" ItemsSource="{Binding FilteredDataSets}"
+                      SelectedItem="{Binding SelectedDataSet, Mode=TwoWay}"
+                      AutomationProperties.AutomationId="DataSetList"
+                      SelectionMode="Single">
+              <ListView.ItemTemplate>
+                <DataTemplate x:DataType="sdk:SyntheticDataSet">
+                  <StackPanel Spacing="1" Padding="0,3"
+                              AutomationProperties.Name="{Binding Name}">
+                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Category}" FontSize="10"
+                               Foreground="{StaticResource CanvasMutedBrush}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+
+            <TextBlock x:Name="DataSetEmpty" FontSize="11" TextWrapping="Wrap" Margin="4"
+                       VerticalAlignment="Top"
+                       Foreground="{StaticResource CanvasMutedBrush}"
+                       Visibility="{Binding HasFilteredDataSets, Converter={StaticResource InverseBoolToVisibility}}"
+                       AutomationProperties.AutomationId="DataSetEmpty" />
+          </Grid>
+
+          <!-- Métricas del dataset elegido: las cuenta el view model, no la vista -->
+          <Grid Grid.Row="3" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Spacing="1">
+              <TextBlock x:Name="MetricsFilesLabel" FontSize="9"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBlock Text="{Binding TotalFiles}" FontSize="12" FontWeight="SemiBold"
+                         AutomationProperties.AutomationId="DataSetMetricFiles" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="1">
+              <TextBlock x:Name="MetricsFoldersLabel" FontSize="9"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBlock Text="{Binding TotalDirectories}" FontSize="12" FontWeight="SemiBold"
+                         AutomationProperties.AutomationId="DataSetMetricFolders" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="1">
+              <TextBlock x:Name="MetricsSizeLabel" FontSize="9"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBlock Text="{Binding TotalSizeFormatted}" FontSize="12" FontWeight="SemiBold"
+                         AutomationProperties.AutomationId="DataSetMetricSize" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Propiedades del dataset -->
+          <StackPanel Grid.Row="4" Spacing="6">
+            <TextBlock x:Name="PropertiesTitle" FontSize="11" FontWeight="SemiBold"
+                       Foreground="{StaticResource CanvasTextBrush}" />
+            <StackPanel Spacing="2">
+              <TextBlock x:Name="NameLabel" FontSize="10"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBox x:Name="DataSetNameBox" FontSize="12"
+                       Text="{Binding DataSetName, Mode=TwoWay}"
+                       AutomationProperties.AutomationId="DataSetNameBox" />
+            </StackPanel>
+            <StackPanel Spacing="2">
+              <TextBlock x:Name="CategoryLabel" FontSize="10"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <ComboBox x:Name="DataSetCategoryCombo" HorizontalAlignment="Stretch" FontSize="12"
+                        ItemsSource="{Binding AvailableCategories}"
+                        SelectedItem="{Binding DataSetCategory, Mode=TwoWay}"
+                        AutomationProperties.AutomationId="DataSetCategoryCombo" />
+            </StackPanel>
+            <StackPanel Spacing="2">
+              <TextBlock x:Name="DescriptionLabel" FontSize="10"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBox x:Name="DataSetDescriptionBox" FontSize="12" TextWrapping="Wrap" Height="52"
+                       AcceptsReturn="True"
+                       Text="{Binding DataSetDescription, Mode=TwoWay}"
+                       AutomationProperties.AutomationId="DataSetDescriptionBox" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Órdenes del catálogo: comandos del view model portable -->
+          <StackPanel Grid.Row="5" Spacing="5">
+            <Grid ColumnSpacing="5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Button Grid.Column="0" x:Name="NewButton" Padding="8,4"
+                      Command="{Binding NewDataSetCommand}"
+                      AutomationProperties.AutomationId="DataSetNewButton">
+                <TextBlock x:Name="NewLabel" FontSize="11" />
+              </Button>
+              <Button Grid.Column="1" x:Name="SaveButton" Padding="8,4"
+                      Command="{Binding SaveCommand}"
+                      AutomationProperties.AutomationId="DataSetSaveButton">
+                <TextBlock x:Name="SaveLabel" FontSize="11" />
+              </Button>
+              <Button Grid.Column="2" x:Name="DuplicateButton" Padding="8,4"
+                      Command="{Binding DuplicateDataSetCommand}"
+                      AutomationProperties.AutomationId="DataSetDuplicateButton">
+                <TextBlock x:Name="DuplicateLabel" FontSize="11" />
+              </Button>
+            </Grid>
+            <Grid ColumnSpacing="5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Button Grid.Column="0" x:Name="DeleteButton" Padding="8,4"
+                      Command="{Binding DeleteDataSetCommand}"
+                      AutomationProperties.AutomationId="DataSetDeleteButton">
+                <TextBlock x:Name="DeleteLabel" FontSize="11" />
+              </Button>
+              <Button Grid.Column="1" x:Name="ImportButton" Padding="8,4"
+                      Command="{Binding ImportCommand}"
+                      AutomationProperties.AutomationId="DataSetImportButton">
+                <TextBlock x:Name="ImportLabel" FontSize="11" />
+              </Button>
+              <Button Grid.Column="2" x:Name="ExportButton" Padding="8,4"
+                      Command="{Binding ExportCommand}"
+                      AutomationProperties.AutomationId="DataSetExportButton">
+                <TextBlock x:Name="ExportLabel" FontSize="11" />
+              </Button>
+            </Grid>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ─────────────── Árbol jerárquico / DSL / JSON del dataset elegido ─────────────── -->
+      <Grid Grid.Column="1" RowSpacing="6">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
+          <RadioButton x:Name="TabTreeButton" GroupName="DataSetTabs" IsChecked="True" FontSize="11"
+                       Click="OnTabClicked" Tag="tree"
+                       AutomationProperties.AutomationId="DataSetTabTree">
+            <TextBlock x:Name="TabTreeLabel" FontSize="11" />
+          </RadioButton>
+          <RadioButton x:Name="TabDslButton" GroupName="DataSetTabs" FontSize="11"
+                       Click="OnTabClicked" Tag="dsl"
+                       AutomationProperties.AutomationId="DataSetTabDsl">
+            <TextBlock x:Name="TabDslLabel" FontSize="11" />
+          </RadioButton>
+          <RadioButton x:Name="TabJsonButton" GroupName="DataSetTabs" FontSize="11"
+                       Click="OnTabClicked" Tag="json"
+                       AutomationProperties.AutomationId="DataSetTabJson">
+            <TextBlock x:Name="TabJsonLabel" FontSize="11" />
+          </RadioButton>
+        </StackPanel>
+
+        <!-- Pestaña 1: el árbol editable -->
+        <Border Grid.Row="1" x:Name="TreePane" Background="{StaticResource CanvasCardBrush}"
+                CornerRadius="6" Padding="10"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+          <Grid RowSpacing="6">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="5">
+              <Button x:Name="AddFileButton" Padding="8,4" Command="{Binding AddFileCommand}"
+                      AutomationProperties.AutomationId="DataSetAddFileButton">
+                <TextBlock x:Name="AddFileLabel" FontSize="11" />
+              </Button>
+              <Button x:Name="AddFolderButton" Padding="8,4" Command="{Binding AddFolderCommand}"
+                      AutomationProperties.AutomationId="DataSetAddFolderButton">
+                <TextBlock x:Name="AddFolderLabel" FontSize="11" />
+              </Button>
+              <Button x:Name="AddArchiveButton" Padding="8,4" Command="{Binding AddArchiveToTreeCommand}"
+                      AutomationProperties.AutomationId="DataSetAddArchiveButton">
+                <TextBlock x:Name="AddArchiveLabel" FontSize="11" />
+              </Button>
+              <Button x:Name="AddArchiveEntryButton" Padding="8,4" Command="{Binding AddArchiveEntryCommand}"
+                      AutomationProperties.AutomationId="DataSetAddArchiveEntryButton">
+                <TextBlock x:Name="AddArchiveEntryLabel" FontSize="11" />
+              </Button>
+              <Button x:Name="RemoveNodeButton" Padding="8,4" Command="{Binding RemoveItemCommand}"
+                      AutomationProperties.AutomationId="DataSetRemoveNodeButton">
+                <TextBlock x:Name="RemoveNodeLabel" FontSize="11" />
+              </Button>
+              <Button x:Name="ExpandAllButton" Padding="8,4" Command="{Binding ExpandAllTreeCommand}"
+                      AutomationProperties.AutomationId="DataSetExpandAllButton">
+                <TextBlock Text="＋" FontSize="11" />
+              </Button>
+              <Button x:Name="CollapseAllButton" Padding="8,4" Command="{Binding CollapseAllTreeCommand}"
+                      AutomationProperties.AutomationId="DataSetCollapseAllButton">
+                <TextBlock Text="－" FontSize="11" />
+              </Button>
+            </StackPanel>
+
+            <Grid Grid.Row="1">
+              <!-- La SELECCIÓN no se liga en dos sentidos: lo que devuelve `SelectedItem` de un TreeView con
+                   plantilla es un dato nativo, y escribirlo en una propiedad tipada del view model revienta el
+                   marshalling (medido: violación de acceso dentro del Invoke del peer). Se traduce en el
+                   code-behind, que es donde se sabe desenvolver lo que llega. -->
+              <TreeView x:Name="DataSetTree" ItemsSource="{Binding RootTreeNodes}"
+                        SelectionChanged="OnTreeSelectionChanged"
+                        AutomationProperties.AutomationId="DataSetTree">
+                <TreeView.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SyntheticTreeNodeItem">
+                    <TreeViewItem ItemsSource="{Binding Children}"
+                                  IsExpanded="{Binding IsExpanded, Mode=OneWay}">
+                      <StackPanel Orientation="Horizontal" Spacing="6"
+                                  AutomationProperties.Name="{Binding Name}">
+                        <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding BadgeText}" FontSize="10"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource CanvasMutedBrush}" />
+                      </StackPanel>
+                    </TreeViewItem>
+                  </DataTemplate>
+                </TreeView.ItemTemplate>
+              </TreeView>
+
+              <TextBlock x:Name="EmptyTree" FontSize="11" TextWrapping="Wrap" Margin="6" VerticalAlignment="Top"
+                         Foreground="{StaticResource CanvasMutedBrush}"
+                         Visibility="{Binding HasTreeNodes, Converter={StaticResource InverseBoolToVisibility}}"
+                         AutomationProperties.AutomationId="DataSetEmptyTree" />
+            </Grid>
+          </Grid>
+        </Border>
+
+        <!-- Pestaña 2: el DSL del árbol -->
+        <Border Grid.Row="1" x:Name="DslPane" Background="{StaticResource CanvasCardBrush}"
+                CornerRadius="6" Padding="10" Visibility="Collapsed"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+          <Grid RowSpacing="6">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBox Grid.Row="0" x:Name="DataSetDslBox" FontFamily="Consolas" FontSize="12"
+                     AcceptsReturn="True" TextWrapping="NoWrap"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     Text="{Binding DslText, Mode=TwoWay}"
+                     AutomationProperties.AutomationId="DataSetDslBox" />
+            <Button Grid.Row="1" x:Name="ApplyDslButton" Padding="10,5" HorizontalAlignment="Left"
+                    Command="{Binding ApplyDslToItemsCommand}"
+                    AutomationProperties.AutomationId="DataSetApplyDslButton">
+              <TextBlock x:Name="ApplyDslLabel" FontSize="11" />
+            </Button>
+          </Grid>
+        </Border>
+
+        <!-- Pestaña 3: el JSON del dataset -->
+        <Border Grid.Row="1" x:Name="JsonPane" Background="{StaticResource CanvasCardBrush}"
+                CornerRadius="6" Padding="10" Visibility="Collapsed"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+          <Grid RowSpacing="6">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBox Grid.Row="0" x:Name="DataSetJsonBox" FontFamily="Consolas" FontSize="12"
+                     AcceptsReturn="True" TextWrapping="NoWrap"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                     Text="{Binding JsonText, Mode=TwoWay}"
+                     AutomationProperties.AutomationId="DataSetJsonBox" />
+            <Button Grid.Row="1" x:Name="ApplyJsonButton" Padding="10,5" HorizontalAlignment="Left"
+                    Command="{Binding ApplyJsonToItemsCommand}"
+                    AutomationProperties.AutomationId="DataSetApplyJsonButton">
+              <TextBlock x:Name="ApplyJsonLabel" FontSize="11" />
+            </Button>
+          </Grid>
+        </Border>
+      </Grid>
+
+      <!-- ─────────────────────── Inspector del nodo seleccionado ─────────────────────── -->
+      <Border Grid.Column="2" Background="{StaticResource CanvasCardBrush}" CornerRadius="6" Padding="10"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+        <Grid RowSpacing="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <TextBlock Grid.Row="0" x:Name="InspectorTitle" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasTextBrush}" />
+
+          <StackPanel Grid.Row="1" Spacing="4"
+                      Visibility="{Binding HasSelectedNode, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Spacing="2">
+              <TextBlock x:Name="NodeNameLabel" FontSize="10"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBlock x:Name="NodeNameText" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap"
+                         Text="{Binding SelectedTreeNode.Name}"
+                         AutomationProperties.AutomationId="DataSetNodeName" />
+            </StackPanel>
+            <StackPanel Spacing="2">
+              <TextBlock x:Name="NodeSizeLabel" FontSize="10"
+                         Foreground="{StaticResource CanvasMutedBrush}" />
+              <TextBlock x:Name="NodeSizeText" FontSize="11"
+                         Text="{Binding SelectedTreeNode.SizeFormatted}"
+                         AutomationProperties.AutomationId="DataSetNodeSize" />
+            </StackPanel>
+            <TextBlock x:Name="NodePathText" FontSize="10" TextWrapping="Wrap"
+                       Foreground="{StaticResource CanvasMutedBrush}"
+                       Text="{Binding SelectedTreeNode.RelativePath}"
+                       AutomationProperties.AutomationId="DataSetNodePath" />
+          </StackPanel>
+
+          <TextBlock Grid.Row="1" x:Name="InspectorEmpty" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{StaticResource CanvasMutedBrush}"
+                     Visibility="{Binding HasSelectedNode, Converter={StaticResource InverseBoolToVisibility}}"
+                     AutomationProperties.AutomationId="DataSetInspectorEmpty" />
+
+          <TextBlock Grid.Row="2" x:Name="ArchiveEntriesTitle" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource CanvasTextBrush}"
+                     Visibility="{Binding CanAddArchiveEntry, Converter={StaticResource BoolToVisibility}}" />
+
+          <ListView Grid.Row="3" x:Name="ArchiveEntryList" Margin="0,2,0,0"
+                    ItemsSource="{Binding SelectedTreeNode.SimulatedArchiveEntries}"
+                    Visibility="{Binding CanAddArchiveEntry, Converter={StaticResource BoolToVisibility}}"
+                    AutomationProperties.AutomationId="DataSetArchiveEntryList">
+            <ListView.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnSpacing="6" Padding="0,2">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" Text="{Binding InnerPath}" FontSize="11"
+                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                             AutomationProperties.Name="{Binding InnerPath}" />
+                  <Button Grid.Column="1" Padding="6,2"
+                          Command="{Binding DataContext.RemoveArchiveEntryCommand, ElementName=DataSetRoot}"
+                          CommandParameter="{Binding}"
+                          AutomationProperties.AutomationId="DataSetRemoveArchiveEntryButton">
+                    <TextBlock Text="🗑" FontSize="10" />
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ListView.ItemTemplate>
+          </ListView>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- Pie: el mensaje de estado del view model y el cierre -->
+    <Grid Grid.Row="2" ColumnSpacing="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock Grid.Column="0" x:Name="StatusText" FontSize="11" TextWrapping="Wrap"
+                 VerticalAlignment="Center"
+                 Foreground="{StaticResource CanvasSecondaryBrush}"
+                 Text="{Binding StatusMessage}"
+                 AutomationProperties.AutomationId="DataSetStatusText" />
+      <Button Grid.Column="1" x:Name="DesignerCloseButton" Click="OnCloseClicked" Padding="14,5"
+              AutomationProperties.AutomationId="DataSetCloseButton">
+        <TextBlock x:Name="CloseLabel" FontSize="12" />
+      </Button>
+    </Grid>
+  </Grid>
+</UserControl>

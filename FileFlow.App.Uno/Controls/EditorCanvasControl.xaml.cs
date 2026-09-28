@@ -60,6 +60,110 @@ public sealed partial class EditorCanvasControl : UserControl
         // el arranque y nodos añadidos en caliente.
         NodesHost.LayoutUpdated += OnNodesHostLayoutUpdated;
         KeyDown += OnKeyDown;
+
+        // El rastro del foco (hito 252): con FILEFLOW_CANVAS_TRACE=1, una sesión manual deja escrito quién
+        // tiene el foco al clicar y qué teclas llegan — la vía para medir un defecto de foco sin puntero
+        // inyectable. Apagado por defecto: sin la variable no se toca el disco.
+        GotFocus += (_, _) => CanvasFocusTrace.Write($"GotFocus  enfocado={DescribeFocused()}");
+        LostFocus += (_, _) =>
+        {
+            // El ladrón, con ficha (hito 253): si se lleva el foco un elemento fuera del árbol visual —el
+            // caso medido, con su GotFocus sin burbujear a la ventana— lo único que lo identifica es su
+            // estado (cargado, tamaño, padre LÓGICO, contenido), así que se imprime entero y se re-lee un
+            // tick después, cuando un elemento recién creado puede haberse enganchado ya al árbol.
+            CanvasFocusTrace.Write($"LostFocus enfocado={DescribeThief()} | {DescribeOpenPopups()}");
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                CanvasFocusTrace.Write($"  perdida +tick enfocado={DescribeThief()} | {DescribeOpenPopups()}");
+
+                // La otra mitad del arreglo del 253: si el que se lo llevó es ajeno al editor y el clic es
+                // reciente, el teclado vuelve. Se hace en el tick siguiente a propósito: el envoltorio del
+                // framework necesita su pase de layout para quedar como dueño, y reclamar antes sería una
+                // carrera que a veces se perdería.
+                ReclaimKeyboardIfStolenByFramework();
+            });
+        };
+    }
+
+    /// <summary>Quién tiene el foco, en palabras (tipo, nombre y cadena de ancestros), para el rastro del
+    /// hito 252. La cadena es lo que identifica al ladrón cuando el que recibe el foco es anónimo (un
+    /// <c>ScrollViewer</c> del inspector): con ella el rastro dice a qué panel pertenece.</summary>
+    private string DescribeFocused() => CanvasFocusTrace.Describe(
+        Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot), ancestors: 5);
+
+    /// <summary>
+    /// La ficha del elemento que tiene el foco, para identificarlo cuando NO está en el árbol visual: tipo y
+    /// nombre, si está cargado, lo que mide, su padre LÓGICO (que existe aunque el visual no) y, si es un
+    /// <c>ScrollViewer</c>, qué lleva dentro y si ese contenido está cargado. Nació en el hito 253, porque
+    /// «un <c>ScrollViewer</c> anónimo» no es una identificación.
+    /// </summary>
+    private string DescribeThief()
+    {
+        object? focused = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot);
+        if (focused is not FrameworkElement element)
+        {
+            return CanvasFocusTrace.Describe(focused, ancestors: 3);
+        }
+
+        var parts = new List<string>
+        {
+            $"{element.GetType().Name}#{element.Name}",
+            $"cargado={element.IsLoaded}",
+            $"mide={element.ActualWidth:F0}x{element.ActualHeight:F0}",
+            $"padreLogico={CanvasFocusTrace.Describe(element.Parent, ancestors: 2)}",
+            element.XamlRoot is null ? "sin XamlRoot" : "con XamlRoot"
+        };
+
+        parts.Add("datacontext=" + DescribeDataContext(element));
+
+        if (element is ScrollViewer scroll)
+        {
+            parts.Add("contenido=" + CanvasFocusTrace.Describe(scroll.Content, ancestors: 2));
+            parts.Add("contenidoCargado="
+                + (scroll.Content is FrameworkElement inner ? inner.IsLoaded.ToString() : "n/a"));
+
+            // Un envoltorio de scroll suele llevar dentro un Border con el panel de verdad: el tipo y el
+            // DataContext de su HIJO es lo que dice a qué parte de la aplicación pertenece el ladrón.
+            if (scroll.Content is FrameworkElement wrapper)
+            {
+                parts.Add("hijo=" + CanvasFocusTrace.Describe(
+                    wrapper is ContentControl cc ? cc.Content : null, ancestors: 1));
+                parts.Add("hijoDatacontext=" + DescribeDataContext(wrapper));
+            }
+        }
+
+        return string.Join(" | ", parts);
+    }
+
+    /// <summary>El tipo del DataContext de un elemento: lo que ata un ladrón anónimo a su panel.</summary>
+    private static string DescribeDataContext(FrameworkElement? element) =>
+        element?.DataContext?.GetType().Name ?? "sin DataContext";
+
+    /// <summary>
+    /// Los popups abiertos en este momento, con su contenido y su cadena. Existe por el ladrón del foco del
+    /// 252: el <c>ScrollViewer</c> que se lleva el foco ~0,5 s después del clic NO tiene ancestros en el
+    /// árbol visual de la ventana (por eso el rastro sólo imprime su tipo), y eso es la firma de un popup —
+    /// un <c>ToolTip</c>, por ejemplo. Sin esta línea el ladrón queda como «un ScrollViewer anónimo».
+    /// </summary>
+    private string DescribeOpenPopups()
+    {
+        try
+        {
+            var popups = VisualTreeHelper.GetOpenPopupsForXamlRoot(XamlRoot);
+            if (popups.Count == 0)
+            {
+                return "popups=ninguno";
+            }
+
+            var described = popups.Select(p => p.Child is null
+                ? "sin contenido"
+                : $"{p.Child.GetType().Name}[{CanvasFocusTrace.Describe(p.Child, ancestors: 4)}]");
+            return "popups=" + string.Join(" + ", described);
+        }
+        catch (Exception ex)
+        {
+            return "popups=no se pudo consultar (" + ex.GetType().Name + ")";
+        }
     }
 
     /// <summary>Queda al menos una reconstrucción cuyos contenedores aún no recibieron su posición.</summary>
@@ -290,6 +394,72 @@ public sealed partial class EditorCanvasControl : UserControl
         target.IsSelected = false;
 
         return (nodesBefore, nodesAfterDelete, nodesAfterUndo, selectionStuck, glowContainerExists);
+    }
+
+    /// <summary>
+    /// El punto de la RAÍZ que espera <see cref="VisualTreeHelper.FindElementsInHostCoordinates"/>: el
+    /// «host» de esa API es la raíz del contenido, NO el subárbol del lienzo. Pasarle el punto relativo al
+    /// lienzo desplazaba la sonda la posición del control en la ventana —medido en el hito 247 con puntero
+    /// real: (280, 41), la columna del cajón y la barra superior— y con ella el área de clic de TODAS las
+    /// tarjetas. El cruce se hace en UN solo sitio, como el resto de cruces de puntos del host.
+    /// </summary>
+    private Windows.Foundation.Point PointInHostSpace(Windows.Foundation.Point canvasPoint)
+    {
+        var toRoot = RootGrid.TransformToVisual(null);
+        return toRoot is null ? canvasPoint : toRoot.TransformPoint(canvasPoint);
+    }
+
+    /// <summary>
+    /// Sonda del ÁREA DE CLIC (hito 249): para cada tarjeta materializada, el centro de su caja DIBUJADA
+    /// —medido del árbol visual, en el espacio del lienzo— entra por el MISMO <see cref="CardAt"/> que usan
+    /// los handlers, y tiene que resolver ESA tarjeta. Es el defecto que ni la suite ni las sondas veían,
+    /// porque el hit-testing vive en el árbol visual: la sesión con puntero real del hito 247 lo midió como
+    /// un desplazamiento del área de clic igual a la posición del lienzo en la ventana, y esta sonda es la
+    /// que lo caza sin puntero.
+    /// </summary>
+    /// <returns>(tarjetas medidas, coincidencias, detalle legible)</returns>
+    internal (int Measured, int Matched, string Detail) ProbeHitAreas()
+    {
+        // Los contenedores pueden estar vacíos si un Rebuild acaba de ocurrir y no ha pasado layout:
+        // forzarlo los rellena (la cura que ya usa la sonda de conexión).
+        UpdateLayout();
+        ApplyAllNodePositions();
+
+        var origin = PointInHostSpace(new Windows.Foundation.Point(0, 0));
+        int measured = 0;
+        int matched = 0;
+        string firstMiss = "";
+
+        foreach (var pair in _containers)
+        {
+            measured++;
+
+            var centre = TransformToVisualCenter(pair.Value, RootGrid);
+            var hit = CardAt(centre);
+            if (ReferenceEquals(hit, pair.Key))
+            {
+                matched++;
+                continue;
+            }
+
+            if (firstMiss.Length == 0)
+            {
+                string what = hit is null
+                    ? "nada (fondo)"
+                    : $"OTRA tarjeta (#{_editor?.Nodes.IndexOf(hit.Node) ?? -1})";
+                firstMiss = $"el centro dibujado ({centre.X:F0},{centre.Y:F0}) resolvió {what}; "
+                          + $"el lienzo está en ({origin.X:F0},{origin.Y:F0}) de la raíz";
+            }
+        }
+
+        string detail = measured == 0
+            ? "sin tarjetas materializadas"
+            : firstMiss.Length > 0
+                ? firstMiss
+                : $"{matched}/{measured} tarjetas resuelven por su centro dibujado "
+                  + $"(el lienzo está en ({origin.X:F0},{origin.Y:F0}) de la raíz)";
+
+        return (measured, matched, detail);
     }
 
     /// <summary>
@@ -559,17 +729,30 @@ public sealed partial class EditorCanvasControl : UserControl
     /// Sonda de la fase 3.5: cambiar el tema por la API del núcleo (SetThemeById) tiene que
     /// re-tematizar el lienzo EN CALIENTE — el fondo del plano y la cara de una tarjeta cambian de
     /// color porque los pinceles republicados por UnoThemeHost llegan a los ThemeResource ya
-    /// evaluados del XAML. Restauración: el dark_fluent vuelve a estar activo al salir.
+    /// evaluados del XAML. La vuelta devuelve el tema que estaba ACTIVO al entrar.
+    ///
+    /// <para><b>El tema de la prueba se elige por ser distinto del activo, y la vuelta devuelve el de la
+    /// entrada</b>: medido en el playtest del 255, con el tema GUARDADO del usuario en claro
+    /// (<c>pastel_spring</c>, <c>#FFF8FA</c>) esta sonda cantaba dos fallos —el tema de prueba era el mismo
+    /// que ya estaba puesto y la «restauración» comparaba contra un <c>dark_fluent</c> fijo que no era el de
+    /// la entrada—. La sonda medía su propia suposición (que la aplicación arranca oscura), que era cierta
+    /// sólo mientras el arranque IGNORABA el tema guardado: el defecto que la superficie de ajustes mide.</para>
     /// </summary>
-    internal (bool BackgroundChanged, bool CardChanged, bool VariantChanged, bool Restored) ProbeThemeRepublish()
+    internal (bool BackgroundChanged, bool CardChanged, bool VariantChanged, bool Restored, string Colors) ProbeThemeRepublish()
     {
         if (_editor is null)
         {
-            return (false, false, false, false);
+            return (false, false, false, false, "sin editor");
         }
 
         var themeManager = FileFlow.App.Services.ThemeManager.Instance;
         var original = themeManager.ActiveThemeDefinition;
+
+        // El tema de la prueba: el CONTRARIO del que está activo (y el de la entrada, para volver a él).
+        bool probeIsDark = !(original?.IsDark ?? themeManager.IsCurrentThemeDark);
+        string probeThemeId = probeIsDark ? "dark_fluent" : "light_studio";
+        string entryThemeId = original?.Id ?? themeManager.CurrentThemeId;
+
         try
         {
             Windows.UI.Color ColorOf(Brush? brush) => brush is SolidColorBrush solid
@@ -579,7 +762,7 @@ public sealed partial class EditorCanvasControl : UserControl
             var backgroundBefore = ColorOf(RootGrid.Background);
             var cardBefore = ColorOf(FindFirstCardBodyBrush());
 
-            themeManager.SetThemeById("light_studio");
+            themeManager.SetThemeById(probeThemeId);
 
             var backgroundAfter = ColorOf(RootGrid.Background);
             var cardAfter = ColorOf(FindFirstCardBodyBrush());
@@ -588,13 +771,22 @@ public sealed partial class EditorCanvasControl : UserControl
             bool cardChanged = cardAfter != cardBefore;
 
             // La variante publicada por el host llega a este control HEREDADA (ActualTheme).
-            bool variantChanged = ActualTheme == ElementTheme.Light;
+            bool variantChanged = ActualTheme == (probeIsDark ? ElementTheme.Dark : ElementTheme.Light);
 
-            themeManager.SetThemeById("dark_fluent");
+            themeManager.SetThemeById(entryThemeId);
             var backgroundRestored = ColorOf(RootGrid.Background);
 
+            // Los COLORES crudos de la medición: sin ellos, un FALLO de esta sonda dice que algo no cambió
+            // y deja sin saber QUÉ valor había (la lección del renglón crudo de la sonda de cables: el
+            // detalle es lo que separa «no cambió» de «cambió a lo mismo»).
+            static string Hex(Windows.UI.Color color) =>
+                $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+            string colors = "fondo " + Hex(backgroundBefore) + "->" + Hex(backgroundAfter)
+                + " tarjeta " + Hex(cardBefore) + "->" + Hex(cardAfter)
+                + " restaurado " + Hex(backgroundRestored) + " contra " + Hex(backgroundBefore);
+
             return (backgroundChanged, cardChanged, variantChanged,
-                backgroundRestored == backgroundBefore);
+                backgroundRestored == backgroundBefore, colors);
         }
         finally
         {
@@ -766,43 +958,49 @@ public sealed partial class EditorCanvasControl : UserControl
                     connection.Target.NodeOwner.Location.X,
                     connection.Target.NodeOwner.Location.Y + 40);
 
-            var curve = ConnectionGeometry.BezierControlPoints(source, target, ConnectionGeometry.DefaultSpacing);
+            var wire = ConnectionGeometry.BuildWire(source, target);
 
             var path = new Microsoft.UI.Xaml.Shapes.Path
             {
                 Stroke = CanvasBrush("CanvasWireBrush"),
                 StrokeThickness = 3.5,
-                Data = CreateBezierGeometry(curve)
+                Data = CreateWireGeometry(wire)
             };
 
             WireLayer.Children.Add(path);
         }
     }
 
-    private static Geometry CreateBezierGeometry(ConnectionGeometry.CubicBezier curve)
+    /// <summary>
+    /// La figura del cable, a partir del trazado compartido (<see cref="ConnectionGeometry.WirePath"/>):
+    /// <b>una sola Bézier</b>, del ancla de salida al ancla de destino, con los dos cuellos como puntos de
+    /// control.
+    ///
+    /// <para><b>Los defectos que esto cierra</b>, los dos medidos con la sonda <c>ProbeWireTracking</c> y vistos
+    /// por el usuario en la app: la primera versión abría la figura en el primer punto de control, así que el
+    /// cable quedaba <b>separado del socket</b> y, con las anclas cerca, salía invertido (el rulo con forma de
+    /// «2»); la segunda añadió los dos tramos rectos del trazo del control de Nodify —que existen porque allí la
+    /// Bézier <i>sí</i> sale retirada— y el resultado se leía como una <b>Z</b>: dos bajíos rectos y una ese
+    /// apretada en medio. Con la curva nacida en el ancla no hace falta ningún tramo recto: el cable sale del
+    /// socket ya curvando.</para>
+    /// </summary>
+    private static Geometry CreateWireGeometry(ConnectionGeometry.WirePath wire)
     {
-        var geometry = new PathGeometry
+        var figure = new PathFigure
         {
-            Figures =
-            {
-                new PathFigure
-                {
-                    StartPoint = ToWindowsPoint(curve.P0),
-                    IsFilled = false,
-                    Segments =
-                    {
-                        new BezierSegment
-                        {
-                            Point1 = ToWindowsPoint(curve.P1),
-                            Point2 = ToWindowsPoint(curve.P2),
-                            Point3 = ToWindowsPoint(curve.P3)
-                        }
-                    }
-                }
-            }
+            StartPoint = ToWindowsPoint(wire.Source),
+            IsFilled = false,
+            IsClosed = false
         };
 
-        return geometry;
+        figure.Segments.Add(new BezierSegment
+        {
+            Point1 = ToWindowsPoint(wire.Exit),
+            Point2 = ToWindowsPoint(wire.Arrival),
+            Point3 = ToWindowsPoint(wire.Target)
+        });
+
+        return new PathGeometry { Figures = { figure } };
     }
 
     /// <summary>
@@ -853,25 +1051,653 @@ public sealed partial class EditorCanvasControl : UserControl
     /// <summary>
     /// La tarjeta bajo el puntero, o null si el punto cae en el fondo (el hit-testing de WinUI respeta
     /// IsHitTestVisible y la geometría real del árbol).
+    ///
+    /// <para><b>El espacio importa</b>: el punto entra en el espacio del LIENZO —el mismo de los handlers
+    /// y de las sondas— y el cruce a la raíz lo hace <see cref="PointInHostSpace"/>, porque la API de
+    /// hit-testing espera el de la RAÍZ. Sin ese cruce el área de clic caía desplazada la posición del
+    /// lienzo en la ventana: es el defecto que la sesión con puntero real midió en el hito 247 y el que
+    /// atrapa la sonda <see cref="ProbeHitAreas"/>.</para>
     /// </summary>
     private NodeCardViewModel? CardAt(Windows.Foundation.Point position)
     {
-        return VisualTreeHelper.FindElementsInHostCoordinates(position, this)
+        return VisualTreeHelper.FindElementsInHostCoordinates(PointInHostSpace(position), this)
             .OfType<NodeCardView>()
             .FirstOrDefault()?.DataContext as NodeCardViewModel;
     }
 
-    /// <summary>¿El punto cae sobre un control interactivo (la barra de zoom)? Ahí ni arrastre ni pan.</summary>
+    /// <summary>¿El punto cae sobre un control interactivo (la barra de zoom)? Ahí ni arrastre ni pan.
+    /// El punto viene en el espacio del lienzo y cruza a la raíz igual que <see cref="CardAt"/>.</summary>
     private bool HitsInteractiveControl(Windows.Foundation.Point position)
     {
-        return VisualTreeHelper.FindElementsInHostCoordinates(position, this).OfType<Button>().Any();
+        return VisualTreeHelper.FindElementsInHostCoordinates(PointInHostSpace(position), this).OfType<Button>().Any();
+    }
+
+    /// <summary>
+    /// Entrega el foco al LIENZO — al control con <c>IsTabStop</c>, que es el dueño de
+    /// <see cref="OnKeyDown"/> — tal y como lo hace el clic del puntero.
+    ///
+    /// <para><b>Por qué no vale enfocar «el elemento del handler»</b>: el hito 250 midió con puntero real
+    /// que <c>Ctrl+Z</c>, <c>Ctrl+Y</c> y <c>Supr</c> no llegaban al lienzo aunque la app fuera el primer
+    /// plano. La causa estaba aquí: se enfocaba <c>RootGrid</c> —un <c>Grid</c>, que NO es focusable— y el
+    /// valor de retorno se descartaba, así que el foco se quedaba donde estuviera. En la sesión UIA del
+    /// 238 los atajos sí funcionaban porque el <c>set_focus</c> externo enfoca el control: ese es el
+    /// elemento que hay que enfocar también con el puntero.</para>
+    ///
+    /// <para><b>El único dueño del teclado que se respeta es un cuadro de texto</b> (el buscador del
+    /// spotlight, la caja de renombrado): ahí el teclado es del cuadro, y es la misma cortesía que ya
+    /// aplica <see cref="OnKeyDown"/> al ignorar sus teclas. Los botones NO entran en esa lista aunque el
+    /// punto caiga sobre uno: las tarjetas traen los suyos (los toggles de la cabecera, el Ejecutar) y
+    /// excluir «punto sobre control» dejaba sin foco justo el gesto que importa — clicar la cara de una
+    /// tarjeta. Lo midió la sonda <see cref="ProbePointerFocus"/> en este hito: la primera versión de
+    /// este helper declinaba el foco ahí y el teclado seguía sin llegar al lienzo con puntero real.</para>
+    /// </summary>
+    /// <param name="source">El origen del puntero, para saber si el clic era de un cuadro de texto.</param>
+    /// <returns>¿El foco quedó en el lienzo?</returns>
+    internal bool FocusCanvasForShortcuts(DependencyObject? source = null)
+    {
+        if (IsTextInput(source))
+        {
+            return false;
+        }
+
+        return this.Focus(FocusState.Programmatic);
+    }
+
+    /// <summary>
+    /// Un clic en el lienzo toma el teclado y lo declara suyo durante una ventana corta (hito 253).
+    ///
+    /// <para><b>Por qué una ventana y no un estado</b>: el foco se pierde DESPUÉS del gesto. El rastro con
+    /// puntero real mide que el clic deja el foco en el lienzo y que, 78–141 ms más tarde, un envoltorio de
+    /// scroll de la plantilla de ventana del framework (sin nombre, sin DataContext, del tamaño del área de
+    /// contenido) se lo lleva; el robo ocurre clicando el fondo (`src=Grid`) igual que una tarjeta
+    /// (`src=Border`), así que no es de la selección. La ventana acota la reclamación al gesto que la
+    /// justifica: pasados unos cientos de milisegundos, si otro se lleva el teclado por su cuenta, el lienzo
+    /// no discute.</para>
+    /// </summary>
+    private void BeginKeyboardOwnership()
+    {
+        _keyboardOwnedUntil = Environment.TickCount64 + KeyboardOwnershipMs;
+    }
+
+    /// <summary>Cuánto dura la propiedad del teclado declarada por un clic (ms).</summary>
+    private const long KeyboardOwnershipMs = 700;
+
+    /// <summary>
+    /// Recupera el teclado si el framework se lo llevó justo después del clic, y sólo entonces. Las cuatro
+    /// guardias están en orden de importancia: (1) la ventana de propiedad tiene que estar viva —sin clic
+    /// reciente esto no es un robo, es un cambio de dueño—; (2) un cuadro de texto manda en su teclado;
+    /// (3) un elemento DENTRO del lienzo no necesita reclamación (las teclas ya le llegan por burbujeo); y
+    /// (4) los paneles del editor (cajón, inspector) tampoco: si el usuario acaba de clicar ahí, el teclado
+    /// es suyo. Lo que queda —un elemento ajeno, sin texto, fuera del lienzo y de los paneles— es el caso
+    /// medido, y ahí el lienzo vuelve a quedarse con el teclado.
+    /// </summary>
+    /// <returns>¿Reclamó el teclado?</returns>
+    private bool ReclaimKeyboardIfStolenByFramework()
+    {
+        if (Environment.TickCount64 > _keyboardOwnedUntil)
+        {
+            return false;
+        }
+
+        if (HoldsFocus())
+        {
+            return false;
+        }
+
+        var owner = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        if (IsTextInput(owner) || IsInsideSelf(owner) || IsInsideEditorPanel(owner))
+        {
+            return false;
+        }
+
+        if (!FocusCanvasForShortcuts())
+        {
+            return false;
+        }
+
+        CanvasFocusTrace.Write($"foco RECUPERADO del envoltorio ajeno ({CanvasFocusTrace.Describe(owner, 2)})");
+        return true;
+    }
+
+    /// <summary>Hasta cuándo el teclado es del lienzo por un clic (ms monótonos).</summary>
+    private long _keyboardOwnedUntil;
+
+    /// <summary>¿El elemento es este lienzo o algo suyo (dentro del subárbol del control)?</summary>
+    private bool IsInsideSelf(DependencyObject? node) => IsInside(node, this);
+
+    /// <summary>¿El elemento vive dentro de los paneles del editor (cajón o inspector)?</summary>
+    private static bool IsInsideEditorPanel(DependencyObject? node) =>
+        IsInside(node, null, typeof(NodeToolboxPanel), typeof(NodeInspectorPanel));
+
+    /// <summary>
+    /// ¿El elemento desciende de <paramref name="ancestor"/> (visual o lógicamente) o de alguno de los tipos
+    /// indicados? Se camina por las DOS vías porque un elemento recién creado puede no estar aún en el árbol
+    /// visual pero sí tener padre lógico —y el ladrón medido es justamente de ese tipo—.
+    /// </summary>
+    private static bool IsInside(
+        DependencyObject? node,
+        DependencyObject? ancestor = null,
+        params Type[] ancestorTypes)
+    {
+        DependencyObject? current = node;
+        int guard = 0;
+        while (current is not null && guard++ < 64)
+        {
+            if (ReferenceEquals(current, ancestor) || ancestorTypes.Contains(current.GetType()))
+            {
+                return true;
+            }
+
+            current = current is UIElement element
+                ? VisualTreeHelper.GetParent(element) ?? (current as FrameworkElement)?.Parent
+                : (current as FrameworkElement)?.Parent;
+        }
+
+        return false;
+    }
+
+    /// <summary>¿El origen del puntero está dentro de un cuadro de texto (el teclado es del cuadro)?</summary>
+    private static bool IsTextInput(DependencyObject? source)
+    {
+        DependencyObject? current = source;
+        while (current is not null)
+        {
+            if (current is TextBox)
+            {
+                return true;
+            }
+
+            current = current is UIElement element ? VisualTreeHelper.GetParent(element) : null;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Sonda del SEGUIMIENTO de los cables (hito 254): el extremo dibujado del cable tiene que TOCAR el
+    /// socket dibujado, medido los dos en el espacio de la raíz —con el pan y el zoom ya dentro, que es lo
+    /// que el usuario ve—, y tiene que seguir tocándolo después de mover el plano y de cambiar el zoom.
+    ///
+    /// <para>Se mide en la RAÍZ a propósito: comparar las dos cosas en espacio de grafo daría 0 aunque el
+    /// dibujo estuviera desplazado, porque el error de un espacio mal cruzado se cancela cuando los dos
+    /// lados se miden en el mismo sitio equivocado. Es el defecto que el usuario reportó: mover o ajustar el
+    /// zoom desplazaba los cables fuera de su socket.</para>
+    /// </summary>
+    /// <returns>(toca antes del gesto, toca después, la forma aguanta el hueco estrecho, detalle)</returns>
+    internal (bool Before, bool After, bool Crowded, string Detail) ProbeWireTracking()
+    {
+        if (_editor is null || _editor.Connections.Count == 0)
+        {
+            return (true, true, true, "sin cables que medir (no hay conexiones en el grafo)");
+        }
+
+        double before = WireToSocketDistance(0, out string beforeDetail);
+
+        // Los gestos, por los MISMOS mandos que usan los handlers y los botones: el pan del arrastre y el zoom
+        // de la rueda. Separados a propósito: el usuario reportó los dos, y hay que saber cuál descuadra.
+        double savedTx = CanvasTransform.TranslateX;
+        double savedTy = CanvasTransform.TranslateY;
+        double savedScale = CanvasTransform.ScaleX;
+        CanvasTransform.TranslateX += 140;
+        CanvasTransform.TranslateY += 90;
+        double afterPan = WireToSocketDistance(0, out string panDetail);
+        ZoomBy(1.25);
+        double afterZoom = WireToSocketDistance(0, out string zoomDetail);
+
+        CanvasTransform.TranslateX = savedTx;
+        CanvasTransform.TranslateY = savedTy;
+        CanvasTransform.ScaleX = savedScale;
+        CanvasTransform.ScaleY = savedScale;
+        ZoomText.Text = $"{Math.Round(savedScale * 100)} %";
+        DrawWires();
+
+        const double tolerance = 1.5;
+        bool beforeOk = before <= tolerance;
+        bool afterOk = afterPan <= tolerance && afterZoom <= tolerance;
+        bool crowdedOk = CrowdedShapeFitsTheHueco(out string crowdedDetail);
+        string detail = $"antes {before:F1} px ({beforeDetail}); tras pan (+140,+90) {afterPan:F1} px ({panDetail}); "
+                      + $"tras zoom x1,25 {afterZoom:F1} px ({zoomDetail}); hueco estrecho {crowdedDetail}";
+
+        return (beforeOk, afterOk, crowdedOk, detail);
+    }
+
+    /// <summary>
+    /// La FORMA del cable en el hueco estrecho: el caso que el usuario vio como «la parte recta es demasiado
+    /// grande y se ve mal» al arrastrar una tarjeta hasta dejarla cerca de otra. La regla compartida
+    /// (<see cref="ConnectionGeometry.BezierControlPoints"/>) tiene que dejar el cuello DENTRO del hueco: ni
+    /// la retirada de las puntas ni los puntos de control pueden salirse, porque salirse es doblar la curva
+    /// hacia atrás y dibujar el rulo con forma de «2».
+    ///
+    /// <para>Se mide la regla y no un arrastre de verdad a propósito: el sondeo corre en un único callback del
+    /// hilo de UI y no hay pase de layout entre mover la tarjeta y medir, así que simular el arrastre mediría
+    /// posiciones viejas. Lo que la app dibuja con la regla ya lo miden las otras dos mitades de esta sonda
+    /// (los extremos contra los sockets reales).</para>
+    /// </summary>
+    private static bool CrowdedShapeFitsTheHueco(out string detail)
+    {
+        // Las anclas del caso reportado: el hueco horizontal se queda en 70 px mientras la tarjeta arrastrada
+        // baja 120 px. El cable tiene que nacer en las anclas y quedarse dentro del hueco.
+        const double hueco = 70;
+        var crowded = ConnectionGeometry.BuildWire(new Sdk.Point(0, 0), new Sdk.Point(hueco, 120));
+
+        double exit = crowded.Exit.X;
+        double arrival = crowded.Arrival.X;
+        bool fits = exit <= hueco + 0.001
+            && arrival >= -0.001
+            && crowded.Trace[0] == new Sdk.Point(0, 0)
+            && crowded.Trace[^1] == new Sdk.Point(hueco, 120);
+
+        detail = $"cuello {exit:F1} y {arrival:F1} en un hueco de {hueco:F0}"
+               + (fits ? " — nace y muere en las anclas, sin salirse" : " — SE SALE del hueco (el rulo)");
+        return fits;
+    }
+
+    /// <summary>
+    /// La distancia, en el espacio de la RAÍZ, entre los dos extremos dibujados del cable
+    /// <paramref name="index"/> y los centros dibujados de sus sockets (el mayor de los dos extremos).
+    /// </summary>
+    private double WireToSocketDistance(int index, out string detail)
+    {
+        detail = "sin poder medir";
+        if (_editor is null || index >= _editor.Connections.Count || index >= WireLayer.Children.Count)
+        {
+            return 0;
+        }
+
+        if (WireLayer.Children[index] is not Microsoft.UI.Xaml.Shapes.Path path
+            || path.Data is not PathGeometry geometry
+            || geometry.Figures.Count == 0
+            || !TryFigureEnds(geometry.Figures[0], out var rawStart, out var rawEnd, out bool hasBezier)
+            || !hasBezier)
+        {
+            detail = "el cable dibujado no tiene geometría de Bézier";
+            return 0;
+        }
+
+        var connection = _editor.Connections[index];
+        var source = SocketElementOf(connection.Source);
+        var target = SocketElementOf(connection.Target);
+        if (source is null || target is null || path.TransformToVisual(RootGrid) is not { } wireTransform)
+        {
+            detail = "sin socket o sin transformación al árbol";
+            return 0;
+        }
+
+        var drawnStart = wireTransform.TransformPoint(rawStart);
+        var drawnEnd = wireTransform.TransformPoint(rawEnd);
+        var socketStart = TransformToVisualCenter(source, RootGrid);
+        var socketEnd = TransformToVisualCenter(target, RootGrid);
+
+        // La geometría vive en el espacio del PLANO (el cable no lleva transform propia): sus puntos crudos
+        // son espacio de grafo, igual que lo que devuelve AnchorOf. Comparar los dos dice si el cable se
+        // dibujó con las anclas vivas o con otra cosa.
+        var anchorSource = AnchorOf(connection.Source);
+        var anchorTarget = AnchorOf(connection.Target);
+
+        double startGap = Distance(drawnStart, socketStart);
+        double endGap = Distance(drawnEnd, socketEnd);
+        detail = $"inicio {startGap:F1} px, fin {endGap:F1} px"
+               + $" | plano T=({CanvasTransform.TranslateX:F0},{CanvasTransform.TranslateY:F0}) S={CanvasTransform.ScaleX:F2}"
+               + $" | '{connection.Source.NodeOwner.Title}'.{connection.Source.Name} -> '{connection.Target.NodeOwner.Title}'.{connection.Target.Name}"
+               + $" | cable(grafo) {rawStart.X:F0},{rawStart.Y:F0}->{rawEnd.X:F0},{rawEnd.Y:F0}"
+               + $" | ancla(grafo) {Fmt(anchorSource)}->{Fmt(anchorTarget)}"
+               + $" | cable(raiz) {drawnStart.X:F0},{drawnStart.Y:F0}->{drawnEnd.X:F0},{drawnEnd.Y:F0}"
+               + $" | socket(raiz) {socketStart.X:F0},{socketStart.Y:F0}->{socketEnd.X:F0},{socketEnd.Y:F0}"
+               + $" | tarjeta(grafo) {ContainerPosition(connection.Source.NodeOwner)}->{ContainerPosition(connection.Target.NodeOwner)}"
+               + $" | tamSocket {source.ActualWidth:F1}x{source.ActualHeight:F1}";
+        return Math.Max(startGap, endGap);
+    }
+
+    /// <summary>El elemento del socket de un puerto, o null si su tarjeta no está materializada.</summary>
+    private FrameworkElement? SocketElementOf(PortViewModel port) =>
+        _cardsByNode.TryGetValue(port.NodeOwner, out var card) && _containers.TryGetValue(card, out var container)
+            ? FindSocketElement(container, port)
+            : null;
+
+    /// <summary>Dónde tiene el lienzo la tarjeta de ese nodo (espacio de grafo), para el detalle de la sonda.</summary>
+    private string ContainerPosition(NodeViewModel node) =>
+        _cardsByNode.TryGetValue(node, out var card) && _containers.TryGetValue(card, out var container)
+            ? $"{Canvas.GetLeft(container):F1},{Canvas.GetTop(container):F1}"
+            : "(sin tarjeta)";
+
+    /// <summary>Un punto del SDK en texto compacto, para el detalle de las sondas.</summary>
+    private static string Fmt(Sdk.Point? point) =>
+        point is { } p ? $"{p.X:F0},{p.Y:F0}" : "(sin ancla)";
+
+    /// <summary>
+    /// Los dos extremos de la figura del cable: dónde la abre y dónde la cierra el trazo <b>entero</b>. Se
+    /// leen del primer y del último segmento en vez de asumir que el primero es la Bézier, porque la figura
+    /// es la de Nodify —ancla, tramo recto, curva, tramo recto, ancla— y el extremo dibujado es la ÚLTIMA
+    /// parada, no el último punto de control.
+    /// </summary>
+    private static bool TryFigureEnds(
+        PathFigure figure,
+        out Windows.Foundation.Point start,
+        out Windows.Foundation.Point end,
+        out bool hasBezier)
+    {
+        start = figure.StartPoint;
+        end = figure.StartPoint;
+        hasBezier = false;
+
+        if (figure.Segments.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var segment in figure.Segments)
+        {
+            switch (segment)
+            {
+                case LineSegment line:
+                    end = line.Point;
+                    break;
+                case BezierSegment bezier:
+                    hasBezier = true;
+                    end = bezier.Point3;
+                    break;
+                default:
+                    // Un segmento que no es de estos dos tipos dejaría la medida a medias: mejor declararlo.
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>Distancia entre dos puntos (en el mismo espacio).</summary>
+    private static double Distance(Windows.Foundation.Point a, Windows.Foundation.Point b) =>
+        Math.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)));
+
+    /// <summary>
+    /// Sonda de la RECLAMACIÓN del teclado (hito 253): con la ventana de propiedad de un clic abierta —lo
+    /// que arma <see cref="BeginKeyboardOwnership"/> en el gesto—, si un elemento AJENO al editor se lleva
+    /// el foco el lienzo lo recupera; y NO lo hace cuando el nuevo dueño es un cuadro de texto (manda en su
+    /// teclado), algo DENTRO del lienzo (las teclas ya le llegan) o un panel del editor (el usuario acaba de
+    /// clicar ahí). Los cuatro casos entran por el MISMO camino que el gesto real.
+    ///
+    /// <para>El puntero no se puede inyectar en este entorno: lo que el rastro mide con dedos de verdad es
+    /// que el envoltorio de la plantilla de ventana se lleva el foco 78–141 ms después del clic; aquí se
+    /// simula ese robo con elementos reales de la ventana, que es lo que este entorno sí puede hacer.</para>
+    /// </summary>
+    /// <returns>(reclama del ajeno, respeta a los otros dueños, detalle)</returns>
+    internal (bool Reclaimed, bool RespectsOwners, string Detail) ProbeKeyboardReclaim()
+    {
+        var root = WalkToWindowRoot(RootGrid);
+
+        // Los objetivos son elementos REALES de la ventana, y se evita el cuadro de texto donde no se mide la
+        // cortesía específica del cuadro: cada caso debe probar UNA razón de declinar, no dos a la vez.
+        var foreign = FirstFocusable(root, this, c => !IsInsideEditorPanel(c) && c is not TextBox);
+        var insideCanvas = FirstButton(RootGrid);
+        var insidePanel = FirstFocusable(root, this, c => IsInsideEditorPanel(c) && c is not TextBox);
+        var textInput = FirstTextInput(root);
+        var failures = new List<string>();
+
+        bool Case(string what, DependencyObject? thief, bool expectReclaim)
+        {
+            if (thief is null)
+            {
+                // Sin objetivo no hay caso: se declara en el detalle en vez de darlo por bueno.
+                return true;
+            }
+
+            if (!FocusCanvasForShortcuts() || !HoldsFocus())
+            {
+                failures.Add($"no se pudo entregar el foco al lienzo para '{what}'");
+                return false;
+            }
+
+            // El clic que justifica la reclamación...
+            BeginKeyboardOwnership();
+
+            if (thief is not Control control || !control.Focus(FocusState.Programmatic))
+            {
+                failures.Add($"no se pudo simular el robo por '{what}'");
+                return false;
+            }
+
+            bool reclaimed = ReclaimKeyboardIfStolenByFramework();
+            if (reclaimed != expectReclaim)
+            {
+                failures.Add(what);
+                return false;
+            }
+
+            if (expectReclaim && !HoldsFocus())
+            {
+                failures.Add($"el lienzo dijo reclamar por '{what}' pero el foco no es suyo");
+                return false;
+            }
+
+            if (!expectReclaim && HoldsFocus())
+            {
+                failures.Add($"el lienzo se llevó el teclado de '{what}'");
+                return false;
+            }
+
+            return true;
+        }
+
+        bool reclaimed = Case("un elemento ajeno al editor (la barra de estado)", foreign, expectReclaim: true);
+        bool respectsText = Case("un cuadro de texto", textInput, expectReclaim: false);
+        bool respectsPanels = Case("un control de un panel del editor", insidePanel, expectReclaim: false);
+        bool respectsCanvas = Case("un control dentro del lienzo", insideCanvas, expectReclaim: false);
+
+        // Los objetivos van SIEMPRE en el detalle: sin ellos, un caso declarado «sin objetivo» se leería como
+        // medido —y una sonda que no dice con qué midió es una sonda que miente por omisión—.
+        string targets = $"objetivos: ajeno={DescribeTarget(foreign)}, cuadro={DescribeTarget(textInput)}, "
+                       + $"panel={DescribeTarget(insidePanel)}, lienzo={DescribeTarget(insideCanvas)}";
+        string detail = failures.Count == 0
+            ? "con la propiedad del clic abierta, el lienzo recupera el teclado de un dueño ajeno y lo respeta "
+              + $"de un cuadro de texto, de un control suyo y de un panel del editor ({targets})"
+            : $"la reclamación del teclado falló en {failures.Count} caso(s): {string.Join("; ", failures)} ({targets})";
+
+        return (reclaimed, respectsText && respectsPanels && respectsCanvas, detail);
+    }
+
+    /// <summary>El tipo y el nombre de un objetivo de la sonda, para que el renglón diga con qué midió.</summary>
+    private static string DescribeTarget(DependencyObject? node) =>
+        node is FrameworkElement element ? $"{element.GetType().Name}#{element.Name}" : "nadie";
+
+    /// <summary>Sube hasta la raíz de la ventana (visual primero, lógica después) para explorar hermanos.</summary>
+    private static DependencyObject WalkToWindowRoot(DependencyObject node)
+    {
+        DependencyObject current = node;
+        int guard = 0;
+        while (guard++ < 64)
+        {
+            var parent = current is UIElement element
+                ? VisualTreeHelper.GetParent(element) ?? (current as FrameworkElement)?.Parent
+                : (current as FrameworkElement)?.Parent;
+
+            if (parent is null)
+            {
+                return current;
+            }
+
+            current = parent;
+        }
+
+        return current;
+    }
+
+    /// <summary>
+    /// El primer elemento focusable de la ventana que cumpla <paramref name="accept"/>, saltando el subárbol
+    /// <paramref name="excluded"/> (el lienzo). El recorrido BAJA por todos los contenedores —podar por
+    /// «bando» dejaría sin visitar los paneles, que cuelgan de una reja que no es de ningún panel— y el
+    /// filtro decide qué candidato vale.
+    /// </summary>
+    private static DependencyObject? FirstFocusable(
+        DependencyObject root, DependencyObject excluded, Func<DependencyObject, bool> accept)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            if (VisualTreeHelper.GetChild(root, i) is not DependencyObject child
+                || ReferenceEquals(child, excluded))
+            {
+                continue;
+            }
+
+            if (accept(child) && IsFocusable(child))
+            {
+                return child;
+            }
+
+            if (FirstFocusable(child, excluded, accept) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>El primer cuadro de texto de la ventana (el dueño legítimo del teclado más delicado).</summary>
+    private static DependencyObject? FirstTextInput(DependencyObject root)
+    {
+        if (root is TextBox)
+        {
+            return root;
+        }
+
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            if (VisualTreeHelper.GetChild(root, i) is DependencyObject child
+                && FirstTextInput(child) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>¿El elemento puede recibir el foco por programa?</summary>
+    private static bool IsFocusable(DependencyObject node) =>
+        node is Control control && control.IsTabStop && control.IsEnabled;
+
+    /// <summary>
+    /// Sonda del FOCO del puntero (hito 252): el mismo camino que ejecuta un clic real del lienzo tiene
+    /// que dejar el foco en el CONTROL —el que sostiene <see cref="OnKeyDown"/>— en los TRES sitios donde
+    /// el usuario clica (el fondo, la cara de una tarjeta y la barra de zoom), y no robarle el suyo a un
+    /// cuadro de texto. Es el defecto que el 250 midió con dedos de verdad; aquí se mide sin puntero, que
+    /// es lo que este entorno puede hacer.
+    ///
+    /// <para>La cara de la tarjeta se mide a propósito: la primera versión del helper declinaba el foco
+    /// cuando el punto caía sobre un <c>Button</c> —y las tarjetas traen los suyos—, así que el clic del
+    /// 250 seguía dejando el teclado sin destinatario. La sonda lo caza porque pasa por el mismo camino.</para>
+    /// </summary>
+    /// <returns>(foco entregado al lienzo, los otros dueños del teclado conservan el suyo, detalle)</returns>
+    internal (bool FocusDelivered, bool RespectsOtherOwners, string Detail) ProbePointerFocus()
+    {
+        var other = FirstButton(RootGrid);
+        var card = _containers.Values.FirstOrDefault();
+        var failures = new List<string>();
+        bool movedAway = false;
+
+        // Cada caso mide la TRANSICIÓN (el selfcheck corre con el lienzo ya enfocado en otras sondas):
+        // se le da el foco a otro control focusable del lienzo y se comprueba dónde acaba el clic.
+        bool Delivers(string what, DependencyObject? source)
+        {
+            if (other is not null)
+            {
+                movedAway |= other.Focus(FocusState.Programmatic);
+            }
+
+            if (FocusCanvasForShortcuts(source) && HoldsFocus())
+            {
+                return true;
+            }
+
+            failures.Add(what);
+            return false;
+        }
+
+        bool background = Delivers("el fondo del lienzo no deja el foco en el lienzo", null);
+        bool cardFace = card is null || Delivers("la cara de una tarjeta no deja el foco en el lienzo", card);
+        bool zoomBar = other is null || Delivers("la barra de zoom no deja el foco en el lienzo", other);
+
+        // La cortesía: un clic en un cuadro de texto no se lleva su teclado (el cuadro se mide con una
+        // instancia: la decisión depende del TIPO del origen, no de una caja concreta del árbol).
+        bool textInputDeclined = !FocusCanvasForShortcuts(new TextBox());
+
+        // Diagnóstico de la causa que este hito cazó: la cara de la tarjeta tiene botones PROPIOS (los
+        // toggles de su cabecera, el Ejecutar), así que la regla «punto sobre control interactivo no se
+        // enfoca» declinaba justo el gesto del 250. Se mide para que el renglón lo cante.
+        string cardDiagnostic = card is null
+            ? "; sin tarjetas materializadas"
+            : $"; botón bajo la cara de la tarjeta={HitsInteractiveControl(TransformToVisualCenter(card, RootGrid))}";
+
+        bool delivered = background && cardFace && zoomBar;
+        string detail;
+        if (!delivered)
+        {
+            detail = $"el clic del puntero NO deja el foco en el lienzo en {failures.Count} de 3 sitios "
+                   + $"({string.Join("; ", failures)})";
+        }
+        else if (!textInputDeclined)
+        {
+            detail = "el foco llega al lienzo pero se lleva por delante el teclado de un cuadro de texto";
+        }
+        else
+        {
+            detail = $"el foco del puntero queda en el lienzo clicando el fondo, la cara de una tarjeta o "
+                   + $"la barra de zoom (transición medida: movedAway={movedAway}) y el cuadro de texto "
+                   + "conserva el suyo" + cardDiagnostic;
+        }
+
+        return (delivered, textInputDeclined, detail);
+    }
+
+    /// <summary>¿El FOCO está en el lienzo (el control que sostiene <see cref="OnKeyDown"/>)?</summary>
+    /// <remarks>Se pregunta al gestor de foco por el elemento enfocado: los dos hosts comparten la
+    /// semántica «el foco del lienzo es el de su control», y el atajo sólo llega si es así.</remarks>
+    private bool HoldsFocus() => ReferenceEquals(
+        Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot), this);
+
+    /// <summary>El primer <see cref="Button"/> del subárbol (la barra de zoom), o null si no hay ninguno.</summary>
+    private static Button? FirstButton(DependencyObject root)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            if (VisualTreeHelper.GetChild(root, i) is DependencyObject child)
+            {
+                if (child is Button button)
+                {
+                    return button;
+                }
+
+                if (FirstButton(child) is { } nested)
+                {
+                    return nested;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void OnCanvasPressed(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(RootGrid).Position;
         var properties = e.GetCurrentPoint(RootGrid).Properties;
-        ((FrameworkElement)sender).Focus(FocusState.Programmatic);
+
+        // El FOCO del lienzo lo entrega el puntero (hito 252): los atajos viven en OnKeyDown y sin foco no
+        // llega ninguno — lo midió la sesión humana del 250 (Ctrl+Z, Ctrl+Y y Supr sin efecto con la app
+        // en primer plano). Antes se enfocaba aquí el elemento del handler (`RootGrid`, un Grid) que no es
+        // focusable; ahora se enfoca el control, que es quien sostiene el handler del teclado.
+        bool focused = FocusCanvasForShortcuts(e.OriginalSource as DependencyObject);
+        if (focused)
+        {
+            // El clic declara suyo el teclado una ventana corta: el framework se lo lleva ~100 ms después.
+            BeginKeyboardOwnership();
+        }
+
+        CanvasFocusTrace.Write($"press src={e.OriginalSource?.GetType().Name ?? "nadie"} "
+                             + $"punto=({point.X:F0},{point.Y:F0}) foco={focused} enfocado={DescribeFocused()}");
 
         // 1. Selección y arrastre: botón izquierdo sobre una tarjeta.
         if (properties.IsLeftButtonPressed)
@@ -1170,15 +1996,29 @@ public sealed partial class EditorCanvasControl : UserControl
         return null;
     }
 
+    /// <summary>
+    /// El centro del elemento, medido en el espacio de <paramref name="relativeTo"/>.
+    ///
+    /// <para><b>El centro se transforma, no se suma</b>: el punto que hay que llevar por la cadena es el
+    /// centro <i>local</i> del elemento <c>(w/2, h/2)</c>. La primera versión transformaba el vértice
+    /// <c>(0, 0)</c> y le <i>sumaba</i> la mitad del tamaño en el espacio de destino, lo que ignora la
+    /// <b>escala</b> de la cadena: con el plano al 125 % el centro medido se quedaba corto
+    /// <c>0,25 · (w/2)</c> —unos 5 px con el socket de este árbol— y esa ancla corta viajaba al cable, que
+    /// aparecía desplazado en cuanto se tocaba el zoom. Con el plano al 100 %, o con un pan (que sólo
+    /// traslada), el error es cero: por eso el defecto sólo se ve al ajustar el zoom, que es como lo reportó
+    /// el usuario.</para>
+    ///
+    /// <para>El centro pasa por la proyección (la guardia del 217 censura el cruce hecho a mano con .X/.Y):
+    /// la pareja se envuelve con la misma regla que el resto de cruces del host.</para>
+    /// </summary>
     private static Windows.Foundation.Point TransformToVisualCenter(FrameworkElement element, UIElement relativeTo)
     {
-        var transform = element.TransformToVisual(relativeTo);
-        var topLeft = transform.TransformPoint(new Windows.Foundation.Point(0, 0));
+        var localCenter = UnoPointProjection.ToSdk(element.ActualWidth / 2, element.ActualHeight / 2);
+        (double lx, double ly) = UnoPointProjection.ToUno(localCenter);
 
-        // El centro pasa por la proyección (la guardia del 217 censura el cruce hecho a mano con .X/.Y):
-        // el par (x+w/2, y+h/2) se envuelve con la misma regla que el resto de cruces del host.
-        var center = UnoPointProjection.ToSdk(topLeft.X + (element.ActualWidth / 2), topLeft.Y + (element.ActualHeight / 2));
-        (double cx, double cy) = UnoPointProjection.ToUno(center);
+        var center = element.TransformToVisual(relativeTo).TransformPoint(new Windows.Foundation.Point(lx, ly));
+        var projected = UnoPointProjection.ToSdk(center.X, center.Y);
+        (double cx, double cy) = UnoPointProjection.ToUno(projected);
         return new Windows.Foundation.Point(cx, cy);
     }
 
@@ -1314,8 +2154,8 @@ public sealed partial class EditorCanvasControl : UserControl
 
         // El extremo móvil sigue al cursor; la geometría es la misma Bézier compartida.
         var target = pending.TargetLocation;
-        var curve = ConnectionGeometry.BezierControlPoints(
-            _pendingSourceAnchor, target, ConnectionGeometry.DefaultSpacing,
+        var wire = ConnectionGeometry.BuildWire(
+            _pendingSourceAnchor, target,
             pending.Source.Direction == PortDirection.Output
                 ? ConnectionGeometry.FlowDirection.Forward
                 : ConnectionGeometry.FlowDirection.Backward);
@@ -1325,7 +2165,7 @@ public sealed partial class EditorCanvasControl : UserControl
             Stroke = CanvasBrush("CanvasWireBrush"),
             StrokeThickness = 2.5,
             Opacity = 0.85,
-            Data = CreateBezierGeometry(curve)
+            Data = CreateWireGeometry(wire)
         };
         WireLayer.Children.Add(_pendingWirePath);
     }
@@ -1333,31 +2173,59 @@ public sealed partial class EditorCanvasControl : UserControl
     private Microsoft.UI.Xaml.Shapes.Path? _pendingWirePath;
 
     /// <summary>
-    /// Los atajos del lienzo, con las mismas claves que el escritorio: la tabla compartida resuelve la
-    /// combinación y ejecuta el comando canónico del núcleo. La caja de renombrado (y cualquier TextBox)
-    /// consume sus teclas: no se las secuestra.
+    /// El handler del teclado del CONTROL: registra el rastro y delega en
+    /// <see cref="TryHandleShortcutKey"/>, que es el único resolver — así el atajo que entra por el foco del
+    /// lienzo y el que entra enrutado por la ventana no pueden divergir.
     /// </summary>
     private void OnKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (_editor is null || e.OriginalSource is TextBox || _editor.Nodes.Any(n => n.IsEditingTitle))
+        CanvasFocusTrace.Write($"tecla={e.Key} src={e.OriginalSource?.GetType().Name ?? "nadie"} "
+                             + $"enfocado={DescribeFocused()}");
+
+        if (TryHandleShortcutKey(e.Key, e.OriginalSource))
         {
-            return;
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>
+    /// Los atajos del editor, con las mismas claves que el escritorio: la tabla compartida resuelve la
+    /// combinación y ejecuta el comando canónico del núcleo. La caja de renombrado (y cualquier cuadro de
+    /// texto) consume sus teclas: no se las secuestra.
+    ///
+    /// <para><b>Por qué el teclado no depende del FOCO</b> (hito 252): el rastro con puntero real midió que
+    /// el clic SÍ entregaba el foco al control (<c>GotFocus enfocado=EditorCanvasControl#Canvas</c>) y que
+    /// ~0,5 s después se lo llevaba un <c>ScrollViewer</c> de un panel que reacciona a la selección, con
+    /// <c>Ctrl+Z</c>, <c>Ctrl+Y</c>, <c>Supr</c> y <c>F2</c> muriendo con él. Aquí el defecto no se puede
+    /// provocar sin puntero (el sondeo selecciona un nodo en el mismo camino y el foco no se mueve), así que
+    /// el arreglo no persigue al ladrón: hace que los atajos no necesiten ser dueños del foco. La ventana
+    /// enruta a este método las teclas que nadie consumió —el burbujeo que el escritorio ya usaba en su
+    /// vista de editor— y el handler del control llama al MISMO método.</para>
+    /// </summary>
+    /// <param name="key">La tecla física.</param>
+    /// <param name="source">El origen del evento: un cuadro de texto (o algo suyo) manda en su teclado.</param>
+    /// <returns>¿La tecla quedó consumida por el editor?</returns>
+    internal bool TryHandleShortcutKey(Windows.System.VirtualKey key, object? source)
+    {
+        if (_editor is null || IsTextInput(source as DependencyObject) || _editor.Nodes.Any(n => n.IsEditingTitle))
+        {
+            return false;
         }
 
-        var key = MapKey(e.Key);
-        if (key is null)
+        var physical = MapKey(key);
+        if (physical is null)
         {
-            return;
+            return false;
         }
 
         var modifiers = EditorKeyboardShortcuts.Modifiers.None;
         if (IsKeyDown(Windows.System.VirtualKey.Control)) modifiers |= Ctrl;
         if (IsKeyDown(Windows.System.VirtualKey.Shift)) modifiers |= EditorKeyboardShortcuts.Modifiers.Shift;
 
-        var command = EditorKeyboardShortcuts.Resolve(key.Value, modifiers);
+        var command = EditorKeyboardShortcuts.Resolve(physical.Value, modifiers);
         if (command is null)
         {
-            return;
+            return false;
         }
 
         // Escape con cable pendiente lo CANCELA (y limpia la capa), antes que cualquier otra semántica.
@@ -1371,8 +2239,7 @@ public sealed partial class EditorCanvasControl : UserControl
 
             _editor.CancelConnectionCommand.Execute(null);
             UpdatePortStatesAndWires();
-            e.Handled = true;
-            return;
+            return true;
         }
 
         // El spotlight lo abre la VISTA (necesita el punto del grafo bajo el cursor guardado en el VM):
@@ -1382,16 +2249,51 @@ public sealed partial class EditorCanvasControl : UserControl
             var spotlightPoint = GraphPointFromScreen(
                 _lastPointerPosition == default ? new Windows.Foundation.Point(250, 200) : _lastPointerPosition);
             _editor.OpenSpotlight(spotlightPoint);
-            e.Handled = true;
-            return;
+            return true;
         }
 
         // La posición de referencia (pegar, spotlight) es el punto del grafo bajo el cursor.
         var cursor = _lastPointerPosition == default ? new Windows.Foundation.Point(250, 200) : _lastPointerPosition;
-        if (EditorKeyboardShortcuts.Execute(command.Value, _editor, GraphPointFromScreen(cursor)))
+        return EditorKeyboardShortcuts.Execute(command.Value, _editor, GraphPointFromScreen(cursor));
+    }
+
+    /// <summary>
+    /// Sonda del ENRUTADO de atajos (hito 252): el atajo tiene que resolverse AUNQUE EL FOCO NO ESTÉ EN EL
+    /// LIENZO. Es la forma que el defecto tiene sin puntero inyectable: lo medido con dedos de verdad fue que
+    /// un panel se lleva el foco ~0,5 s después del clic, y con él morían los atajos. Aquí se entrega el foco
+    /// a otro control del lienzo (la barra de zoom) y se resuelven teclas por el MISMO método que enruta la
+    /// ventana: <c>Espacio</c> abre el buscador y <c>Escape</c> lo cierra — las dos sin modificador, porque
+    /// un modificador exige la tecla físicamente pulsada y el sondeo no puede inyectarla.
+    /// </summary>
+    /// <returns>(el atajo se resolvió sin foco, un cuadro de texto conserva su teclado, detalle)</returns>
+    internal (bool ResolvedWithoutFocus, bool RespectsTextInput, string Detail) ProbeShortcutResolution()
+    {
+        if (_editor is null)
         {
-            e.Handled = true;
+            return (false, false, "sin editor montado");
         }
+
+        var other = FirstButton(RootGrid);
+        bool movedAway = other is null || other.Focus(FocusState.Programmatic);
+        bool focusAway = !HoldsFocus();
+
+        bool opened = TryHandleShortcutKey(Windows.System.VirtualKey.Space, other)
+                   && _editor.IsSpotlightOpen;
+        bool closed = TryHandleShortcutKey(Windows.System.VirtualKey.Escape, other)
+                   && !_editor.IsSpotlightOpen;
+
+        // La cortesía: al cuadro de texto no se le secuestra el teclado (misma regla que el handler).
+        bool declinedTextInput = !TryHandleShortcutKey(Windows.System.VirtualKey.Space, new TextBox())
+                              && !_editor.IsSpotlightOpen;
+
+        bool resolved = opened && closed;
+        string detail = resolved
+            ? $"con el foco FUERA del lienzo (movedAway={movedAway}, focusAway={focusAway}) el atajo se "
+              + "resuelve igual: Espacio abre el buscador y Escape lo cierra"
+            : $"el atajo NO se resuelve sin foco (abra el buscador={opened}, ciérrelo={closed}, "
+              + $"movedAway={movedAway}, focusAway={focusAway})";
+
+        return (resolved, declinedTextInput, detail);
     }
 
     private static EditorKeyboardShortcuts.PhysicalKey? MapKey(Windows.System.VirtualKey key) => key switch

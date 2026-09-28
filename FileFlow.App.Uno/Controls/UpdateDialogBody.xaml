@@ -1,0 +1,161 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.UpdateDialogBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:platform="using:FileFlow.App.Uno.Platform">
+
+  <!--
+    El AVISO DE ACTUALIZACIÓN del host Uno: la misma información que la ventana del escritorio
+    (`FileFlow.App/Views/Components/UpdateDialogWindow.axaml`) sobre el MISMO `UpdateDialogViewModel`
+    portable. La clave del catálogo es `DialogKeys.UpdateDialog`, que es la que pide el propio view model
+    del núcleo (`ControlBarViewModel.OpenUpdateDialogAsync`) cuando hay una novedad pendiente.
+
+    La entrada que lo abre no se dibuja siempre: en la barra de control vive el distintivo con la versión
+    nueva, y sólo aparece cuando el arranque ha encontrado una actualización (`HasPendingUpdate`), que es el
+    mismo estado de contexto del escritorio.
+  -->
+  <UserControl.Resources>
+    <platform:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid x:Name="UpdateRoot" MinWidth="600" MaxWidth="680"
+        AutomationProperties.AutomationId="UpdateDialogBody"
+        RowSpacing="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Cabecera -->
+    <Grid Grid.Row="0" ColumnSpacing="10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="{StaticResource CanvasAccentPrimaryBrush}" CornerRadius="6"
+              Width="38" Height="38">
+        <TextBlock Text="🚀" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Foreground="{StaticResource CanvasOnAccentBrush}" />
+      </Border>
+
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+        <TextBlock x:Name="HeaderTitle" FontSize="15" FontWeight="Bold"
+                   Foreground="{StaticResource CanvasTextBrush}" />
+        <TextBlock x:Name="ReleaseTitleText" FontSize="11"
+                   Text="{Binding ReleaseTitle}"
+                   Foreground="{StaticResource CanvasSecondaryBrush}"
+                   AutomationProperties.AutomationId="UpdateReleaseTitle" />
+      </StackPanel>
+
+      <Button Grid.Column="2" x:Name="GitHubButton" Click="OnOpenGitHubClicked" Padding="10,5"
+              VerticalAlignment="Center"
+              AutomationProperties.AutomationId="UpdateGitHubButton">
+        <TextBlock x:Name="GitHubLabel" FontSize="12" />
+      </Button>
+    </Grid>
+
+    <!-- Ficha de versiones: actual, nueva y formato del paquete (los tres del view model) -->
+    <Border Grid.Row="1" Background="{StaticResource CanvasCardBrush}" CornerRadius="6" Padding="12,9"
+            BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+      <Grid ColumnSpacing="10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Spacing="2">
+          <TextBlock x:Name="CurrentVersionLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasMutedBrush}" />
+          <TextBlock x:Name="CurrentVersionValue" FontSize="12" FontWeight="SemiBold"
+                     Text="{Binding CurrentVersionText}"
+                     Foreground="{StaticResource CanvasSecondaryBrush}"
+                     AutomationProperties.AutomationId="UpdateCurrentVersion" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Spacing="2">
+          <TextBlock x:Name="NewVersionLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasMutedBrush}" />
+          <TextBlock x:Name="NewVersionValue" FontSize="12" FontWeight="Bold"
+                     Text="{Binding NewVersionText}"
+                     Foreground="{StaticResource CanvasSuccessBrush}"
+                     AutomationProperties.AutomationId="UpdateNewVersion" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Spacing="2">
+          <TextBlock x:Name="PackagingLabel" FontSize="10"
+                     Foreground="{StaticResource CanvasMutedBrush}" />
+          <TextBlock x:Name="PackagingValue" FontSize="11"
+                     Text="{Binding PackagingFormatText}"
+                     Foreground="{StaticResource CanvasTextBrush}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Novedades: el texto del propio release -->
+    <Grid Grid.Row="2" RowSpacing="4">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <TextBlock Grid.Row="0" x:Name="ChangelogLabel" FontSize="11" FontWeight="SemiBold"
+                 Foreground="{StaticResource CanvasTextBrush}" />
+      <Border Grid.Row="1" Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="6" Padding="10"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="180">
+          <TextBlock Text="{Binding ReleaseNotes}" FontSize="11" TextWrapping="Wrap" LineHeight="17"
+                     Foreground="{StaticResource CanvasSecondaryBrush}"
+                     AutomationProperties.AutomationId="UpdateReleaseNotes" />
+        </ScrollViewer>
+      </Border>
+    </Grid>
+
+    <!-- Progreso de la descarga (sólo mientras descarga) -->
+    <StackPanel Grid.Row="3" Spacing="4"
+                Visibility="{Binding IsDownloading, Converter={StaticResource BoolToVisibility}}">
+      <ProgressBar Value="{Binding DownloadProgress}" Minimum="0" Maximum="100" Height="6" />
+      <TextBlock Text="{Binding DownloadStatusText}" FontSize="11"
+                 Foreground="{StaticResource CanvasSecondaryBrush}"
+                 AutomationProperties.AutomationId="UpdateDownloadStatus" />
+    </StackPanel>
+
+    <!-- Error (sólo si lo hay) -->
+    <Border Grid.Row="4" BorderBrush="{StaticResource CanvasWarningBrush}" BorderThickness="1"
+            CornerRadius="4" Padding="8,5"
+            Visibility="{Binding HasError, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="{Binding ErrorMessage}" FontSize="11" TextWrapping="Wrap"
+                 Foreground="{StaticResource CanvasTextBrush}" />
+    </Border>
+
+    <!-- Órdenes: las tres del view model, con su CanExecute respetado por el propio comando -->
+    <Grid Grid.Row="5" ColumnSpacing="8" VerticalAlignment="Bottom">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <Button Grid.Column="0" x:Name="SkipButton" Click="OnSkipClicked" Padding="10,5" FontSize="12"
+              AutomationProperties.AutomationId="UpdateSkipButton">
+        <TextBlock x:Name="SkipLabel" FontSize="12" />
+      </Button>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+        <Button x:Name="RemindButton" Click="OnRemindClicked" Padding="12,5" FontSize="12"
+                AutomationProperties.AutomationId="UpdateRemindButton">
+          <TextBlock x:Name="RemindLabel" FontSize="12" />
+        </Button>
+        <Button x:Name="InstallButton" Click="OnInstallClicked" Padding="14,5" FontSize="12"
+                AutomationProperties.AutomationId="UpdateInstallButton">
+          <TextBlock x:Name="InstallLabel" FontSize="12" />
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</UserControl>
