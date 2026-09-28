@@ -1,5 +1,6 @@
 using System.Linq;
 using Avalonia;
+using Avalonia.Media;
 using Point = FileFlow.Sdk.Point;
 using AvaloniaPoint = Avalonia.Point;
 using Avalonia.Controls;
@@ -326,6 +327,50 @@ public class EditorViewLayoutTests
     }
 
     [Fact]
+    public void ThePendingCable_ShouldAlsoBeDrawnWithTheCoreGeometry()
+    {
+        AvaloniaTestHelper.RunOnUI(() =>
+        {
+            // El cable que se arrastra es el MISMO cable: si el trazo en curso lo dibujara otra pieza, cambiaría
+            // de forma justo al soltar el botón. Y su dirección la marca el arrastre: desde una ENTRADA va hacia
+            // atrás, y eso el control lo expresa en su vocabulario, así que pasa por el conversor.
+            var pending = new FlowPendingConnection
+            {
+                SourceAnchor = new AvaloniaPoint(240, 160),
+                TargetAnchor = new AvaloniaPoint(120, 300),
+                Direction = Nodify.Avalonia.Connections.ConnectionDirection.Backward
+            };
+
+            var window = new Window { Content = pending, Width = 600, Height = 500 };
+            window.Show();
+
+            try
+            {
+                var wire = pending.GetVisualDescendants().OfType<FlowConnection>().SingleOrDefault();
+                wire.Should().NotBeNull("el cable en curso lo dibuja el control del host, no el de Nodify");
+                wire!.Direction.Should().Be(ConnectionGeometry.FlowDirection.Backward,
+                    "el conversor traduce el arrastre desde una entrada");
+
+                var expected = ConnectionGeometry.BuildWire(
+                    new Point(240, 160),
+                    new Point(120, 300),
+                    ConnectionGeometry.FlowDirection.Backward);
+                var figure = wire.DefiningGeometry.Should().BeOfType<PathGeometry>().Subject.Figures.Single();
+                var curve = figure.Segments!.Single().Should().BeOfType<BezierSegment>().Subject;
+
+                figure.StartPoint.Should().Be(expected.Source.ToAvalonia());
+                curve.Point1.Should().Be(expected.Exit.ToAvalonia());
+                curve.Point2.Should().Be(expected.Arrival.ToAvalonia());
+                curve.Point3.Should().Be(expected.Target.ToAvalonia());
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
+    [Fact]
     public void FlowPendingConnection_WhenSourceAnchorAssigned_InitializesTargetAnchorToSourceAnchor()
     {
         AvaloniaTestHelper.RunOnUI(() =>
@@ -581,9 +626,29 @@ public class EditorViewLayoutTests
             var window = new Window { Content = editorView, Width = 1000, Height = 800 };
             window.Show();
 
-            var connectionVisual = editorView.GetVisualDescendants().OfType<Nodify.Avalonia.Connections.Connection>().FirstOrDefault();
+            // El cable del lienzo del escritorio lo dibuja el control del host, que traza la curva COMPARTIDA
+            // del núcleo (el mismo trazador que pinta el host Uno): el control de conexión de Nodify traía su
+            // propia Bézier y el mismo flujo se veía distinto en los dos hosts.
+            var connectionVisual = editorView.GetVisualDescendants().OfType<FlowConnection>().FirstOrDefault();
             connectionVisual.Should().NotBeNull();
             connectionVisual!.ContextMenu.Should().NotBeNull();
+
+            // Y se PINTA: los estilos del tema tienen que alcanzar al control nuevo (si el selector no
+            // apuntara a él, el cable quedaría sin trazo: invisible, y el menú contextual sin nada que pulsar).
+            connectionVisual.Stroke.Should().NotBeNull("el cable tiene que salir con el color de su familia de tipo");
+            connectionVisual.StrokeThickness.Should().Be(3.5, "y con el grosor del sistema de diseño");
+
+            // Y la figura que va a pintar es la del núcleo, para las anclas reales de esta conexión: no basta
+            // con que sea otro control, tiene que trazar la curva compartida.
+            var expected = ConnectionGeometry.BuildWire(node1.OutputPorts[0].Anchor, node2.InputPorts[0].Anchor);
+            var geometry = connectionVisual.DefiningGeometry.Should().BeOfType<PathGeometry>().Subject;
+            var figure = geometry.Figures.Should().ContainSingle().Subject;
+            var curve = figure.Segments!.Should().ContainSingle().Subject.Should().BeOfType<BezierSegment>().Subject;
+
+            figure.StartPoint.Should().Be(expected.Source.ToAvalonia());
+            curve.Point1.Should().Be(expected.Exit.ToAvalonia());
+            curve.Point2.Should().Be(expected.Arrival.ToAvalonia());
+            curve.Point3.Should().Be(expected.Target.ToAvalonia());
 
             // Execute DeleteCommand directly on connection VM
             conn.DeleteCommand.Execute(null);

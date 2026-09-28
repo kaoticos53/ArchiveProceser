@@ -145,7 +145,12 @@ public class NodeCardVisualContractTests
         string editor = ReadRepositoryFile(EditorRelativePath);
         string template = ExtractConnectionTemplate(editor);
 
-        template.Should().Contain("<nodifyConn:Connection ", "el lienzo debe declarar la conexión Nodify");
+        // El cable lo dibuja el control del host, que pide la curva al trazador COMPARTIDO del núcleo
+        // (`ConnectionGeometry`): el control de conexión de Nodify traía su propia curva —Bézier retirada de
+        // las anclas y unida a ellas por dos tramos rectos— y el mismo flujo se veía distinto en los dos hosts.
+        template.Should().Contain("<components:FlowConnection ", "el cable lo dibuja el control del host");
+        template.Should().NotContain("nodifyConn:Connection ",
+            "el control de conexión de Nodify traza su propia curva: dejarlo sería volver a dos geometrías");
         // El ancla habla en Sdk.Point (los ViewModels viven en FileFlow.App.Core); el conversor proyecta
         // al Avalonia.Point que Nodify espera — el contrato visual es el mismo, con la proyección explícita.
         template.Should().Contain("Source=\"{Binding Source.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}\"", "el cable debe conectarse al ancla de origen");
@@ -158,8 +163,8 @@ public class NodeCardVisualContractTests
     {
         string template = ExtractConnectionTemplate(ReadRepositoryFile(EditorRelativePath));
 
-        int interactiveWire = template.IndexOf("<nodifyConn:Connection ", StringComparison.Ordinal);
-        int contextMenu = template.IndexOf("<nodifyConn:Connection.ContextMenu>", StringComparison.Ordinal);
+        int interactiveWire = template.IndexOf("<components:FlowConnection ", StringComparison.Ordinal);
+        int contextMenu = template.IndexOf("<components:FlowConnection.ContextMenu>", StringComparison.Ordinal);
 
         interactiveWire.Should().BeGreaterThanOrEqualTo(0, "el cable base debe existir");
         contextMenu.Should().BeGreaterThan(interactiveWire,
@@ -173,7 +178,7 @@ public class NodeCardVisualContractTests
 
         foreach (string type in new[] { "wireFiles", "wireText", "wireBoolean", "wireNumber", "wireBinary", "wireCollection", "wireAny" })
         {
-            ports.Should().Contain($"nodifyConn|Connection.{type}",
+            ports.Should().Contain($"components|FlowConnection.{type}",
                 $"el cable '{type}' debe usar el color de su familia de tipo");
         }
 
@@ -183,6 +188,34 @@ public class NodeCardVisualContractTests
         ports.Should().Contain("Path.socketTriangle.compatibleWarning");
         ports.Should().Contain("Border.socket.shapeDiamond.compatible");
         ports.Should().Contain("Border.socket.shapeDiamond.compatibleWarning");
+    }
+
+    [Fact]
+    public void EveryCableOfTheCanvas_ShouldBeDrawnWithTheCoreGeometry_NotWithTheNodifyControl()
+    {
+        // La regla es del lienzo entero, no de una plantilla: los DOS cables —el establecido y el que se
+        // arrastra— los traza el mismo control del host, y el control de conexión de Nodify no vuelve a
+        // aparecer en ningún XAML del host. Es lo que hace que la forma sea una sola en el producto: la del
+        // núcleo, la que también pinta el host Uno.
+        string editor = ReadRepositoryFile(EditorRelativePath);
+        string ports = ReadRepositoryFile("FileFlow.App/Styles/Ports.axaml");
+
+        foreach (string xaml in new[] { editor, ports })
+        {
+            xaml.Should().NotContain("nodifyConn:Connection ",
+                "el control de conexión de Nodify traza su propia curva");
+            xaml.Should().NotContain("nodifyConn|Connection.",
+                "tampoco sus estilos: el cable del host tiene su propio tipo");
+        }
+
+        Occurrences(editor, "<components:FlowConnection ").Should().Be(1,
+            "el cable establecido lo dibuja el control del host");
+        Occurrences(ports, "<components:FlowConnection ").Should().Be(1,
+            "y el cable en curso, el MISMO control: el trazo no puede cambiar de forma al soltar el botón");
+
+        // La forma la pide el control al núcleo: si algún día se le pone su propia curva, este caso cae aquí.
+        string control = ReadRepositoryFile("FileFlow.App/Views/Components/FlowConnection.cs");
+        control.Should().Contain("ConnectionGeometry.BuildWire(", "la curva sale del trazador compartido del núcleo");
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

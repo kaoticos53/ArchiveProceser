@@ -382,9 +382,14 @@ public static class ModalVisualFixture
             Height = 820
         };
 
-    /// <summary>Gestor de presets de media sin diálogo (los avisos van a un NullDialogService).</summary>
+    /// <summary>
+    /// Gestor de presets de media sin diálogos (los avisos van a un NullDialogService). La ventana es la vista
+    /// del view model portable del plugin, así que se le pasa uno con los dobles declarados.
+    /// </summary>
     private static Window BuildMediaPresetManager() =>
-        new MediaPresetManagerWindow(new NullDialogService())
+        new MediaPresetManagerWindow(new FileFlow.Plugin.Integrations.UI.ViewModels.MediaPresetManagerViewModel(
+            FileFlow.Plugin.Integrations.UI.Services.MediaPresetManagerService.Instance,
+            new NullDialogService()))
         {
             Width = 760,
             Height = 520

@@ -111,9 +111,21 @@ public sealed class RecordingDialogService : IDialogService
 
     public void ShowError(string message, string title = "Error") => ErrorMessages.Add(message);
 
-    public bool ShowConfirmation(string message, string title = "FileFlow Studio") => true;
+    public bool ShowConfirmation(string message, string title = "FileFlow Studio") => ConfirmationAnswer;
 
     public DialogResult ShowYesNoCancel(string message, string title = "FileFlow Studio") => DialogResult.Yes;
+
+    /// <summary>Lo que el usuario contesta a una confirmación. La prueba lo fija para medir las dos ramas.</summary>
+    public bool ConfirmationAnswer { get; set; } = true;
+
+    /// <summary>Las preguntas que llegaron por la vía ASÍNCRONA (la que usa un modal del host), en orden.</summary>
+    public List<string> ConfirmationQuestions { get; } = [];
+
+    public Task<bool> ConfirmAsync(string message, string title = "FileFlow Studio")
+    {
+        ConfirmationQuestions.Add(message);
+        return Task.FromResult(ConfirmationAnswer);
+    }
 }
 
 /// <summary>Diálogos de archivo que nunca se abren: devuelven «cancelado» y no bloquean la prueba.</summary>

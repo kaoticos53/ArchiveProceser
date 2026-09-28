@@ -116,14 +116,38 @@ public class VirtualFileSystemExplorerViewModelTests
     }
 
     [Fact]
-    public void ClearVirtualFileSystemCommand_WhenConfirmed_ClearsStore()
+    public async Task ClearVirtualFileSystemCommand_WhenConfirmed_ClearsStore()
     {
-        _mockDialog.Setup(d => d.ShowConfirmation(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        // El «sí» tiene que llegar por la vía asíncrona del contrato: la síncrona no la puede contestar un
+        // host cuyo diálogo modal sólo existe en asíncrono (WinUI contesta «no» desde su hilo de UI).
+        _mockDialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
         var vm = new VirtualFileSystemExplorerViewModel(_store, _mockLauncher.Object, _mockDialog.Object);
 
-        vm.ClearVirtualFileSystemCommand.Execute(null);
+        await vm.ClearVirtualFileSystemCommand.ExecuteAsync(null);
 
         vm.TotalFiles.Should().Be(0);
         vm.FilteredFiles.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ClearVirtualFileSystemCommand_WhenRefused_ShouldLeaveTheStoreAlone()
+    {
+        // La síncrona contesta «sí» a propósito: vaciar el registro es destructivo y sin vuelta atrás, así
+        // que si el usuario dijo que no, la orden no puede tocar nada aunque la otra vía diga lo contrario.
+        _mockDialog.Setup(d => d.ShowConfirmation(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        _mockDialog.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
+        var vm = new VirtualFileSystemExplorerViewModel(_store, _mockLauncher.Object, _mockDialog.Object);
+
+        vm.TotalFiles.Should().BeGreaterThan(0,
+            "la prueba necesita un registro con algo dentro para poder ver que no se vacía");
+        int before = vm.TotalFiles;
+        int visibleBefore = vm.FilteredFiles.Count;
+
+        await vm.ClearVirtualFileSystemCommand.ExecuteAsync(null);
+
+        vm.TotalFiles.Should().Be(before);
+        vm.FilteredFiles.Should().HaveCount(visibleBefore);
+        _mockDialog.Verify(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once,
+            "la pregunta tiene que haber salido por la vía asíncrona");
     }
 }

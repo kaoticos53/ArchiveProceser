@@ -1,9 +1,11 @@
 using System.IO;
 using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Plugin.FileSystem.UI.ViewModels;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.SyntheticData;
 using FluentAssertions;
 using Material.Icons;
+using Moq;
 using Xunit;
 
 namespace FileFlow.Tests.Unit.Plugins;
@@ -304,6 +306,61 @@ public class SyntheticDataSetDesignerViewModelTests : IDisposable
         vm.ExpandAllTreeCommand.Execute(null);
         aNode.IsExpanded.Should().BeTrue();
         aNode.Children[0].IsExpanded.Should().BeTrue();
+    }
+
+    // ── La orden DESTRUCTIVA del diseñador: borrar un dataset propio ─────────────────────────────────────
+
+    /// <summary>Un dataset propio, guardado y elegido: lo único que el borrado puede borrar (los del sistema no).</summary>
+    private SyntheticDataSetDesignerViewModel WithCustomDataSetSelected(Mock<IDialogService> dialogs)
+    {
+        var custom = new SyntheticDataSet("Dataset Propio", "General")
+        {
+            Items = [new SyntheticFileDefinition("a.txt", 10)],
+        };
+
+        _storageService.SaveDataSet(custom);
+
+        var vm = new SyntheticDataSetDesignerViewModel(_storageService, dialogs.Object);
+        vm.SelectedDataSet = vm.FilteredDataSets.First(d => d.Id == custom.Id);
+        vm.SelectedDataSet!.IsBuiltIn.Should().BeFalse("la prueba necesita un dataset propio: los del sistema no se borran");
+        return vm;
+    }
+
+    [Fact]
+    public async Task DeleteDataSetCommand_WhenConfirmed_ShouldRemoveTheCustomDataSet()
+    {
+        var dialogs = new Mock<IDialogService>();
+        dialogs.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(true);
+        var vm = WithCustomDataSetSelected(dialogs);
+        string id = vm.SelectedDataSet!.Id;
+
+        await vm.DeleteDataSetCommand.ExecuteAsync(null);
+
+        vm.FilteredDataSets.Should().NotContain(d => d.Id == id);
+        _storageService.GetDataSetById(id).Should().BeNull("confirmado el borrado, el almacén lo pierde de verdad");
+    }
+
+    [Fact]
+    public async Task DeleteDataSetCommand_WhenRefused_ShouldLeaveTheDataSetAlone()
+    {
+        // La variante SÍNCRONA del contrato contesta «sí»: es la que contestaba el doble nulo (y en un host
+        // WinUI devuelve «no» sin preguntar). Si el diseñador volviera a preguntar por ahí, o si la puerta le
+        // entregara otra vez el doble nulo, el dataset desaparecería sin que nadie lo autorice y esta prueba
+        // lo dice.
+        var dialogs = new Mock<IDialogService>();
+        dialogs.Setup(d => d.ShowConfirmation(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        dialogs.Setup(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(false);
+        var vm = WithCustomDataSetSelected(dialogs);
+        string id = vm.SelectedDataSet!.Id;
+
+        await vm.DeleteDataSetCommand.ExecuteAsync(null);
+
+        vm.FilteredDataSets.Should().Contain(d => d.Id == id);
+        _storageService.GetDataSetById(id).Should().NotBeNull();
+        dialogs.Verify(d => d.ConfirmAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Once,
+            "la pregunta tiene que haber salido por la vía asíncrona del contrato");
+        dialogs.Verify(d => d.ShowConfirmation(It.IsAny<string>(), It.IsAny<string>()), Times.Never,
+            "la vía síncrona no contesta por el usuario en ninguna rama");
     }
 }
 

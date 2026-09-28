@@ -11,6 +11,7 @@ using FileFlow.App.Services;
 using FileFlow.App.ViewModels;
 using FileFlow.App.Views;
 using AppNodeCardView = FileFlow.App.Views.Components.NodeCardView;
+using FlowConnection = FileFlow.App.Views.Components.FlowConnection;
 using FileFlow.Core.Engine;
 using FileFlow.Sdk;
 using FileFlow.Tests.TestHelpers;
@@ -264,8 +265,8 @@ public class GeometryBindingProjectionTests
         canvas.GetVisualDescendants().OfType<Nodify.Avalonia.ItemContainer>()
             .First(container => ReferenceEquals(container.DataContext, node) || ReferenceEquals(container.Content, node));
 
-    private static Nodify.Avalonia.Connections.Connection? WireOf(EditorView view, ConnectionViewModel connection) =>
-        view.GetVisualDescendants().OfType<Nodify.Avalonia.Connections.Connection>()
+    private static FlowConnection? WireOf(EditorView view, ConnectionViewModel connection) =>
+        view.GetVisualDescendants().OfType<FlowConnection>()
             .FirstOrDefault(wire => ReferenceEquals(wire.DataContext, connection));
 
     /// <summary>

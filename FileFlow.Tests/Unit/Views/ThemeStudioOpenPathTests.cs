@@ -250,7 +250,9 @@ public class ThemeStudioOpenPathTests
                     var created = studioViewModel.SelectedTheme!;
                     ThemeManager.Instance.SetTheme(created);
 
-                    studioViewModel.DeleteThemeCommand.Execute(null);
+                    // El borrado pregunta por la vía asíncrona: el doble contesta sin ceder el hilo, así que
+                    // esperarlo aquí no bloquea el bucle de UI.
+                    studioViewModel.DeleteThemeCommand.ExecuteAsync(null).GetAwaiter().GetResult();
                     studioViewModel.AvailableThemes.Should().NotContain(theme => theme.Id == created.Id,
                         "el tema borrado desaparece del catálogo del estudio");
 
@@ -308,7 +310,7 @@ public class ThemeStudioOpenPathTests
             new InMemoryWorkflowStorageService(),
             preferences,
             themeService: ThemeManager.Instance,
-            dialogService: NullDialogService.Instance,
+            dialogService: new RecordingDialogService(),
             customThemeService: new CustomThemeService(themeStorage));
     }
 

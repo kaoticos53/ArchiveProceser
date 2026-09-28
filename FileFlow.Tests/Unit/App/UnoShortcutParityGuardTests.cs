@@ -97,7 +97,10 @@ public class UnoShortcutParityGuardTests
     {
         // El renombrado (Enter/Escape dentro de la caja) y la navegación del spotlight son teclado de la
         // caja, no del lienzo: los handlers del lienzo no secuestran las teclas de un TextBox.
-        Code(UnoCanvas).Should().Contain("e.OriginalSource is TextBox",
+        // El huésped Uno expresa la cortesía en el resolver compartido (`IsTextInput` sube por el árbol,
+        // y cubre tanto el TextBox como sus hijos); desde el hito 251 ese resolver lo comparten el foco
+        // del lienzo y el enrutado de la ventana, así que la cortesía vale en las dos vías.
+        Code(UnoCanvas).Should().Contain("IsTextInput(source as DependencyObject)",
             "la caja de renombrado consume sus propias teclas: Enter confirma y Escape cancela, no borra nodos");
 
         Code(AvaloniaView).Should().Contain("e.Source is TextBox",

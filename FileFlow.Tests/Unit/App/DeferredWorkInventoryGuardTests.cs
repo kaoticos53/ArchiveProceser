@@ -61,6 +61,12 @@ public class DeferredWorkInventoryGuardTests
         // detrás; la prueba de humo de arranque recorre el arranque, no esta espera.
         RealTime("FileFlow.App/App.axaml.cs::StartBackgroundWork::Delay", "espera del arranque a que la interfaz esté pintada antes de consultar actualizaciones (no compite con el primer fotograma)"),
 
+        // La comprobación de actualizaciones del host Uno espera, como la del escritorio, a que la interfaz esté
+        // montada antes de salir a la red. Es la MISMA decisión de arriba, en el arranque del host: no hay paso
+        // público y su duración sólo tiene sentido con una interfaz real detrás (y con una release nueva de
+        // verdad, que es cuando el distintivo se enciende). En los modos de sondeo ni se arranca.
+        RealTime("FileFlow.App.Uno/App.xaml.cs::StartUpdateCheck::Delay", "espera del arranque del host a que la interfaz esté montada antes de consultar actualizaciones (la misma de la aplicación de escritorio; se salta entera en los modos de sondeo)"),
+
         // El fundido de cierre avanza por fotogramas de 16 ms: la duración <i>es</i> la animación.
         RealTime("FileFlow.App/Views/SplashScreenWindow.axaml.cs::CloseWithFadeAsync::Delay", "el fundido de cierre avanza fotograma a fotograma; ningún test lo llama porque la splash se cierra de verdad en el arranque"),
 
