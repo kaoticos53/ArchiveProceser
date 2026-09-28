@@ -120,9 +120,12 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 .\run-uno-fast.ps1
 
 # Sondeos del host Uno (el script espera y hereda el exit code: 0 = verificado)
-.\run-uno.ps1 -SelfCheck        # sondeo interno en runtime (70 comprobaciones)
-.\run-uno.ps1 -SelfCheckUia     # sondeo UIA EXTERNO (hijo python; exige python + pywinauto)
-.\run-uno-fast.ps1 -SelfCheck   # ídem sin compilar
+.\run-uno.ps1 -SelfCheck          # sondeo interno en runtime (lienzo y paneles: 83 comprobaciones)
+.\run-uno.ps1 -SelfCheckControlBar # sondeo de la BARRA DE CONTROL y su cajón (modo propio: su ciclo ejecuta)
+.\run-uno.ps1 -SelfCheckSettings  # sondeo de la superficie de AJUSTES (modo propio: cambia tema e idioma)
+.\run-uno.ps1 -SelfCheckDialogs   # sondeo de los PANELES DE NODO (editor de texto y catálogo de variables)
+.\run-uno.ps1 -SelfCheckUia       # sondeo UIA EXTERNO (hijo python; exige python + pywinauto)
+.\run-uno-fast.ps1 -SelfCheck     # ídem sin compilar
 
 # Limpiar todos los artefactos de compilación, binarios y temporales
 .\clean.ps1

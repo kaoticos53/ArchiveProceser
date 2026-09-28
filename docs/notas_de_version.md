@@ -1,8 +1,8 @@
 # Notas de versión — FileFlow Studio
 
-**Versión 1.0.0 · compilación 5779 · 25 de septiembre de 2026**
+**Versión 1.0.0 · compilación 7005 · 28 de septiembre de 2026**
 
-Estas notas recogen **ocho tramos**:
+Estas notas recogen **veinte tramos**:
 
 - **El del rediseño visual** (compilación 4743 → 5018): el aspecto, los estados de los controles, el arranque y
   la infraestructura de pruebas que lo sostiene. Son los apartados **1 a 3**.
@@ -37,10 +37,30 @@ Estas notas recogen **ocho tramos**:
   compartido y sus enlaces ya no pueden fallar en silencio en ninguno de los dos hosts, y el suite dejó de
   mentir con fallos intermitentes de carga. Cifras del tramo, medidas: **1742 → 1800 pruebas superadas**
   (1 omitida).
+- **El del lienzo Uno vivo** (apartado **11**): el que explica por qué el host multiplataforma pasó de
+  lienzo estático a **editor completo** — selección, arrastre, teclado, spotlight, notas, grupos, cables
+  vivos y re-tematización — con el rendimiento medido (un frame de arrastre del grafo entero ~1 ms con 40
+  nodos y 28 cables). Cifras del tramo, medidas: **1800 → 1849 pruebas superadas** (1 omitida).
+- **El de los paneles del editor Uno** (apartado **12**): el que explica por qué el host multiplataforma
+  es ya un **editor de tres zonas como el escritorio** — cajón, lienzo e inspector — sin duplicar lógica:
+  los view models son los compartidos del núcleo y el host sólo escribió vistas. Cifras del tramo,
+  medidas: **1849 → 1863 pruebas superadas** (1 omitida) al cierre del tramo.
+- **El de la observación UIA y el cierre de la rebanada 4** (apartado **13**): el que explica por qué el
+  host multiplataforma puede ser **observado desde fuera por otro proceso** — y qué frontera de la
+  plataforma quedó medida y declarada en el camino —, por qué el botón Ejecutar, las pestañas de
+  snapshots y el conmutador compacto/detallado ya están, y por qué el plan de paneles se quedó **sin
+  pendientes de código**. Cifras del tramo, medidas: **1849 → 1866 pruebas superadas** (1 omitida).
+
+Los tramos siguientes —los **ajustes del host** (apartado **14**), su **menú principal** (**15**), sus **paneles
+de nodo** (**16**), las **entradas y los atajos que faltaban** (**17**), las **ventanas que faltaban** (**18**), el
+**diseñador de datasets, las dos pestañas de ajustes que quedaban y el editor de URLs por modelo** (**19**), el
+**gestor de presets de medios** (**20**) con su **confirmación** (**21**), las **seis órdenes destructivas que
+quedaban mudas** (**22**) y el **cable que ahora es el mismo en las dos aplicaciones** (**23**)— están en sus
+apartados.
 
 Están escritas en dos mitades a propósito —**lo que ves** al usar la aplicación y **lo que no se ve** pero es lo
 que impide que lo primero se rompa sin que nadie se entere—. Todo lo que se afirma aquí está medido en el
-registro técnico ([`PROJECT_WALKTHROUGH.md`](PROJECT_WALKTHROUGH.md), hitos 169 a 222): las cifras salen de ahí,
+registro técnico ([`PROJECT_WALKTHROUGH.md`](PROJECT_WALKTHROUGH.md), hitos 169 a 246): las cifras salen de ahí,
 no de la memoria.
 
 ---
@@ -816,7 +836,641 @@ visible: construye las pruebas de que lo construido **no se puede romper en sile
 
 ---
 
-## 13. Cómo verificarlo
+## 13. El tramo de la observación UIA y el cierre de la rebanada 4 (compilación 6131 → 6309)
+
+El host multiplataforma ganó su infraestructura de observación externa y cerró el último pendiente de
+código de sus paneles. Cifras del tramo, medidas: **1849 → 1875 pruebas superadas** (1 omitida);
+**48 → 56 mutaciones declaradas, todas mordiendo**; el sondeo en runtime pasó de **63 a 80
+comprobaciones**; el sondeo externo llegó a **8 sondeos en verde**.
+
+### Lo que ves
+
+- **El botón Ejecutar en el host multiplataforma**: el mismo comando del escritorio (con coordinador,
+  simulación por defecto y punto de control), y una línea de estado que cuenta el ciclo — renglón de
+  longitud fija, sin parpadeos ni textos partídos, con su fichero espejo legible desde fuera.
+- **El inspector completo**: la ficha del nodo se abrió en el tramo anterior; ahora tiene la vista
+  combinada de snapshots, **las pestañas separadas de Entradas y Salidas** (cada una con exactamente
+  los datos de su colección, paridad con el escritorio), y la pestaña de **diferencias de metadatos**
+  (añadidos, eliminados y modificados, con sus colores) que se recalcula al inspeccionar y al
+  seleccionar un snapshot. Cada tarjeta y cada fila lleva su nombre de automatización.
+- **El botón «Probar» del inspector** funciona: abre los selectores de Windows y ejecuta la prueba
+  aislada del nodo con el fichero que elijas (la variante asíncrona del diálogo, con la vista que
+  nunca se bloquea).
+- **El conmutador compacto/detallado del cajón de herramientas**: el botón de la cabecera alterna entre
+  la lista ligera (sólo nombre) y la detallada (insignia de rol + descripción), y **la elección
+  persiste entre sesiones** en tus preferencias.
+- **Los atajos del lienzo del host multiplataforma funcionan con el puntero**: clic en una tarjeta para
+  seleccionarla y, a continuación, `Supr` la borra, `Ctrl+Z` la devuelve, `Ctrl+Y` la vuelve a quitar y
+  `F2` abre el renombrado. Antes el teclado se quedaba sin destinatario al clic (medido: borrar y
+  deshacer no hacían nada con la ventana en primer plano). Y **el área de clic de las tarjetas coincide
+  con lo que se dibuja**: el clic cae en la tarjeta que clicas, no en la de al lado (el reparto se
+  desplazaba la columna del cajón y la barra superior).
+- **La observación externa como producto** (`--selfcheck-uia`): la app puede ser observada desde otro
+  proceso — anclas del lienzo y del zoom, foco del lienzo, zoom que cambia y se restaura, el atajo del
+  spotlight, el buscador que recibe teclado inyectado, las pestañas del inspector y las filas de
+  diferencias — con veredicto propio por código de salida y reporte en disco. El guion del ciclo
+  completo (superficie viva, botón expuesto, **el motor ejecutando un flujo real verificado por el
+  CLI del producto**, canal legible) corre 4/4.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **La escena para la observación la monta la app, no el observador**: fixture real (una entrada y tres
+  salidas por la misma vía que usa el motor) montado con reintentos, asentado sin cliente y señal de
+  listo/fracaso — el orden lo impuso la medición: con un observador conectado durante la
+  materialización, el proceso moría sin rastro.
+- **La frontera medida y declarada**: el contenido de snapshots materializado y en pie tumba al
+  proveedor de automatización del proceso (con retardo, sin registro de errores ni excepción). Quedó
+  declarado en el veredicto del sondeo: el contenido queda LATENTE para el canal externo y sus
+  tarjetas las verifica el sondeo interno — honestidad medida, no cobertura fingida.
+- **Cero lógica duplicada, sigue**: el conmutador y el botón Ejecutar atan al MISMO comando del núcleo
+  que el escritorio; la reacción de la vista vive en código porque el binding de una plantilla de
+  datos de WinUI no alcanza la página (la lección que dejó el pendiente).
+- **El teclado del lienzo tiene dos protecciones nuevas**: (1) los atajos **no dependen del foco** —la
+  raíz de la ventana enruta al lienzo las teclas que nadie consumió, con el mismo burbujeo del
+  escritorio— y (2) el lienzo **recupera** el teclado si alguien se lo lleva justo después de un clic.
+  Hacían falta las dos porque, medido con puntero real, el clic entrega el foco y ~0,1 s después un
+  envoltorio de la plantilla de ventana del *framework* se lo lleva (no es código del producto: es un
+  contenedor sin nombre, sin datos y del tamaño de la ventana). Certificado con puntero real: borrar,
+  deshacer, rehacer y renombrar, y el buscador del cajón conservando sus letras mientras se escribe.
+- **Los cables ya parecen cables**: antes no tocaban sus conectores —quedaban separados 45 px de cada uno y,
+  con dos tarjetas cerca, se doblaban hacia atrás en un rulo con forma de «2»— y además se iban de sitio al
+  ajustar el zoom. Ahora nacen y mueren **en el conector**, con una sola curva suave y sin el tramo recto
+  que se leía como una **Z**, y su forma se adapta al hueco que haya entre las dos tarjetas: si están juntas,
+  la curva se cierra dentro; si están lejos, el cable queda tenso y fino. **Certificado con el ratón de
+  verdad** en tres rondas (mover tarjetas, pan y zoom) y medido en pantalla: en el hueco corto el cable es
+  **una sola curva**, sin dobles.
+- **59 mutaciones declaradas**, todas con testigo que muerde y control en verde — las nuevas: el toggle
+  que no persiste (el modo elegido que se olvida al reiniciar), el área de clic desplazada (el clic que
+  cae en otra tarjeta), el atajo que no llega sin foco, la reclamación que se lo quita al cuadro de
+  texto (el lienzo robándole el teclado a quien escribe), el cable despegado de su conector, el ancla que
+  se olvida de la escala del zoom y el cuello que no cabe en el hueco (la Z).
+
+### Lo que sigue viéndose así (declarado)
+
+- **El clic y el teclado del lienzo ya están certificados con puntero real** (las sesiones de gestos
+  nuevas: seleccionar, deseleccionar, arrastrar, borrar, deshacer, rehacer y renombrar, con la ventana
+  en primer plano). El puntero inyectado sin UIAccess sigue descartado por WinAppSDK, así que lo que
+  falte se mide con dedos de verdad.
+- **Lo que aún no está medido y se declara**: la puntería del clic sobre los conectores de un cable
+  (~12 px de diana: el operador cae 100–160 px por debajo, y ese clic perdido, con el botón derecho,
+  arranca un desplazamiento del lienzo) y el rectángulo de selección cuando el lienzo está desplazado
+  (con el lienzo centrado acierta). El contenedor que se lleva el foco tras el clic ya está
+  identificado —es del *framework*, no del producto— y el lienzo se defiende de él.
+- **La forma nueva del cable está en el host multiplataforma, no en el escritorio**: el escritorio dibuja
+  con el control de siempre (la puntita retirada y los tramos rectos), así que allí los cables siguen
+  viéndose como antes; su clic sobre el cable, en cambio, ya se calcula con la misma curva compartida.
+  Llevarle también la forma exige que el escritorio dibuje con la geometría del núcleo.
+- Los selectores de variables y los diálogos de nodo caen a su no-op seguro (sus servicios del host
+  siguen pendientes de cablear); el diálogo de ficheros ya es real desde el tramo anterior.
+
+---
+
+## 14. El tramo de los ajustes, el tema y el idioma del host (compilación 6309 → 6550)
+
+El host multiplataforma estrenó su **superficie de ajustes** —hasta entonces tenía el lienzo, los paneles y la
+barra de zoom, pero ningún sitio donde cambiar nada— y con ella **sus propios textos en dos idiomas**. Cifras
+del tramo, medidas: **1875 → 1894 pruebas superadas** (1 omitida); **56 → 62 mutaciones declaradas, todas
+mordiendo**; el sondeo en runtime pasó de **80 a 83 comprobaciones** del lienzo **más 9 propias de los ajustes**
+(en su modo, porque cambiar de tema e idioma a mitad de las sondas del lienzo las tumbaba).
+
+### Lo que ves
+
+- **El botón «Ajustes» en la cabecera del host**: abre una superficie de **cuatro secciones** —Almacenamiento y
+  rutas, Apariencia e idioma, Rendimiento y ejecución, Herramientas externas— con su pie de Cancelar/Guardar.
+  Es el mismo cuadro de ajustes del escritorio, con las mismas opciones y los mismos hábitos.
+- **Cambiar el tema y el idioma desde ahí, y que aguante**: eliges el tema en su desplegable, pulsas Guardar y el
+  lienzo se repinta —fondo, tarjetas, cables y acentos—; eliges el idioma y **los textos del marco cambian de
+  idioma sin reiniciar**. Al cerrar la aplicación y volver a abrirla, **siguen puestos los dos**.
+- **La elección, cuando se guarda**: el tema y el idioma se aplican **al guardar**, no al pasar por el
+desplegable, así que **Cancelar deja la aplicación exactamente como estaba**. Es la misma regla de la ventana de
+  ajustes del escritorio; el cajón de control es el que aplica en vivo.
+- **El guardado es el del producto**: los ajustes escriben el fichero de preferencias de siempre, con las
+  mismas claves y los mismos valores por defecto que el escritorio (lo que ya hubiera se conserva).
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **El diccionario del host, en dos idiomas**: sin él, elegir «English» re-culturaba el proceso y todo seguía
+  en español por el texto incrustado en el código. Ahora cada renglón del marco sale de su tabla (inglés y
+  español), y una guardia exige que **ninguna clave citada falte en ninguna de las dos**.
+- **La superficie se prueba sola**: un sondeo en modo propio (`-SelfCheckSettings`) abre la superficie, cambia
+  tema e idioma, comprueba que llegan al producto y **devuelve las preferencias del usuario como estaban**;
+  corre aparte porque cambiar tema e idioma a mitad de las pruebas del lienzo deja esas pruebas ciegas.
+- **La coartada del verde, retirada**: la sonda del lienzo probaba con un tema fijo y «restauraba» a otro fijo —
+  era verde *porque* el arranque ignoraba el tema guardado—. Ahora elige el tema contrario al activo y devuelve
+  el de la entrada, en las dos direcciones.
+- **Los ajustes del host, ejercidos con la aplicación abierta**: no por dentro, sino por sus controles reales
+  (el botón, las pestañas, los desplegables, las casillas, Guardar) desde otro proceso, con el vigilante de
+  píxeles midiendo. Cambiar el tema y el idioma, guardar, **cerrar y reabrir** y comprobar en píxeles que el
+  lienzo arranca con el tema guardado y el marco en el idioma guardado.
+
+### Lo que sigue viéndose así (declarado)
+
+- Faltan dos pestañas que el escritorio sí tiene: **Actualizaciones** y **Modelos de IA** (el cuadro portable
+  las trae; la vista del host todavía no).
+- El **menú principal / barra de control** completa del escritorio (tema, idioma, ejecutar, ajustes y atajos en
+  una sola barra) **no está portado**: el host tiene el botón de ajustes, la barra de zoom y los atajos del
+  lienzo.
+- Los **selectores de variables** y los **diálogos de nodo** siguen cayendo a su no-op seguro (sus servicios
+  del host están pendientes de cablear); el diálogo de ficheros ya es real.
+- Los controles de esta pantalla que **no exponen su valor** al canal de automatización externo (los
+  desplegables y los campos numéricos) se comprueban por la **preferencia guardada** y por el **píxel**, no por
+  una lectura de su valor; se declara en vez de inventar un veredicto.
+
+---
+
+## 15. El tramo del menú principal del host (compilación 6550 → 6584)
+
+El host multiplataforma, que ya tenía lienzo, paneles, atajos y ajustes, estrenó **su barra de control**: la
+misma barra del escritorio, con sus tres islas y su cajón de menú. Cifras del tramo, medidas: **1894 → 1902
+pruebas superadas** (1 omitida); **62 → 66 mutaciones declaradas, todas mordiendo**; el sondeo en runtime pasó
+de 83 comprobaciones del lienzo y 9 de los ajustes a **83 + 9 + 14 propias del menú** (en su modo, por la misma
+razón que los ajustes: su ciclo mueve el documento y dejaría ciegas las pruebas del lienzo).
+
+### Lo que ves
+
+- **La barra, arriba**: el botón de menú, el nombre del producto, el **Modo Prueba** y el **Vigilante**, más las
+  órdenes del ciclo —**Ejecutar** y **Depurar** cuando no hay nada corriendo, **Pausar** y **Detener** mientras
+  corre, **Siguiente Paso** y **Continuar** en una depuración— y las herramientas: Deshacer y Rehacer (que se
+  **apagan** cuando no hay nada que deshacer), Revertir Archivos e Inspector.
+- **El cajón, al pulsar «Menú»**: un velo sobre la escena y un panel de 320 px con el **tema**, el **idioma**,
+  la entrada a los **ajustes**, el **Inspector** y la versión del producto al pie.
+- **Lo que no se dibuja**: lo que este host no puede cumplir. Nuevo, Cargar y Guardar Flujo, el estudio de
+  temas, las métricas, el explorador de ficheros virtuales, el diseñador de dataset, el manual, los ejemplos,
+  «Acerca de» y el aviso de actualización **no están**; y las teclas del escritorio que ligan el ciclo (F5, F10,
+  Shift+F5) y el flujo (Ctrl+N, Ctrl+O, Ctrl+S) **tampoco hacen nada aquí**. Ni un botón ni una tecla prometen
+  lo que no hay.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **Todo el menú es una vista del núcleo**: las entradas llaman a los mismos comandos del cuadro de mando
+  portable que el escritorio, así que el estado que enseña la barra no puede contradecir a la ejecución.
+- **Los textos son los del escritorio, copiados**: clave por clave y en los dos idiomas. Una traducción propia
+  del host sería otra interfaz.
+- **Se prueba solo**: un sondeo propio de **14 comprobaciones** pulsa las entradas por el mismo canal que un
+  lector de pantalla y lee el estado del cuadro de mando; corre aparte porque su ciclo mueve el documento.
+- **Lo que falta está escrito**: **once entradas pendientes**, una cumplida por el host y **seis atajos**, en
+  tres tablas del propio control. La guardia recorre las órdenes del escritorio y exige destino para cada una
+  —dibujada, pendiente o cumplida—, así que portar una entrada a medias no puede pasar por portada.
+- **El menú, con la aplicación abierta**: pulsar «Menú» **se ve en el píxel** (el velo oscurece la escena y la
+  escena vuelve al recogerse), el Inspector recoge la columna derecha hasta dejarla en lienzo, y **Deshacer
+  deshabilitado rechaza la orden** en vez de tragársela. Al terminar, tus preferencias quedan **intactas**.
+
+### Lo que sigue viéndose así (declarado)
+
+- **Los paneles de los nodos** (diálogos de parámetros y selectores de variables) siguen sin interfaz en este
+  host: caen a su no-op seguro.
+- Las **once entradas** y los **seis atajos** del menú del escritorio, arriba: el host no tiene todavía las
+  ventanas ni los diálogos que las cumplen.
+- Los desplegables de **tema e idioma del cajón** se han ejercido por su presencia, su enlace y su catálogo; su
+  selección en vivo **no se tocó** en la sesión del menú para no escribir tu fichero de preferencias (esa misma
+  ruta ya está medida en la sesión de los ajustes).
+
+---
+
+## 16. El tramo de los paneles de nodo del host (compilación 6584 → 6638)
+
+El host multiplataforma estrenó **los paneles que cada nodo tiene dentro**: el **editor de texto y prompts** del
+parámetro largo y el **selector de variables**. Hasta ahora los dos botones existían y **no hacían nada** —sin
+error en pantalla, el usuario pulsaba y no pasaba nada—. Cifras del tramo, medidas: **1902 → 1911 pruebas
+superadas** (1 omitida); las dos corridas de cierre dejaron **un rojo distinto cada una** —la de hilos y la de
+los ejemplos de punta a punta— y **las dos pasan en aislamiento**: carga de la máquina, no regresión; **66 → 70
+mutaciones declaradas**, las cuatro nuevas mordiendo; el
+sondeo en runtime pasó de 83 del lienzo + 9 de los ajustes + 14 del menú a **83 + 9 + 14 + 24 propias de los
+paneles de nodo** (en su modo, por la misma razón que las anteriores).
+
+### Lo que ves
+
+- **«✎» en un parámetro de texto largo**: abre el editor, **con el valor que el nodo ya tenía** dentro (no vacío);
+tiene su botón para insertar una variable en el punto del cursor, otro para vaciar la caja, y al pulsar
+**«Guardar y Aplicar»** el texto queda **en el parámetro del nodo**.
+- **«{x}» en la fila de un parámetro**: abre el **catálogo de variables** del flujo, **poblado** (47 variables en
+el flujo de ejemplo), con buscador que filtra al escribir, el detalle de cada variable y **«Insertar Variable»**
+que escribe el token elegido en el parámetro. El campo del nodo **se actualiza a la vista** en el acto.
+- **Los dos diálogos son los del escritorio**: mismos textos y mismo comportamiento, porque son la **misma
+lógica** —los cuadros de mando del núcleo— con una vista distinta encima.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **El servicio de diálogos del host, con su censo**: de las **9** puertas de diálogo del producto, este host
+**sirve 2** (el editor y el catálogo) y **declara las 7** que no, cada una con su razón. Lo que se pide y no se
+sirve **no se cancela en silencio**: queda en una traza y en la consola de la aplicación, porque un «cancelado»
+mudo se lee como un error tuyo.
+- **El defecto que se encontró usándolo**: las cajas de las filas del inspector sólo escribían **en un sentido**,
+así que el valor que insertaba el diálogo no volvía al campo (habrías visto desaparecer tu inserción). Se arregló
+el atado en las dos direcciones, en las tres clases de caja.
+- **Cuatro defectos declarados que las pruebas matan**: quitar el anclaje del servicio del arranque (el catálogo
+existe y las filas siguen sin alcanzarlo), abrir desde la fila un menú que este host no tiene, un editor que no
+devuelve el texto confirmado y un campo que no muestra lo que el diálogo escribió. Cada uno tiene su testigo y su
+control: **los cuatro muerden**.
+- **Se prueba solo**: un sondeo propio de **24 comprobaciones** recorre el camino entero —abrir el catálogo,
+filtrarlo, insertar el token **y leerlo del parámetro del nodo**, abrir el editor sembrado con el valor y guardarlo—
+por dentro de la aplicación, no en una maqueta.
+- **Los paneles de nodo, con la aplicación abierta**: 25 de 25 pasos; el modal **se ve en el pixel** (el catálogo
+oscurece la escena y al cerrarse vuelve al color de base), el campo del nodo pasa de vacío a `{FileName}` al
+insertar y el texto escrito en el editor queda en el parámetro. Al terminar, tus preferencias quedan **intactas**.
+
+### Lo que sigue viéndose así (declarado)
+
+- **Siete puertas de diálogo sin interfaz en este host** (aviso de actualización, explorador de ficheros virtuales,
+Acerca de, métricas del flujo, estudio de temas, modelos de IA y la apertura de los ajustes por esta vía): se
+declaran, no se fingen.
+- El **«{x}» de las filas abre el catálogo completo**, no el menú emergente del escritorio: el host no tiene menú
+emergente, y el catálogo **es** la primera entrada de aquel menú.
+- Las **entregas anteriores** siguen como quedaron: las **once entradas** y los **seis atajos** del menú del
+escritorio, y las pestañas **Actualizaciones** y **Modelos de IA** de los ajustes.
+
+---
+
+## 17. El tramo de las entradas y los atajos que faltaban del menú (compilación 6638 → 6666)
+
+El host multiplataforma completó **su menú**: lo que quedaba declarado «sin interfaz» del cajón —Nuevo,
+Cargar y Guardar Flujo, Manual, Ejemplos y Acerca de— **ya está**, y las seis teclas que el escritorio liga
+al ciclo y al flujo (F5, F10, Shift+F5, Ctrl+N, Ctrl+O, Ctrl+S) **hacen aquí lo mismo que allí**. Cifras del
+tramo, medidas: **1902 → 1912 pruebas superadas** (1 omitida); **66 → 71 mutaciones declaradas**, la nueva
+mordiendo (y dos anteriores actualizadas al producto nuevo, también mordiendo); el sondeo en runtime pasó de
+14 comprobaciones del menú a **25**.
+
+### Lo que ves
+
+- **En el cajón, dos secciones nuevas**: **GESTIÓN DE FLUJOS** —**Nuevo**, **Cargar…** y **Guardar…**— y
+**AYUDA Y RECURSOS** —**Manual de Usuario**, **Ejemplos de Flujos** y **Acerca de**—. Contigo delante: Nuevo
+pregunta antes de vaciar el lienzo, Cargar y Guardar abren el selector de archivos del sistema, el Manual abre
+el manual, Ejemplos abre la carpeta de ejemplos y **Acerca de** enseña la versión y la información del producto.
+- **Las teclas del escritorio, por fin**: F5 continúa, F10 avanza un paso, Shift+F5 detiene, y Ctrl+N / Ctrl+O /
+Ctrl+S hacen lo mismo que las tres entradas de flujo del cajón.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **La frontera que las bloqueaba, cruzada sin tocar el contrato**: esas órdenes piden en el núcleo un diálogo
+**síncrono**, y desde el hilo de interfaz este host devuelve «nada» (el selector exige el hilo de UI y la
+confirmación no puede bloquearlo). En vez de copiar la lógica en la ventana, **el diálogo se separó de la
+operación** en el cuadro de mando portable —quien ya tiene la ruta (o la respuesta) no necesita el diálogo— y
+el host aporta lo que sí sabe hacer: sus diálogos **asíncronos**.
+- **Ninguna tecla muda**: la tabla que enruta los seis atajos es la **misma** que lee la guardia, así que
+quitar una fila deja la tecla sin ruta y sin declaración — y eso cae en las pruebas.
+- **Cuatro defectos declarados que las pruebas matan**: una entrada de flujo que se cumpliese por el comando
+síncrono (el botón se pulsa y no pasa nada), una orden del escritorio sin destino en el host, un atajo del
+escritorio sin ruta y sin declaración, y una entrada declarada que además estuviese dibujada. Todas muerden.
+- **Se prueba solo**: el sondeo del menú subió a **25 comprobaciones** y mide el **efecto**, no el gesto: abre
+«Acerca de» y lee la versión del producto, pide «Nuevo Flujo» y comprueba que cancelar deja el grafo intacto,
+confirma y comprueba que el lienzo queda vacío, **guarda y vuelve a cargar** por el canal asíncrono, y
+comprueba que F5 llega al comando del ciclo (reanudar deja su línea en la consola).
+- **El menú, con la aplicación abierta**: 27 de 27 pasos. El velo del cajón y el modal **se ven en el píxel**
+(el fondo pasa de `#FCF8F8` a `#585454` al desplegar y a `#B0ACAC` con «Acerca de» abierto, y vuelve al
+cerrarlo), «Acerca de» enseña la versión al canal de observación, Ctrl+N por **teclado físico** abre la misma
+confirmación y F5/F10 dejan su rastro. Al terminar, tus preferencias quedan **intactas**.
+
+### Lo que sigue viéndose así (declarado)
+
+- **Cinco entradas del cajón siguen sin interfaz en este host**, cada una con su razón: el **Estudio de temas**
+(edita temas por secciones), las **métricas**, el **explorador de archivos virtuales**, el **diseñador de
+dataset** y el **aviso de actualización** (este host todavía no comprueba si hay una versión nueva). No se
+dibuja un botón que no pueda hacer nada.
+- **«Acerca de» aquí es una ventana modal** dentro de la única ventana del host; en el escritorio es una
+ventana aparte. La misma información, contada igual.
+- **Ctrl+O y Ctrl+S** abren el selector del sistema: en la sesión de medida no se pulsaron con teclado físico
+(se llevarían por delante la observación), así que su camino lo atan las pruebas y su mitad sin diálogo se
+ejerció guardando y cargando sobre un fichero temporal.
+
+---
+
+## 18. El tramo de las ventanas que faltaban del host (compilación 6666 → 6713)
+
+De las cinco entradas que el tramo anterior dejó «sin interfaz», **cuatro ya la tienen**: el **Estudio de
+personalización de temas**, las **métricas** del flujo, el **explorador de archivos virtuales** y el **aviso de
+actualización**. La quinta —el **diseñador de dataset**— sigue declarada con su razón. Cifras del tramo,
+medidas: **1912 → 1915 pruebas superadas** (1 omitida); **71 → 75 mutaciones declaradas**, las cuatro nuevas
+mordiendo; el sondeo del menú pasó de **25 a 37 comprobaciones**, y el catálogo de diálogos del host pasó de
+**3 servidas + 6 declaradas** a **7 + 2**.
+
+### Lo que ves
+
+- **Estudio de Temas**: se abre desde el cajón y trae el **catálogo de temas** con su nombre, su estado y sus
+  botones de **Aplicar**, **Guardar** y **Cerrar**; debajo, los **ajustes del tema por secciones** (nueve
+  secciones, treinta y cuatro ajustes editables: colores con su muestra, números con su rango y sus flechas,
+  elecciones). Cada fila es del **mismo editor del núcleo** que el escritorio: aquí no hay una segunda versión.
+- **Métricas**: la duración total, el desglose **por nodo** con sus columnas, y el pie que resume —en la sesión
+  de medida, «**3 nodos analizados. 0 cuello(s) de botella.**» para el flujo de ejemplo.
+- **Explorador de archivos virtuales**: buscador, lista, selección y detalle de lo que un flujo deja en su
+  almacén virtual. Su **chip en la barra** se enciende con el recuento en cuanto hay archivos virtuales.
+- **Aviso de actualización**: si hay una versión nueva, el **distintivo de la barra** la enseña con su número, y
+  la ventana cuenta las versiones, el formato del paquete, las novedades y el **progreso de la descarga**; se
+  cierra desde su propio botón y recuerda la versión que le hayas pedido ignorar.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **El menú, entero**: el cajón pasa de once a **catorce entradas** ancladas y **ninguna abre ya un botón que no
+  haga nada**. Las cuatro ventanas son **superficies modales de la ventana del host** (mismo criterio que
+  «Acerca de»), servidas por el **catálogo de diálogos** del servicio de ventanas, y cada una lleva la **clave
+  del catálogo como ancla**, de modo que se puede comprobar desde fuera que es la que se pidió.
+- **La comprobación de actualizaciones del arranque** —la misma del escritorio, en segundo plano y respetando la
+  versión ignorada— entra de verdad: sin ella, el aviso que ya existía no lo pediría nadie. Queda **fuera de los
+  sondeos**, para que medir no dependa de la red.
+- **Los textos se copian, no se re-traducen**: **192 claves** del diccionario del escritorio en los dos idiomas,
+  exigidas al carácter por las pruebas.
+- **El Estudio de temas declara lo que no dibuja** (su vista previa en vivo y Eliminar / Importar / Exportar,
+  que piden el diálogo **síncrono** que este host no puede dar): está en una tabla con su razón, y las pruebas
+  impiden que vuelva a dibujarse sin servir.
+- **Cuatro defectos declarados que las pruebas matan**: una ventana servida que no esté en el catálogo, una
+  entrada de ventana que no ejecute su orden, un aviso de actualización que nadie encienda y un estudio de temas
+  que esconda lo que no sirve sin declararlo. Las cuatro muerden.
+- **Se prueba solo**: el sondeo del menú sube a **37 comprobaciones** y abre cada ventana nueva, lee su contenido
+  y la cierra dejando el lienzo como estaba; una de las pruebas nuevas de la guardia **nació sin morder** y hubo
+  que endurecerla (buscaba las órdenes dentro de la tabla que las declaraba).
+- **Las ventanas, con la aplicación abierta**: **25 de 25 pasos**. El Estudio de Temas y las Métricas se abren,
+  se leen por el canal de observación (nueve temas en la lista, tres nodos y el pie de métricas) y **se ven en el
+  píxel** (el fondo pasa de `#FCF8F8` a `#B0ACAC` con el modal y vuelve al cerrarlo). Al terminar, tus
+  preferencias quedan **intactas**.
+
+### Lo que sigue viéndose así (declarado)
+
+- **El diseñador de dataset sigue sin interfaz en este host**, con su razón escrita: su ventana la monta el
+  propio plugin con su juego de herramientas, y abrirla aquí pide una vista del host sobre una lógica que vive
+  dentro de su ensamblado. No se dibuja un botón que no pueda hacer nada.
+- **En el Estudio de temas**: **Eliminar**, **Importar** y **Exportar** no están dibujados (necesitan el diálogo
+  síncrono) y la **vista previa en vivo** tampoco (necesitaría su propia copia de los colores del lienzo).
+  Declarado en vez de fingido.
+- **Las cuatro ventanas son modales dentro de la única ventana del host**; en el escritorio cada una es una
+  ventana aparte. La misma información, con los mismos textos.
+- **El aviso de actualización se ejercitó con una novedad sintética**; en el uso normal sólo aparece cuando hay
+  una versión nueva de verdad.
+- **Sigue pendiente**: las pestañas **Actualizaciones** y **Modelos de IA** de la propia ventana de ajustes, el
+  **gestor de presets de medios** y el de **contraseñas**, y el **empaquetado y la entrega** del host (paquete,
+  firma y publicación).
+
+---
+
+## 19. El tramo del diseñador de datasets, las pestañas de ajustes y el editor de URLs (compilación 6713 → 6818)
+
+El tramo anterior dejó tres cosas «sin interfaz»: una entrada de menú —el **diseñador de datasets**—, dos
+pestañas de la ventana de ajustes y la **edición de URLs por modelo**, que ni siquiera tenía punto de entrada.
+Las tres funcionan ya. Cifras del tramo, medidas: **1915 → 1917 pruebas superadas** (1 omitida); **75 → 80
+mutaciones declaradas**, todas las nuevas mordiendo y una reapuntada; el sondeo del menú pasó de **37 a 42
+comprobaciones** y el de ajustes de **9 a 18**, y el catálogo de diálogos del host pasó de **7 servidas + 2
+declaradas** a **10 servidas + 1 declarada**.
+
+### Lo que ves
+
+- **Diseñador de Datasets**: se abre desde el cajón y trae el **buscador**, el **catálogo de datasets** con sus
+  conjuntos (en la sesión de medida, siete, con «Cómics y Manga (Oficial)» y sus 40 elementos) y las **tres
+  pestañas** —árbol, DSL y JSON—, más las órdenes de **añadir archivo** y **quitar nodo**. Es el mismo editor
+  del plugin: aquí no hay una segunda versión del diseño de datasets.
+- **Ajustes, dos pestañas más**: **Modelos de IA** (el catálogo del gestor del núcleo, con su carpeta, su estado
+  y las acciones de descargar y borrar por fila —en la sesión de medida, veinticuatro modelos—) y
+  **Actualizaciones** (tu versión, el formato del paquete, los canales y la comprobación automática). La ventana
+  de ajustes pasa a **seis secciones**.
+- **Editor de URLs de un modelo**: cada fila del catálogo de modelos tiene ahora su acción de **URLs**, y abre un
+  editor con las **URLs de descarga** de ese modelo (una por línea, en orden de prioridad), el **recuento** que se
+  actualiza mientras tecleas, su **distintivo** (oficial o personalizado), y las órdenes de **probar**,
+  **restablecer** y **guardar**. Guardar escribe la configuración del modelo **donde la escribe el escritorio**, de
+  modo que el motor de descargas la usa igual.
+
+### Lo que no se ve (y sostiene lo anterior)
+
+- **La frontera que había bloqueado el diseñador, cruzada sin reimplementarlo**: su ventana la monta el propio
+  plugin con su juego de herramientas, y un host como este no puede montar una ventana ajena. Ahora el **nodo
+  declara al SDK qué diálogo quiere y qué contiene** (una clave del catálogo compartido y su modelo de vista),
+  y el host pinta esa clave **con su propia vista sobre el mismo modelo**. Si la vista se hiciera su propio
+  modelo, habría **dos verdades sobre los mismos datasets**: hay una prueba que lo impide.
+- **Ninguna orden de menú sin destino**: la tabla de entradas pendientes del host queda **vacía** por primera
+  vez. Ya no hay ningún botón del menú del escritorio que no esté dibujado, declarado o cumplido por el host; la
+  tabla se conserva (con su prueba) para que lo que vuelva a quedarse sin destino tenga dónde declararse.
+- **El editor de URLs escribe donde escribe el escritorio, y no en un segundo sitio**: el guardado lo hace el
+  **modelo de vista del editor** (el mismo que envuelve su ventana del escritorio), que escribe en el almacén del
+  gestor de modelos; la vista del host **no escribe nada por su cuenta** y una prueba lo exige. Dos sitios
+  escribiendo lo mismo serían dos verdades sobre las URLs de un modelo.
+- **El botón hace lo que dice, y eso también se vigila**: la acción de URLs tiene su **rama propia**, y un defecto
+  declarado la quita para comprobar que la prueba lo caza —sin esa rama, el botón **descarga el modelo** en vez de
+  abrir su editor, que es peor que un botón que no hace nada—.
+- **Seis defectos declarados que las pruebas matan**: un nodo que declare su superficie con una clave que no es
+  la del catálogo, un diseñador que falte del censo de ventanas, una vista del diseñador que se construya su
+  propio modelo, una sección de ajustes que pierda el panel que conmutaba entre ellas, una entrada declarada que
+  además esté dibujada, y una acción de fila **que descargue el modelo en vez de abrir su editor**. Las seis
+  muerden. (Un séptimo defecto declarado **se retiró** al cerrarse su frontera: vigilaba que la fila del catálogo
+  **no** dibujara la acción de URLs, y ahora la dibuja.)
+- **Se prueba solo**: el sondeo del menú sube a **42 comprobaciones** —abre la superficie del diseñador sobre el
+  modelo del plugin y lee el catálogo— y el de ajustes a **18**: las seis secciones con su rótulo, el catálogo de
+  modelos, la sección de actualizaciones y **seis pasos que pulsan la acción de URLs de la fila, escriben una URL en
+  la caja del editor y comprueban que queda guardada** en el almacén del gestor (y luego devuelven la configuración
+  del usuario a como estaba).
+- **Ejercido con la aplicación abierta**: **39 de 39 pasos** en una sesión —además de las dos superficies nuevas,
+  las **dos ventanas que el tramo anterior no había ejercido**: el **explorador de archivos virtuales** (cinco
+  anclas, cuatro filas con nombre real, visible en el píxel) y el **aviso de actualización** (seis anclas, tu
+  versión contra la nueva, y al cerrarlo **el distintivo de la barra sigue puesto**)— y **24 de 24 pasos** en otra
+  —el **editor de URLs**: se pulsa la acción de la fila, el editor abre con las URLs del modelo, escribir dos URLs
+  pone su recuento en «2», guardar cierra el modal y **al reabrir el distintivo dice «Personalizado»**, que es la
+  prueba de que el valor quedó escrito en el almacén del gestor—. Al terminar las dos, tus preferencias quedan
+  **intactas** (byte a byte).
+- **Y dos defectos del propio instrumento los encontró la medición**, escritos para el guion futuro: el nombre que
+  el canal externo lee de una **fila enlazada** no es el de la fila sino el del **tipo** de su modelo de vista, y el
+  píxel tras cerrar el modal vuelve al de la **superficie que sigue abierta detrás**, no al del lienzo.
+
+### Lo que sigue viéndose así (declarado)
+
+- **Si dejas el editor de URLs sin ninguna URL válida**, el aviso lo pide el modelo de vista por el servicio de
+  diálogos —igual que en el escritorio—, pero Windows sólo admite **un diálogo a la vez** y el editor ya está
+  abierto: la petición queda escrita en la consola de la aplicación y **el host repite el aviso dentro del propio
+  editor**, sin cerrarlo sobre algo que no aceptó. Es la única frontera de esta superficie.
+- **El hallazgo del escritorio, anotado y sin tocar**: su ventana de URLs de modelos enlaza un «Guardar» que no
+  existe en su modelo de vista, así que ese botón no guarda. Este host **no hereda el defecto** (llama al mismo
+  guardado del modelo de vista), pero el escritorio no se toca: es una decisión aparte.
+- **Los ajustes del flujo siguen sin abrirse por el catálogo de diálogos**: su superficie ya tiene puerta en la
+  barra y el cajón, y una segunda puerta sería una segunda copia de lo mismo.
+- **Diseño de datos**: el diseño de datasets se edita con el mismo editor del plugin, pero la información extra
+  que el escritorio añade por encima (el archivo y el tamaño mínimo del modelo) aquí no se dibuja porque este
+  host no tiene esa fuente; se dibujan los campos que sí existen.
+- **Sigue pendiente**: el gestor de **contraseñas** (la **única** superficie de usuario que queda sin portar) y
+  el **empaquetado y la entrega** del host (paquete, firma y publicación). *(El gestor de presets de medios se
+  cerró en el tramo 20.)*
+
+---
+
+## 20. El tramo del gestor de presets de medios del host (compilación 6818 → 6893)
+
+El **Gestor de Presets de Medios** —la superficie donde se crean y editan los presets con los que el nodo de
+transcodificación convierte audio y vídeo— ya se puede usar en el host multiplataforma, y se usa **igual que en
+el escritorio**.
+
+### Lo que ahora puedes hacer
+
+- **Abrirlo desde donde lo abrías**: por el botón **«🎬 Presets...» de la tarjeta del nodo** y por el botón
+  **«🎬» de la fila del preset** en el inspector. Los dos abren **el mismo gestor**.
+- **Ver tu catálogo**: la lista trae tus presets tal y como están guardados, con el que tengas elegido en el
+  formulario y **su** descripción (no una vacía).
+- **Crear, editar y retirar presets**: «Nuevo» da de alta uno personalizado, «Guardar» deja escrito lo que hayas
+  tecleado —también en el fichero del almacén, que es el que lee el nodo al transcodificar— y «Eliminar» lo
+  retira. Los presets del sistema quedan protegidos.
+- **Desplegar la tarjeta**: la tarjeta de un nodo tiene por fin su **conmutador de parámetros** (el chevron de la
+  cabecera). Antes no había forma de desplegar una tarjeta en este host, así que el botón «🎬 Presets...» estaba
+  **dibujado y sin puerta**.
+
+### Lo que sigue viéndose así (y por qué)
+
+- **El gestor de contraseñas sigue sin portar**: es la **única** superficie de usuario del escritorio que queda,
+  y su fila lo dice con ese motivo en vez de fingir un botón que no abre nada.
+- **Eliminar y Restablecer sí piden confirmación** (desde la compilación 6923, ver §21): antes no la pedían y
+  además se comportaban distinto según por dónde entraras —por la **fila** el borrado se ejecutaba **sin
+  preguntar** y por la **tarjeta** **no se ejecutaba** y tampoco avisaba—. Queda como frontera el **mismo defecto
+  en otras seis órdenes destructivas** del host (cerrar un flujo con cambios sin guardar, restablecer un tema,
+  limpiar el almacén virtual, borrar un modelo descargado y quitar un dataset): ahí la orden **no hace nada y no
+  avisa**, y su arreglo está acotado y localizado.
+- **El empaquetado y la entrega del host siguen pendientes**: el programa no se reparte instalado; lo ejecuta
+  quien lo compila.
+
+### Cómo se comprobó
+
+Con la aplicación abierta: se añadió el nodo de transcodificación, se abrió el gestor **por las dos puertas**, se
+escribió una descripción en la caja real y se comprobó **en el fichero del almacén** que quedaba escrita, que al
+reabrir seguía ahí y que al restaurarla el fichero volvía **byte a byte** a como estaba; y se dio de alta un preset
+(10 → 11) y se retiró (11 → 10) dejando el catálogo **idéntico** y los ajustes del usuario (tema, idioma, carpeta
+de salida y favoritos) **intactos**. **34 de 34 pasos.**
+
+---
+
+## 21. El tramo de la confirmación de las órdenes destructivas del gestor (compilación 6893 → 6923)
+
+Las órdenes que destruyen algo en el **Gestor de Presets** —**«Eliminar»** y **«Restablecer»**— **preguntan antes**,
+y lo hacen **igual por las dos puertas** (la tarjeta del nodo y la fila del preset). Antes no era así: por la fila
+el borrado se ejecutaba **sin preguntar** y por la tarjeta **no se ejecutaba y tampoco avisaba**, así que el mismo
+botón hacía dos cosas distintas según por dónde entraras.
+
+### Lo que ahora puedes hacer
+
+- **Borrar con red**: «Eliminar» abre la pregunta **sobre el propio gestor** —con su velo y sus botones— y **no se
+  borra nada hasta que contestas**. Un «no» deja el preset donde estaba; un «sí» lo retira de verdad del almacén
+  que lee el nodo que transcodifica.
+- **Restablecer con red**: «Restablecer» avisa igual de que va a devolver el catálogo a los presets del sistema,
+  y puedes cancelarlo sin perder nada.
+- **Cancelar con el teclado o con el botón de cerrar** no deja nada a medias: la pregunta se retira y se cuenta
+  como un «no» (antes podía quedarse tomada y dejar el botón muerto para el resto de la sesión).
+- **Los avisos del gestor se ven**: el «Preset guardado con éxito» se muestra **dentro** del gestor, y si llega una
+  pregunta de verdad, la pregunta manda.
+
+### Lo que sigue viéndose así (declarado)
+
+- **Seis órdenes destructivas más siguen sin preguntar** en este host (cerrar o empezar un flujo con cambios sin
+  guardar, restablecer un tema, limpiar el almacén virtual, borrar un modelo descargado y quitar un dataset
+  sintético): en ellas el botón **no hace nada y no avisa**. Están localizadas, cada una con su arreglo acotado.
+- **El empaquetado y la entrega del host siguen pendientes**: el programa no se reparte instalado; lo ejecuta
+  quien lo compila.
+- **El escritorio no cambia de comportamiento**: sigue confirmando como confirmaba.
+
+### Cómo se comprobó
+
+Con la aplicación abierta y **por cada una de las dos puertas**: se dio de alta un preset (10 → 11), se pulsó
+«Eliminar» y se comprobó **en el fichero del almacén** que **seguía habiendo 11** mientras la pregunta estaba en
+pantalla, que **cancelar dejaba 11** y que **confirmar dejaba 10**; y se canceló un «Restablecer» comprobando que
+el catálogo quedaba **intacto**. Al terminar, el almacén quedó **byte a byte** como estaba y los ajustes del
+usuario (tema, idioma, carpeta de salida y favoritos) **intactos**. **42 de 42 pasos.**
+
+---
+
+## 22. El tramo de las seis órdenes que destruían sin preguntar (compilación 6923 → 6961)
+
+Seis botones del host que **destruyen** algo —**«Nuevo Flujo»**, **«Revertir Archivos»**, **«Eliminar»** del Estudio
+de Temas, **«Limpiar»** del Explorador Virtual, **«Eliminar»** de un modelo de IA y **«Eliminar»** de un dataset
+sintético— **no preguntaban nada** aunque el producto sí tuviera la pregunta escrita: usaban la vía **síncrona**
+del contrato de diálogos, que en este host **no puede contestar de verdad** y devolvía «no» sin enseñar nada. El
+síntoma del usuario era el peor de los posibles: **el botón no hacía nada y tampoco avisaba**.
+
+### Lo que ahora puedes hacer
+
+- **Los seis preguntan antes de destruir**, y la pregunta **se ve**: aparece con sus dos botones («Aceptar» y
+  «Cancelar») y **no se borra nada hasta que contestas**.
+- **Un «no» no destruye**: cancelar «Nuevo Flujo» deja el lienzo tal y como estaba; cancelar «Eliminar tema» deja
+  el tema propio en el catálogo; cancelar «Limpiar» deja el almacén virtual entero.
+- **Un «sí» sí destruye**, de verdad y de una vez: el lienzo queda vacío, el tema desaparece del almacén, el
+  registro virtual se vacía.
+- **«Eliminar tema» tiene puerta**: el Estudio de Temas tiene ya su botón «Eliminar» —habilitado sólo cuando el
+  tema elegido es **tuyo**; los de fábrica son inmutables—. Antes la orden existía pero **no había ningún botón
+  que la ofreciera**.
+- **«Nuevo Flujo» por atajo y por menú se comportan igual**: `Ctrl+N` y el botón del cajón hacen lo mismo (el
+  atajo ya no se saltaba la actualización de la línea de estado del ciclo).
+- **«Eliminar modelo» pregunta en tu idioma**: era la única de las seis preguntas que estaba escrita dentro del
+  programa —en español, cambiaras de idioma o no—; ahora se pide al diccionario como el resto de la interfaz, así
+  que en inglés se lee en inglés.
+
+### Lo que sigue viéndose así (declarado)
+
+- **«Limpiar» del Explorador Virtual sigue sin botón**: ninguna vista —ni la del escritorio ni la de este host—
+  lo dibuja. La orden pregunta bien cuando alguien la invoque, pero **hoy no hay quién**: poner el botón es
+  diseño de interfaz nuevo, fuera de este tramo. Se declara en vez de fingirse.
+- **«Eliminar modelo» no se prueba con el ratón** en la comprobación de abajo: retira ficheros **reales** del
+disco (varios GB de modelos). Su comportamiento se mide en las pruebas automáticas.
+- **El escritorio no cambia de comportamiento**: sigue confirmando como confirmaba, con su propio diálogo, y
+  las seis órdenes se comportan allí igual que antes.
+- **El empaquetado y la entrega del host siguen pendientes**: el programa no se reparte instalado; lo ejecuta
+  quien lo compila.
+
+### Cómo se comprobó
+
+Con la aplicación abierta y **dos** de las seis órdenes, las dos que se pueden deshacer sin tocar tus datos.
+**«Eliminar tema» del Estudio**: se creó un tema propio (el fichero del almacén pasó de **1 a 2** temas), se
+pulsó «Eliminar» y se comprobó que la pregunta **estaba en pantalla**, que **seguía habiendo 2** mientras se
+preguntaba, que **cancelar dejaba 2** y que **confirmar dejaba 1** —con tu catálogo **idéntico** al de partida y
+el fichero **byte a byte**—. **«Nuevo Flujo»**: con el flujo de ejemplo cargado, se pulsó la orden y se comprobó
+que **pregunta en su propio diálogo**, que **con la pregunta siguen las tres tarjetas**, que **cancelar las deja**
+y que **confirmar vacía el lienzo** —y que al reiniciar la aplicación el ejemplo vuelve entero, porque el grafo no
+se guarda en ningún fichero—. Al terminar, tu catálogo de temas y tu almacén de presets quedaron **byte a byte**
+como estaban y tus ajustes (tema, idioma, carpeta de salida y favoritos) **intactos**. **33 de 33 pasos.**
+
+**Cifras del tramo, medidas**: la suite pasa de **1930** a **1935** pruebas superadas (1 omitida, 0 errores); las
+**cinco** mutaciones nuevas del tramo **muerden** (con su testigo en rojo y su control en verde) y el catálogo
+publicado sube a **95 declaradas**; y las cuatro sondas del host quedan verdes —**88 · 42 · 46 · 18**
+comprobaciones, ninguna fallo—. Una corrida intermedia de la suite trajo **1 fallo** cuyo nombre no quedó
+registrado; las **dos corridas completas siguientes** quedaron verdes, igual que el conjunto de fin de flujo en
+aislamiento.
+
+---
+
+## 23. El tramo del cable que ahora es el mismo en las dos aplicaciones (compilación 6961 → 7005)
+
+FileFlow Studio tiene **dos aplicaciones** —la de escritorio y la multiplataforma— y las dos dibujan el mismo
+lienzo. El **cable** entre dos puertos, sin embargo, no se veía igual en las dos: la aplicación de escritorio lo
+dibujaba con la pieza gráfica que traía su lienzo, cuya curva **sale retirada del socket** y se une a él por dos
+tramos rectos —en pantalla, una ese apretada con dos bajíos: una **Z**—, mientras que la multiplataforma ya
+dibujaba la curva del producto, un cable que **nace y muere en sus dos sockets** y sale curvando desde el
+primero.
+
+### Lo que ahora puedes ver
+
+- **El cable se ve igual en las dos aplicaciones.** La curva la decide una **sola pieza del núcleo**, así que ya
+  no hay dos formas para la misma corriente de datos: sale del socket curvándose y llega al otro socket sin ningún
+  tramo recto.
+- **El cable que arrastras es ese mismo cable.** Mientras dibujas una conexión, el trazo no cambia de forma al
+  soltar el botón: es la misma curva desde el primer píxel.
+- **Todo lo demás sigue igual**: los colores por familia de tipo (archivo, texto, número, binario, colección,
+  universal), el grosor, el cursor de mano al pasar por encima y el menú para **borrar un cable**.
+- **Nada se movió de sitio**: los nodos, sus anclas y el gesto de conectar funcionan como antes; lo que cambió
+  es quién dibuja el trazo.
+
+### Lo que sigue viéndose así (declarado)
+
+- **La comprobación de este tramo es automática**, no una sesión con el ratón: la aplicación de escritorio no
+  tiene sonda propia (las de la multiplataforma sí). Lo que está medido es **la figura que el control va a
+  pintar** —contra la pieza compartida, punto por punto— y el **árbol real del lienzo** (control materializado,
+  ancla enlazada y trazo pintado con el color de su familia de tipo).
+- **Dos sockets apilados** (sin hueco horizontal entre ellos) siguen dibujando una **recta vertical**, y la
+  **caída tipo hilo** (los cables que no son simétricos) sigue sin implementarse. Las dos son fronteras
+  heredadas del tramo que rediseñó el cable.
+- **El empaquetado y la entrega siguen pendientes**: el programa no se reparte instalado; lo ejecuta quien lo
+  compila.
+
+### Cómo se comprobó
+
+La suite completa pasa de **1935** a **1942 pruebas superadas** (1 omitida, 0 errores): cinco casos nuevos leen
+la figura que el control va a dibujar y la comparan **punto por punto** con la pieza compartida (que nace y muere
+en las anclas, que su cuello es el del núcleo —200 unidades en un hueco de 400, no las 45 del control que se
+quitó—, que se da la vuelta cuando se arrastra desde una entrada, que sigue a sus anclas al mover un nodo y que
+la traducción de la dirección habla los dos vocabularios), y una guardia barre el lienzo para que **ningún** cable
+vuelva a la forma vieja; y el **cable que arrastras** se monta en una ventana real, con los estilos de la
+aplicación, para comprobar que es el mismo control y que su curva también es la compartida. Una **mutación** que devuelve el cable a la pieza gráfica anterior **muerde** (el
+catálogo publicado sube a **96 declaraciones**), y la aplicación multiplataforma —que ya dibujaba con esta
+geometría— sigue verde en su sondeo: **88 comprobaciones, ninguna falla**, con sus medidas de cable intactas.
+
+---
+
+## 24. Cómo verificarlo
 
 ```powershell
 # La suite completa (pruebas unitarias, de integración y de aspecto)
@@ -824,6 +1478,23 @@ visible: construye las pruebas de que lo construido **no se puede romper en sile
 
 # Compilar y ejecutar la aplicación
 .\run.ps1
+```
+
+El host multiplataforma (Uno Platform) tiene sus propios comandos:
+
+```powershell
+# Compilar (MSBuild de Visual Studio: los targets de WinAppSDK no corren con dotnet build) y lanzar
+.\run-uno.ps1
+
+# Lanzar sin compilar
+.\run-uno-fast.ps1
+
+# Los sondeos del host multiplataforma (el script espera y hereda el exit code: 0 = verificado)
+..\run-uno.ps1 -SelfCheck            # sondeo interno en runtime (lienzo, paneles, atajos)
+.\run-uno.ps1 -SelfCheckControlBar # sondeo de la BARRA DE CONTROL, su cajón, sus entradas y sus ATAJOS
+.\run-uno.ps1 -SelfCheckDialogs    # sondeo de los PANELES DE NODO (editor de texto y catálogo de variables)
+.\run-uno.ps1 -SelfCheckSettings   # sondeo de la superficie de AJUSTES (tema e idioma; restaura lo tuyo)
+.\run-uno.ps1 -SelfCheckUia        # sondeo UIA externo (hijo python; exige python + pywinauto)
 ```
 
 En Linux/macOS la ejecución y la limpieza están en `./run.sh` y `./clean.sh`; la suite se lanza con el mismo

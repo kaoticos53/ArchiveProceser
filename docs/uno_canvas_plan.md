@@ -171,6 +171,20 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 - [x] Nodos posicionados por `Location` proyectada (`NodeCardViewModel.Position` vía `UnoPointConverter`);
   **tarjeta en modo lectura** (sin puertos vivos: sockets dibujados, sin interacción).
 - [x] Cables estáticos con `ConnectionGeometry` (Bézier del núcleo, proyección explícita al dibujar).
+- [x] **El cable, pegado a sus sockets y con forma de cable (hito 254)**: la geometría compartida dibuja
+  **una Bézier que nace y muere en las anclas** —sin los dos tramos rectos del control, que en pantalla se
+  leían como una **Z**— y su cuello es un punto de control horizontal de largo
+  `min(100 + √(25 · ancho), ancho/2)`: el **tope de la mitad del hueco** es lo que impide que los cuellos se
+  crucen y la curva salga invertida (el rulo con forma de «2» al dejar dos tarjetas cerca). La medida del
+  ancla (`TransformToVisualCenter`) transforma el **centro local** del elemento: sumar la mitad después de
+  transformar el vértice olvidaba la **escala** y corría el ancla `0,25 · (w/2)` al tocar el zoom —es la
+  misma medida del hit-testing del lienzo y de «qué tarjeta hay bajo el puntero»—. Sonda
+  `ProbeWireTracking` (mide contra el socket real en la raíz, antes/pan/zoom/hueco estrecho, selfcheck
+  **83 OK**), guardia `UnoCanvasWireGuardTests`, 9 casos de comportamiento en `ConnectionGeometryTests` y
+  las mutaciones `cable-que-no-toca-su-socket`, `ancla-que-ignora-la-escala` y
+  `cuello-que-no-cabe-en-el-hueco`. `spacing` desaparece como parámetro: con la curva en las anclas no tenía
+  papel. Frontera: el **escritorio** sigue dibujando con el `Connection` de Nodify (su hit-testing sí usa la
+  regla compartida), así que llevarle la forma nueva exige que dibuje con `ConnectionGeometry`.
 - [x] Encuadre con el mismo `EditorViewportCalculator` del núcleo que usa el escritorio.
 - [x] Guardia del 217 ampliada al code-behind (+3 auto-tests; mutación `proyeccion-uno-sin-guardia`
   actualizada y volviendo a morder).
@@ -229,7 +243,22 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
   selfcheck en verde (exit 0). Es el cuarto defecto que la infraestructura de verificación caza en este
   tramo (225: cables, posiciones, iconos; 226: acento).
 
-### Fase 3.2 — Selección, arrastre y teclado — **IMPLEMENTADA (hito 228); criterio manual pendiente de sesión con puntero**
+### Fase 3.2 — Selección, arrastre y teclado — **IMPLEMENTADA (hito 228); criterio manual CERTIFICADO con puntero real en lo que el puntero prueba (hitos 250 y 252)**
+
+> **Teclado (hitos 250 → 252)**: el 250 midió con puntero real que `Ctrl+Z`, `Ctrl+Y` y `Supr` **no llegan**
+> en un flujo que empieza con el clic; el primer arreglo (entregar el foco al `UserControl`) **no
+> bastó** — el rastro mostró que el clic sí lo entregaba y un `ScrollViewer` desprendido se lo llevaba
+> ~0,5 s después. El arreglo definitivo (hito 252) quita el foco del contrato: la raíz de `MainWindow`
+> enruta al lienzo las teclas que nadie consumió (burbujeo, como la vista del escritorio) y el resolver es
+> único (`TryHandleShortcutKey`). **Certificado con puntero real**: `Supr` borra (`nglobal 3→2`), `Ctrl+Z`
+> restaura (`2→3`), `Ctrl+Y` rehace y `F2` abre la caja, con el rastro probando `consumido=True` mientras el
+> foco estaba **fuera** del lienzo ([`docs/qa/qa_manual_gestos_252.md`](file:///docs/qa/qa_manual_gestos_252.md)).
+>
+> **Segunda mitad (hito 253)**: el que se lleva el foco ~0,1 s después del clic es un envoltorio de la
+> **plantilla de ventana del framework** —no del producto: sin nombre, sin `DataContext`, del tamaño del
+> área de contenido y fuera del árbol visual—, así que el lienzo **reclama** el teclado con una ventana de
+> 700 ms y cuatro guardias (cuadro de texto, subárbol propio y paneles del editor incluidas) cuando un
+> dueño ajeno se lo lleva ([`docs/qa/qa_manual_gestos_253.md`](file:///docs/qa/qa_manual_gestos_253.md)).
 
 - [x] Click selecciona (`IsSelected` TwoWay), `BringToFront`, drag de nodos (manipulación), rubber band.
   El clic sobre la tarjeta escribe `IsSelected` y el NÚCLEO reacciona (SelectedNode + BringToFront +
@@ -266,6 +295,14 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
   el guion es click selecciona y sube de Z; drag mueve y Ctrl+Z lo deshace; rubber band selecciona varias; clic en fondo
   deselecciona; Shift+A abre el spotlight; F2 renombra y Enter confirma; Delete borra; Ctrl+D duplica. Los comportamientos
   están demostrados POR LOS MISMOS MÉTODOS que los handlers en el selfcheck (sondas 3.2/3.3/3.4).
+**Sesión con puntero REAL (2026-09-27, hito 247): EJECUTADA.** El canal del gesto físico queda
+CERTIFICADO (el borde de selección aparece y desaparece, medido en píxeles por el vigilante de
+[`qa_manual_session.py`](file:///docs/qa/qa_manual_session.py)) y la frontera del 231 queda cerrada por
+esa vía; pero el guion NO pudo completarse por un **defecto de producto medido en el propio lienzo**: el
+hit-test de las tarjetas resuelve desplazado `(280, 41)` respecto a lo que se ve, así que clicar la cara
+de una tarjeta selecciona otra o ninguna. El criterio de «interacciones ejecutadas a mano» queda
+BLOQUEADO POR EL PRODUCTO, no por el entorno: informe y medidas en
+[`docs/qa/qa_manual_gestos_247.md`](file:///docs/qa/qa_manual_gestos_247.md).
 
 ### Fase 3.3 — Puertos y cables vivos — **IMPLEMENTADA (hito 229); criterio del plan demostrado por sonda**
 
@@ -397,7 +434,7 @@ Cada fase termina en verde y con protocolo. Ninguna toca el host Avalonia.
 | :--- | :--- | :--- |
 | 3.0 — Geometría pura en Core | ✅ HECHA | 216 |
 | 3.1 — Lienzo estático | ✅ CRITERIO DEMOSTRADO (hito 225: app corriendo con el grafo real —selfcheck verde—; hito 226: comparación visual con el escritorio por features —mismo mapeo, posiciones ±2/±6 px, fondo y acento idénticos, cables en los huecos— con las brechas declaradas de 3.3/3.5 anotadas) | 221, 224, 225, 226 |
-| 3.2 — Selección, arrastre y teclado | 🔶 IMPLEMENTADA (hito 228: selección/drag/rubber band, tabla compartida de atajos en el núcleo consumida por los dos hosts, renombrado F2 completo, guardia de paridad 5/5, sonda de selección/borrado/deshacer en el selfcheck; el criterio «interacciones ejecutadas a mano» queda para sesión con puntero) | 228 |
+| 3.2 — Selección, arrastre y teclado | 🔶 IMPLEMENTADA (hito 228: selección/drag/rubber band, tabla compartida de atajos en el núcleo consumida por los dos hosts, renombrado F2 completo, guardia de paridad 5/5, sonda de selección/borrado/deshacer en el selfcheck; el criterio «interacciones ejecutadas a mano» se ejecutó en el hito 247: canal del gesto físico CERTIFICADO y defecto de hit-test del lienzo medido (`docs/qa/qa_manual_gestos_247.md`)) | 228, 247 |
 | 3.3 — Puertos y cables vivos | ✅ CRITERIO DEMOSTRADO (hito 229: anclas write-back reales del árbol, sockets vivos con cable pendiente y snapping, desconexión por socket, aviso de cables perdidos pintado; conectar/desconectar verificado por sonda en el selfcheck con restauración exacta) | 229 |
 | 3.4 — Decoradores y servicios del lienzo | 🔶 IMPLEMENTADA (hito 230: notas/grupos en capas proyectadas, spotlight con confirmación real, migas navegables, drag & drop del cajón; criterio demostrado por sonda —nota/grupo/spotlight/migas—; el gesto del cajón espera sesión con puntero) | 230 |
 | 3.5 — Temas y localización | ✅ CRITERIO DEMOSTRADO (hito 233: mitad Uno del puente con mutación in-place de pinceles singleton — la única vía que WinUI repinta; sonda: light_studio re-tematiza fondo y tarjetas en caliente con restauración; localización por LanguageChanged + textos del núcleo) | 233 |
@@ -408,4 +445,4 @@ actualiza cuando cada fase mide su criterio de salida verde (la 3.1 quedó demos
 —hito 225 el árbol, hito 226 la comparación por features—; las 3.2/3.4 están implementadas y sus criterios
 de «interacciones a mano» quedaron documentadas tras la sesión de QA con puntero inyectado (hito 231: bloqueo
 irreductible de la inyección de puntero en este entorno, evidencia en `qa-manual-report.md` junto al instrumento
-`qa_manual.py` que queda preparado); la 3.3 quedó demostrada por sonda y la 3.5 por su sonda de re-tematización).
+`qa_manual.py` que queda preparado); la 3.3 quedó demostrada por sonda y la 3.5 por su sonda de re-tematización); en el hito 247 la sesión con puntero REAL cerró el canal del gesto físico y midió el defecto de hit-test de las tarjetas, que es lo que hoy bloquea la certificación de la 3.2.

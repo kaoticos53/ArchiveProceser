@@ -1,4 +1,862 @@
-﻿## [2026-09-27] - El Toggle Compacto/Detallado del Cajón: el Último Pendiente de Código de la Rebanada 4 (Hito 246)
+﻿## [2026-09-28] - Hito 266: El Cable del Escritorio lo Dibuja el Trazador Compartido (y la Frontera que el 254 Dejó Declarada)
+
+### 🎯 Objetivos y Alcance
+Cerrar la frontera que el hito 254 **midió y declaró sin arreglar**: la geometría del cable vive desde entonces en el núcleo (`ConnectionGeometry`, la Bézier que **nace y muere en las anclas**), el host Uno la dibuja… y el **escritorio seguía dibujando con el control de conexión de Nodify**, que traza su propia curva —una Bézier retirada de las anclas y unida a ellas por dos **tramos rectos**, con el cuello `Spacing` fijo—. Objetivo: el escritorio dibuja con la geometría compartida (no sólo la usa para el hit-testing), con su guardia y su mutación.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `App/Views/Components/FlowConnection.cs` (nuevo) | Un `Shape` de Avalonia cuyo `DefiningGeometry` sale de **`ConnectionGeometry.BuildWire`**: la curva la decide el núcleo y el host pone el envoltorio del framework. Conserva lo que el lienzo usa —`Stroke`, `StrokeThickness`, `StrokeDashArray`, `Cursor`, las clases por familia de tipo y el menú contextual— y, del control, lo que era bueno: cuello horizontal, techo `100 + √(25·ancho)` y tope de la mitad del hueco. |
+| `App/Converters/GraphConverters.cs` | `ConnectionDirectionConverter`: el cable **en curso** lo arrastra el control de Nodify (su flag: arrastrar desde una entrada va hacia atrás) y el dibujo se pide en el vocabulario del núcleo. Los dos flags tienen los mismos dos valores. |
+| `App/Views/EditorView.axaml` | La plantilla de cables usa `components:FlowConnection` (mismos enlaces de ancla con el conversor de punto, mismo menú de borrado). Se va el `Spacing="45"` del control. |
+| `App/Styles/Ports.axaml` | Los estilos del cable apuntan al control nuevo (`components|FlowConnection` y sus siete familias de tipo) y el **cable en curso** —el de la plantilla del `PendingConnection`— se dibuja con el **mismo** control: el trazo ya no cambia de forma al soltar el botón. |
+| `FileFlow.Tests/Unit/Views/FlowConnectionGeometryTests.cs` (nuevo) | Cinco casos que leen la figura que el control **va a pintar** (`DefiningGeometry`) y la comparan punto por punto con el núcleo: nace y muere en las anclas, el cuello es el del núcleo (200 contra los 45 del control), se da la vuelta con `Backward`, sigue a sus anclas al moverse y el conversor habla los dos vocabularios. |
+
+### 🛡️ Guardias, pruebas y mutaciones
+`NodeCardVisualContractTests` gana **`EveryCableOfTheCanvas_ShouldBeDrawnWithTheCoreGeometry_NotWithTheNodifyControl`**: barre el XAML del lienzo para que **ningún** cable vuelva al control de Nodify, exige que los **dos** (establecido y en curso) usen el control del host y que la curva se pida a `ConnectionGeometry`. Los casos del cable se reapuntan al control nuevo (la plantilla, el menú contextual colgando del trazo, los estilos por familia de tipo) y `GeometryBindingProjectionTests` sigue midiendo **en el árbol real** que los dos extremos del cable llevan el ancla convertida de su puerto: al reapuntarlo, el mismo caso comprueba también que la figura dibujada es la del núcleo para esas anclas. Y **`ThePendingCable_ShouldAlsoBeDrawnWithTheCoreGeometry`** monta el cable **en curso** en una ventana —con los estilos de la aplicación— y exige que sea el control del host, que su dirección salga del conversor (arrastrar desde una entrada, `Backward`) y que la figura sea la que el núcleo traza para esas dos anclas. **Una mutación nueva `cable-de-escritorio-por-el-control-de-nodify` → MUERDE** (29,2 s, testigo rojo y control —`TheCable_ShouldBeTheCoreCurve_BetweenItsTwoAnchors`, que mide el trazador sin pasar por el lienzo— verde). `COVERAGE.md` regenerado por su guardia: **96 declaradas · 15 de 17 subsistemas**.
+
+### ✅ Validación
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación (`FileFlow.App`, XAML de Avalonia incluido) | **0 errores** |
+| Suite completa | **1942 superadas + 1 omitida de 1943, 0 errores** (dos corridas verdes: 2 m 37 s y 4 m 21 s; antes **1935 + 1**) |
+| Mutaciones | **1 nueva, MUERDE** · **96 declaradas** |
+| Sonda del host Uno (el que ya dibujaba con la geometría compartida) | `--selfcheck` **EXIT 0 · 88 `[OK]` · 0 `[FALLO]`**, con sus medidas de cable (cables dibujados, el cable toca su socket con el plano quieto y tras pan/zoom, y la forma cabe en un hueco estrecho sin el rulo del 2) |
+| Rojo intermitente | `EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven` (medida de CPU) cayó en la corrida con carga y queda **verde en aislamiento**; las dos corridas completas de la suite, verdes |
+
+### 🟠 Fronteras declaradas
+- **No se mide en la app del escritorio con puntero**: el escritorio no tiene sonda propia (las `--selfcheck*` son del host Uno). Lo que se mide aquí es la **figura** que el control va a pintar y el **árbol visual real** del lienzo headless (control materializado, ancla enlazada y trazo con el color de su familia de tipo); el trazo **con un dedo** queda para una sesión del escritorio.
+- **El contenedor de Nodify se conserva**: `ConnectionContainer` sigue envolviendo cada cable (selección, foco y el menú contextual del contenedor no se tocan; el lienzo no activa su `IsSelectable`). Lo que se sustituye es **quien dibuja el trazo**.
+- **Heredado del 254 y sin tocar**: el caso **apilado** (anclas sin hueco horizontal) dibuja recta vertical, y la **caída tipo hilo** no está implementada.
+
+---
+
+## [2026-09-28] - Hito 265: Las Seis Órdenes Destructivas que Quedaban Mudas (y el Contenido que Nacía sin Diálogos)
+
+### 🎯 Objetivos y Alcance
+Cerrar las **seis órdenes destructivas** que el hito 264 **localizó y declaró sin arreglar**: todas preguntaban por la variante **síncrona** del contrato de diálogos, que en este host **no muestra nada y no hace nada** (su hilo de UI no puede bloquearse) y que en un servicio sin diálogos contesta «sí» **sin preguntar**. Objetivo: la **misma regla compartida** que ya existía —`IDialogService.ConfirmAsync` y la decisión en el **view model portable**—, sin duplicar lógica en las vistas, sin cambiar las órdenes que no destruyen, y declarando con su razón lo que no se toca.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `App.Core/ViewModels/ControlBarViewModel.cs` | `NewWorkflowAsync` y `RollbackLastExecutionAsync` esperan `ConfirmAsync`. **`CreateNewWorkflow()` se separa**: confirmar no es parte de crear un flujo, y quien ya tiene la respuesta no necesita el diálogo. |
+| `App.Core/ViewModels/ThemeCustomizerViewModel.cs` · `VirtualFileSystemExplorerViewModel.cs` · `AiModelManagerViewModel.cs` | `DeleteThemeAsync` · `ClearVirtualFileSystemAsync` · `DeleteModelAsync`: los tres esperan la respuesta real. |
+| `Plugin.FileSystem/UI/ViewModels/SyntheticDataSetDesignerViewModel.cs` | `DeleteDataSetAsync` espera la respuesta real. |
+| `App.Uno/Controls/ThemeCustomizerBody.xaml(.cs)` | El **botón «Eliminar» del Estudio de Temas**, dibujado (`ThemeStudioDeleteButton`, habilitado sólo con un tema propio) y su orden ejecutada por el comando del view model: su fila sale de `DeclaredPendingParts`. La orden existía **sin puerta**. |
+| `App.Uno/MainWindow.xaml.cs` | «Nuevo Flujo» deja de confirmar en la vista: ejecuta la **orden CANÓNICA** (que ya pregunta por el contrato asíncrono) y refresca el renglón del ciclo que lee el canal externo. |
+| `App.Uno/Controls/ControlBar.xaml.cs` | El atajo `Ctrl+N` enruta por el **mismo camino** que el botón del cajón (una orden, un camino) y la fila de `HostOwnedOrders` explica el desvío. |
+
+### 🐛 Los tres defectos que encontró la revisión adversarial
+1. **El diseñador de datasets nacía con el doble nulo.** El nodo declaraba su superficie pero construía el contenido **sin diálogos** (`new SyntheticDataSetDesignerViewModel()`), y el nodo —que vive en un ensamblado de plugin— no puede resolverlos: se los pasa quien abre, por el `NodeCustomActionContext`. Cambiar la pregunta a la vía asíncrona **no bastaba**: la asíncrona del doble nulo **delega en su síncrona**, que contesta «sí». El diseñador **borraba en silencio en los DOS hosts**. Arreglado en los tres caminos (el contenido del nodo, la ventana del escritorio y la puerta del host Uno).
+2. **Un evento muerto que el compilador cantó** (`CS0067`): al pasar «Nuevo Flujo» al comando canónico, `Bar.NewWorkflowRequested` dejó de dispararse y la ventana seguía suscrita, así que el atajo `Ctrl+N` ejecutaba el comando **sin** los dos pasos de host que sí hacía el cajón (el rastro y el refresco del renglón del ciclo que lee el canal externo). Ahora el atajo pide la orden a la ventana, como el cajón.
+3. **La pregunta del borrado de un modelo estaba escrita en el código.** Al revisar las ocho órdenes, siete ya sacaban su texto del diccionario (`_loc.GetString` / `LocalizationManager.Instance`) y ésta lo llevaba literal —«¿Estás seguro de que deseas eliminar el modelo 'X' del disco local?» y «Eliminar Modelo»—, así que **no cambiaba de idioma nunca**. Ahora va por el diccionario (claves `AiModelManager_ConfirmDeleteMsg` / `AiModelManager_ConfirmDeleteTitle` en los **cuatro** diccionarios de los dos hosts) y la guardia **exige** que el método de cada orden destructiva lea al menos un texto del diccionario: el defecto no destruye nada, así que ninguna medición de datos lo ve, y por eso se mide con un mutante que vuelve a escribirlo.
+
+### 🛡️ Guardias, pruebas y mutaciones
+`UnoNodeDialogsGuardTests` **14 de 14**: el caso nuevo **`EveryDestructiveOrder_ShouldAskByTheAsyncPath_NotByTheSilentSyncOne`** ata la tabla de las **ocho** órdenes destructivas (método asíncrono con su `[RelayCommand]` y `await _dialogService.ConfirmAsync(`), **barre el árbol de fuentes del producto** para que nadie vuelva a preguntar por la vía síncrona y exige que el contrato siga conservándola; y **`EveryDeclaredSurface_ShouldCarryTheHostDialogs_SoItsDestructiveOrdersCanAskForReal`** ata la entrega de los diálogos del host al contenido de las dos superficies declaradas. `UnoControlBarParityGuardTests` **13** (el reparto de las tres órdenes de flujo, con el atajo enrutado por el camino de la ventana). Pruebas nuevas: el **vaciado del VFS** (confirmado vacía / **cancelado no toca nada**, con la síncrona contestando «sí» a propósito como trampa) y el **borrado del dataset** (16 casos en total). El caso de la tabla exige además que **la pregunta de cada orden venga del diccionario** (clave y texto de reserva), no de un literal escrito en el código: sin esa mitad, el texto de una orden destructiva se queda en un idioma para siempre. **Cinco mutaciones nuevas, las cinco MUERDEN** (`vfs-que-se-vacia-sin-preguntar` 60,4 s · `disenador-que-borra-sin-preguntar` 51,1 s · `orden-destructiva-que-vuelve-a-la-via-sincrona` 44,5 s · `superficie-declarada-sin-los-dialogos-del-host` 45,0 s · `pregunta-destructiva-escrita-en-el-codigo` 29,2 s; las cinco **re-ejecutadas** sobre el árbol final), todas con testigo rojo y control verde. `COVERAGE.md` regenerado por su guardia: **95 declaradas · 15 de 17 subsistemas**.
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` / `--selfcheck-controlbar` | **EXIT 0 · 88 `[OK]` · 0 `[FALLO]`** / **EXIT 0 · 42 `[OK]` · 0 `[FALLO]`** |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 46 `[OK]` · 0 `[FALLO]`** / **EXIT 0 · 18 `[OK]` · 0 `[FALLO]`** |
+| Guardias / pruebas | **14 + 13 + 5** / las dos del VFS y las dos del dataset en verde |
+| Mutaciones | **5 nuevas, las 5 MUERDEN** · **95 declaradas** |
+| Suite completa | **1935 superadas + 1 omitida de 1936, 0 errores** (dos corridas completas verdes: 4 m 5 s y 2 m 37 s) |
+| Rojo intermitente | **una corrida intermedia trajo 1 fallo que no quedó nombrado** (la salida se cortó al leerla); las dos corridas completas siguientes, verdes, y `ExampleFlowsEndToEndTests` **4 de 4 en aislamiento** |
+| Sesión con la app abierta | **33 de 33 pasos** (`qa-manual-265`) |
+
+### 🟢 Ejercido con la aplicación abierta
+**Dos** de las seis órdenes, las dos restaurables sin tocar datos del usuario. **«Eliminar tema» del Estudio**: catálogo con **1** tema propio → el estudio se abre desde el cajón (**4 anclas**) → «Nuevo tema» lleva el **fichero** del almacén de **1 a 2** → «Eliminar» **PREGUNTA** (`HostConfirmationAccept`/`HostConfirmationCancel`, **dentro del estudio**, centro `#B0ACAC`) → con la pregunta en pantalla siguen **2** → **cancelar deja 2** → **confirmar deja 1**, con el catálogo **idéntico** y el fichero **byte a byte** (`f8b1a4e9…`). **«Nuevo Flujo»**: **PREGUNTA** en su **propio modal** (`HostConfirmationDialog`, botones «Aceptar»/«Cancelar») → con la pregunta siguen las **3 tarjetas** → **cancelar las deja** (árbol y **3** barras de acento por pixel, pixel de base `#FCF8F8`) → **confirmar vacía el lienzo** (**0** tarjetas, **0** barras de acento). El grafo no se persiste: al **reiniciar**, el lienzo vuelve a sus **3 tarjetas**. Al final: temas **byte a byte**, presets **intactos** (`9b1e8f19…`), preferencias con el **mismo md5** antes y después de las dos órdenes —el driver lo lee del fichero y lo compara; la única clave que reescribe la sesión entera es `LastUpdateCheckUtc`, y la escribe el arranque— y ajustes esenciales intactos.
+
+### 🟠 Fronteras declaradas
+- **`ClearVirtualFileSystemAsync` no tiene puerta**: ninguna vista —ni la del escritorio ni la del host— dibuja su botón. Queda preguntando por la vía correcta y **sin entrada**; dibujarla es UI nueva, fuera del encargo. Se declara, no se finge.
+- **`DeleteModelAsync` no se mide con el ratón**: su borrado retira ficheros **reales** del disco (`%AppData%\FileFlow\models`, varios GB). Se mide su determinación en la suite y no en la app abierta.
+- **El escritorio no cambia**: conserva su confirmación síncrona y `ConfirmAsync` delega en ella.
+- **Dos defectos del INSTRUMENTO, escritos para el guion futuro**: `ThemeStudioBody` no existe para el canal externo (la raíz del estudio es un `Grid` **sin peer de automatización**: el driver reconocía el estudio por un ancla que nunca llega) y el **pixel del centro no distingue un lienzo vacío de uno con tarjetas** (el fondo es el mismo: las tarjetas se cuentan por su **barra de acento**).
+
+### 📄 Evidencia
+[`docs/qa/qa_destructive_orders_265.md`](file:///docs/qa/qa_destructive_orders_265.md) + `docs/qa/qa-manual-265/` (capturas `40_…`-`48_…`, `destructivas-session.json`) + el driver `docs/qa/qa_destructive_uia.py`.
+
+---
+
+## [2026-09-28] - Hito 264: La Confirmación de las Órdenes Destructivas del Gestor (y las Dos Puertas que se Comportan Igual)
+
+### 🎯 Objetivos y Alcance
+Cerrar el defecto que el tramo anterior **midió y declaró sin arreglar**: las órdenes destructivas del gestor de presets **no pedían confirmación** y **se comportaban distinto según la puerta** —por la **fila** el view model recibía el servicio **Nulo** (`ShowConfirmation => true`) y borraba **en silencio**; por la **tarjeta** recibía el del host, cuya confirmación es **síncrona** y devuelve «no» desde el hilo de UI, así que **no borraba y tampoco avisaba**—. Objetivo: **una sola regla** con la semántica del escritorio (borrar pregunta de verdad y depende de la respuesta REAL del usuario, sin bloquear el hilo de UI, y ninguna puerta borra en silencio ni deja de avisar), sin tocar el resto de la superficie.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `Sdk/Services/IDialogService.cs` | **`ConfirmAsync`**: la confirmación asíncrona del contrato, con implementación por defecto que delega en la síncrona en un hilo de fondo (el escritorio y los dobles no cambian). |
+| `Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs` | La **regla**: `DeletePresetAsync` y `ResetDefaultsAsync` **esperan la respuesta real** y sólo destruyen si el usuario dijo que sí. |
+| `App.Core/ViewModels/NodeParameterViewModel.cs` · `NodeViewModel.cs` | Las **dos puertas** resuelven el servicio del host: la fila deja de caer en el Nulo que auto-confirma. |
+| `App.Uno/Platform/UnoDialogService.cs` | `ConfirmAsync` del host: pregunta dentro del modal abierto si lo hay, y en su propio modal si no. |
+| `App.Uno/Platform/UnoWindowService.cs` | `AskInsideActiveDialogAsync`: la pregunta como **CAPA dentro del cuerpo del modal** (con su velo, su tarjeta y sus dos botones reales), **sin bloquear el hilo de UI**; `TearDownInlineQuestion` la retira y la contesta «no» cuando la abandona el cierre del modal o la sustituye otra pregunta. |
+| `App.Uno/Controls/MediaPresetManagerBody.xaml.cs` | `ResetAction` · `DeleteAction`: las **dos** órdenes destructivas, expuestas para poder medirlas. |
+
+### 🐛 Lo que encontró la medición (y quedó arreglado)
+`AskInsideActiveDialogAsync` montaba la capa **sacando el cuerpo de su diálogo** para volver a colgarlo de un `Grid`: **WinUI no deja colgar un elemento de dos padres** y la llamada lanzaba `COMException` (medido: el aviso de «Guardar» y el borrado fallaban con excepción). Ahora la capa se monta **dentro** del cuerpo (el cuerpo sigue siendo el contenido del diálogo). Y el **aviso informativo** —una capa con una sola salida— dejaba el estado tomado: la pregunta siguiente se declinaba **en silencio**, así que la orden no hacía nada *y no avisaba*; ahora **la sustituye**, contestando «no» la anterior.
+
+### 🛡️ Guardia, pruebas y mutaciones
+`UnoNodeDialogsGuardTests` **12 de 12** (el caso del contrato destructivo gana la sustitución, la retirada de la capa, el montaje dentro del cuerpo y los **dos** caminos de abandono, más la medición de la segunda puerta y del aviso). `MediaPresetManagerViewModelTests` **10 casos**. **Dos mutaciones nuevas, las dos MUERDEN**: `gestor-que-borra-sin-preguntar` (33,5 s) y `pregunta-de-borrado-por-la-via-sincrona` (30,9 s), con testigo rojo y control verde. `COVERAGE.md` regenerado por su guardia: **90 declaradas · 15 de 17 subsistemas**.
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno | **0 errores** |
+| `--selfcheck` / `--selfcheck-controlbar` | **EXIT 0 · 88 `[OK]` · 0 `[FALLO]`** / **EXIT 0 · 42 `[OK]` · 0 `[FALLO]`** |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 46 `[OK]` · 0 `[FALLO]`** (antes 33: **+13**) / **EXIT 0 · 18 `[OK]` · 0 `[FALLO]`** |
+| Guardias / pruebas | **12 de 12** / **10** del view model, 0 rojos |
+| Mutaciones | **2 nuevas, las 2 MUERDEN** · **90 declaradas** |
+| Suite completa | **1930 superadas + 1 omitida de 1931, 0 errores** (2 m 38 s) |
+| Rojo intermitente | **no apareció** |
+| Sesión con la app abierta | **42 de 42 pasos** (`qa-manual-263`) |
+
+### 🟢 Ejercido con la aplicación abierta
+Por **cada puerta**, el ciclo destructivo completo: alta **10 → 11** · «Eliminar» **pregunta** (anclas `HostConfirmationAccept`/`HostConfirmationCancel` en el árbol; el centro pasa a `#B0ACAC` por el velo) · **con la pregunta en pantalla siguen 11** · **cancelar deja 11** · **confirmar deja 10**. Y «Restablecer» pregunta con su opción de cancelar: cancelarlo deja el catálogo del usuario intacto. Al final, lienzo con **3 tarjetas**, almacén **byte-idéntico** (`9b1e8f19477c5ebc3605ac373a38b38b`) y **ajustes del usuario intactos**.
+
+### 🟠 Fronteras declaradas
+- **El mismo patrón sigue en seis órdenes destructivas del host** (cerrar/nuevo flujo con cambios sin guardar ×2, restablecer un tema, limpiar el VFS, borrar un modelo descargado, quitar un dataset sintético): todas usan la confirmación **síncrona**, que en un host WinUI **no muestra nada y no hace nada**. Quedan **declaradas y localizadas**, con el mismo arreglo de una línea + su guardia para el próximo tramo: cambiarlas aquí habría sido tocar seis superficies fuera del encargo.
+- **Dos preguntas a la vez** se resuelven **sustituyendo** la anterior (contestarla «no»), no encolándose.
+- **El escritorio no cambia**: conserva su confirmación síncrona y `ConfirmAsync` delega en ella.
+- **Defecto del INSTRUMENTO arreglado en este tramo**: la sonda comparaba el **escapado** del fichero del almacén (hex en mayúsculas contra minúsculas) y daba por fallido un guardado correcto; ahora lee el JSON y compara el valor. Y el informe guarda el **marco** de cada excepción, no sólo su mensaje.
+
+### 📄 Evidencia
+[`docs/qa/qa_presets_confirm_263.md`](file:///docs/qa/qa_presets_confirm_263.md) + `docs/qa/qa-manual-263/` (`presets-session.json`, capturas `85_*_pregunta.png`) + `selfcheck-dialogs-report.txt`.
+
+---
+
+## [2026-09-28] - Hito 263: El Gestor de Presets de Medios del host Uno (y la Puerta que le Faltaba a la Tarjeta)
+
+### 🎯 Objetivos y Alcance
+Portar al host Uno la superficie del **Gestor de Presets de Medios** del escritorio, con **paridad de comportamiento**: sobre **view models portables del núcleo**, con su **punto de entrada donde el escritorio lo tiene** y **sin lógica de producto en la vista**. Si ya estuviera portada, declararlo con prueba y no rehacerla.
+
+### 🔍 Lo que se encontró
+El gestor existía **sólo** como **ventana Avalonia del plugin** (`FileFlow.Plugin.Integrations/UI/Views/MediaPresetManagerWindow.axaml(.cs)`) con toda su lógica en el code-behind: **no había nada que rehacer en el host Uno, porque no había nada**. Se portó con el patrón del **Diseñador de Datasets (261)**: la superficie la **declara el NODO** con el contrato del SDK y cada host la pinta sobre el **mismo** view model portable.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `Sdk/Descriptors/INodeDialogSurfaceProvider.cs` | Ampliado con `ReplacesCustomActionId`: el hilo que une el botón de la TARJETA y el de la FILA con la superficie declarada. |
+| `Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs` | El view model **portable** (sin toolkit): catálogo, formulario, alta/guardado/borrado/restablecimiento, normalización de la extensión y protección de los presets del sistema. **Es quien escribe en el almacén.** |
+| `Plugin.Integrations/UI/Services/IMediaPresetStore.cs` | El contrato del almacén; `MediaPresetManagerService` lo implementa. |
+| `Plugin.Integrations/UI/Views/MediaPresetManagerWindow.axaml(.cs)` | La ventana del ESCRITORIO, **refactorizada a vista** del mismo view model: sus manejadores propios de guardar y borrar desaparecieron. |
+| `Plugin.Integrations/MediaTranscoderNode.cs` | Declara su superficie (`DialogKeys.MediaPresetManager`, `ReplacesCustomActionId => "ManageMediaPresets"`) y entrega el view model portable. |
+| `App.Core/ViewModels/NodeParameterViewModel.cs` · `NodeViewModel.cs` · `HostUi.cs` | Las **dos puertas** abren la superficie declarada por el catálogo de ventanas del host; el host Uno fija además `CoreDialogHost.Services`. |
+| `App.Uno/Controls/MediaPresetManagerBody.xaml(.cs)` | La vista del host sobre el view model portable: **ni un cuadro suyo escribe en el almacén**. |
+| `App.Uno/Platform/UnoWindowService.cs` · `NodeInspectorPanel.xaml.cs` | La clave **servida** con su vista (censo **10 servidas + 1 declarada**) y el botón «🎬» de la **fila** (`ParamPreset_`). |
+| `App.Uno/Controls/NodeCardView.xaml` · `NodeCardViewModel.cs` | **La puerta que faltaba** (ver abajo). |
+| `App.Uno/Resources/Strings*.resx` | **22 claves** nuevas en EN+ES. |
+
+### 🚪 La puerta que le faltaba a la tarjeta (el defecto que encontró la medición)
+El botón «🎬 Presets...» de la tarjeta vive en el panel de acciones rápidas, y ese panel cuelga de `Node.IsExpanded`… **y el host Uno no tenía ningún control que conmutara ese estado** (el escritorio lo hace con un `ToggleButton` de la cabecera). La acción estaba **dibujada y sin puerta**: el usuario no podía alcanzarla. Arreglado con el estado **del núcleo** (`NodeCardExpandToggle`: chevron arriba/abajo, dos vías con `Node.IsExpanded`, rótulo del diccionario del host con **la misma clave que el escritorio**, geometría en el adaptador y `IsExpanded` en el refresco agregado). La sonda de lienzo gana **5 comprobaciones** y la guardia exige las tres piezas.
+
+### 🛡️ Guardia, pruebas y mutaciones
+`UnoNodeDialogsGuardTests` **11 de 11** (10 + `TheNodeCard_ShouldBeAbleToShowThePanelWhereTheQuickActionsLive`), que ata el conmutador, el estado del núcleo que conmuta y el bloque que cuelga de él, y amplía el censo de textos a las claves `PresetManager_*`, `Node_Param_*` y el rótulo del conmutador. **9 casos nuevos** del view model portable (`MediaPresetManagerViewModelTests`, con almacén falso y diálogos que anotan). **Dos mutaciones nuevas**, las dos **MUERDEN**: `tarjeta-sin-la-puerta-de-sus-parametros` (43,3 s) y `conmutador-de-parametros-que-no-refresca` (30,9 s). `COVERAGE.md` regenerado por su guardia: **88 declaradas · 15 de 17 subsistemas**.
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` / `--selfcheck-controlbar` | **EXIT 0 · 88 `[OK]` · 0 `[FALLO]`** (antes 83) / **EXIT 0 · 42 `[OK]` · 0 `[FALLO]`** |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 33 `[OK]` · 0 `[FALLO]`** (antes 24) / **EXIT 0 · 18 `[OK]` · 0 `[FALLO]`** |
+| Guardias / pruebas nuevas | **11 de 11** (`UnoNodeDialogsGuardTests`) / **9** del view model portable, 0 rojos |
+| Mutaciones | **8 del tramo, las 8 MUERDEN** (2 nuevas) · **88 declaradas** |
+| Suite completa | **1928 superadas + 1 omitida de 1929, 0 errores** (2 m 30 s) |
+| Rojo intermitente | `ExampleFlowsEndToEndTests.EveryExample_ShouldDeliverWhatItPromises` rojo en **una** corrida y **verde en aislamiento 2 de 2** → ruido de carga; la corrida final, verde |
+| Sesión con la app abierta | **34 de 34 pasos** (`qa-manual-263`) |
+
+### 🟢 Ejercido con la aplicación abierta (sesión 263), 34 de 34 pasos
+Driver UIA `qa_presets_uia.py`. Medido: 3 tarjetas de base y el almacén con **10 presets** → el nodo de transcodificación se añade por el cajón (buscando la **clave** `Transcoder`, que es lo que este host muestra) y su fila expone `ParamPreset_Preset` → **puerta A (la tarjeta)**: se despliega con su conmutador, aparece `🎬 Presets...`, y al pulsarlo el gestor con **10/10 anclas** y **10 filas** cuya primera es la del almacén, pixel `#FCF8F8` → **`#B0ACAC`** → cierra y el pixel vuelve → **puerta B (la fila)**: **la misma superficie**, el formulario trae el preset **elegido** con **su** descripción → se escribe en la **caja real** y «Guardar» deja la descripción en el **fichero** (`%AppData%\FileFlow\presets\media_presets.json`), sin cerrar el modal → al reabrir, la caja trae **lo guardado** → se restaura → **«Nuevo» lleva el almacén de 10 a 11 y «Eliminar» lo devuelve a 10** → el lienzo queda con 3 tarjetas, el almacén **byte-idéntico** (`9b1e8f19477c5ebc3605ac373a38b38b`) y los **ajustes del usuario intactos**.
+
+### 🔍 Defectos del INSTRUMENTO que encontró la medición (para el guion futuro)
+1. **El almacén no estaba donde el driver lo leía**: el modo instalado de `AppPaths.RootDirectory` es `%AppData%\FileFlow` (presets en `presets/`, preferencias en `config/`), no la carpeta vieja `%AppData%\FileFlowStudio`, que guarda copias de hace semanas: medir contra ella decía «Guardar no escribe» — falso. Corregido en el driver y en `qa_dialogs_uia.PREFS`.
+2. **El cajón de este host muestra la CLAVE cruda del recurso** (`MediaTranscoderNode_Name`), no el texto resuelto: hay que buscar por la clave. La tarjeta del lienzo, en cambio, **sí** muestra el texto.
+3. **Una tarjeta por nodo = un conmutador por tarjeta**, todos con la misma ancla: hay que elegir el de la tarjeta medida.
+
+### 🟠 Frontera medida (defecto del PRODUCTO, declarado y NO arreglado)
+Las órdenes **destructivas** del gestor **no piden confirmación** en el host Uno, y se comportan **distinto según la puerta**: por la **fila** el servicio que llega al view model es el **Nulo** (`ShowConfirmation => true`) y «Eliminar» borra **de verdad y sin diálogo** (medido 11 → 10); por la **tarjeta** llega el **del host**, cuyo `ShowConfirmation` es **síncrono** y devuelve «no» desde el hilo de UI, así que «Eliminar» **no borra** (medido 11 → 11) y tampoco muestra nada. Es la **frontera síncrona** del contrato de diálogos del núcleo; arreglarlo pide confirmación asíncrona en el SDK o comandos asíncronos en el gestor: **una rebanada, no un parche**.
+
+### 📌 Censo definitivo de superficies de usuario del escritorio
+**Portadas y probadas**: barra + cajón (**31 entradas** censadas, pendientes **VACÍA**); catálogo de diálogos **10 de 11 servidas**; ajustes (**6 secciones**); paneles de nodo (inspector, editor de texto, catálogo de variables y **el gestor de presets**); **4 acciones de fila** servidas; lienzo (tarjetas con su conmutador, sockets, cables, zoom, spotlight y atajos); y las siete ventanas del host. **No portadas, con razón**: el **gestor de CONTRASEÑAS** (declarado: una ventana del plugin con el toolkit que este host no tiene; **es la única superficie de usuario que queda sin portar**), el **menú emergente de variables** (el «{x}» abre el catálogo completo), **`WorkflowSettings`** como diálogo (sería una **segunda copia** de los ajustes del host) y `IPopupMenuService`/`IColorPickerService` (**declarado, no pendiente**). **Fuera de lo pedido queda SÓLO el empaquetado y la entrega** (fases **5.4-5.6** del plan de la rebanada 5, con su tamaño escrito en `docs/uno_slice5_plan.md` §11).
+
+### 📄 Evidencia
+[`docs/qa/qa_presets_host_263.md`](file:///docs/qa/qa_presets_host_263.md) + `docs/qa/qa-manual-263/` (capturas `80_…`-`99_…`, `presets-session.json`) + el driver `docs/qa/qa_presets_uia.py` + `selfcheck-dialogs-report.txt` / `selfcheck-report.txt`.
+
+---
+
+## [2026-09-28] - Hito 262: El Editor de URLs por Modelo de IA (El Punto de Entrada que Faltaba y Dónde Queda Escrito)
+
+### 🎯 Objetivos y Alcance
+El hito 261 dejó una frontera **declarada**: la pestaña de **Modelos de IA** existía, pero **no ofrecía la edición de URLs por modelo desde la fila** —la acción con la que el escritorio abre `AiModelUrlsConfig`—, así que su clave no podía servirse («servirlo sería una ventana que nadie puede abrir»). Este tramo **le da el punto de entrada y sirve la ventana** sobre el view model portable que ya existía, y deja escrito **dónde queda el cambio**: en el almacén del gestor del núcleo, porque lo escribe el propio view model portable, no la vista.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `Controls/SettingsPanel.xaml` | La **acción de URLs** de la fila (`Tag="urls"`, ancla `SettingsAiModelUrlsButton`) en el mismo puesto que en la fila del escritorio: entre descargar y borrar. |
+| `Controls/SettingsPanel.xaml.cs` | Su **rama propia**: ejecuta la orden **canónica** del gestor (`ConfigureUrlsCommand`). Sin ella, el `default` la sustituía y pulsar «URLs» **descargaba el modelo**. |
+| `Controls/AiModelUrlsConfigBody.xaml(.cs)` | La vista del `AiModelUrlsConfigViewModel` portable: caja en **dos sentidos al teclear**, recuento, distintivo de estado, probar, restablecer y los resultados de la prueba. |
+| `Platform/UnoWindowService.cs` | `AiModelUrlsConfig` **servida** con su vista y su arm en el catálogo; fuera de `DeclaredPendingDialogs`: el censo queda en **10 servidas + 1 declarada**. |
+| `Resources/Strings*.resx` | Las **10 claves** `AiModelUrls_*` del escritorio copiadas en EN+ES, más una del host (`Uno_AiModelUrls_RequiredWarning`, la frase del propio view model). |
+
+### 🛡️ Guardia y mutaciones
+La prueba nueva (`TheModelUrlAction_ShouldOpenTheServedEditor_AndWriteWhereTheDesktopWrites`) ata **las tres mitades**: la fila dibuja exactamente `download`/`delete`/`urls`; la rama de la acción ejecuta `ConfigureUrlsCommand` —**no** la descarga del `default`—; la clave está **servida** con su arm y **sin** seguir declarada; y el cuerpo es una vista del view model portable que **no** escribe la configuración por su cuenta (no contiene `SetCustomUrls`; dos sitios escribiendo lo mismo serían dos verdades). La mutación nueva (`accion-de-urls-que-descarga-el-modelo`) quita esa rama y **MUERDE** (32,5 s): un botón que hace otra cosa es peor que uno que no hace nada. **Una mutación anterior se retiró** (`accion-de-urls-por-modelo-sin-declarar`) porque vigilaba que la fila **no** dibujara la acción, y este tramo la dibuja: dejarla habría sido un mutante que ya no mide nada. Declaradas: **80**. Y **una guardia del repositorio salió roja al cambiar el producto** —`UnoControlBarParityGuardTests` exigía que esta clave siguiera declarada— y se actualizó: es la señal de que el censo es producto vigilado.
+
+### 🟢 Ejercido con la aplicación abierta (sesión 272), 24 de 24 pasos
+Driver externo por UIA (`qa_urls_uia.py`). Medido: el catálogo con **24 filas** y **MobileNetV2 ImageNet** la primera → se pulsa la **acción de URLs de esa fila** → el editor aparece con **7 anclas** y hablando del **mismo modelo**, pixel `#FCF8F8` → **`#3C3C3C`** → teclear **2 URLs** lleva el recuento del view model de **`1 URL(s)` a `2 URL(s)`** → Guardar cierra el modal (pixel de vuelta a `#585454`, el de la superficie abierta detrás) → **al reabrir, la caja trae las dos URLs Y el distintivo pasa de `📦 Oficial / Predeterminado` a `🔧 Personalizado`**: el cambio quedó escrito donde lo escribe el escritorio → se restaura (`🔧` → `📦`) → preferencias md5 **byte-idénticas** (`d5f199a068113d8a7e16ad6ee6f726b3`).
+
+### 🔍 Tres defectos que encontró la medición (uno del producto, dos del instrumento)
+1. **Del producto**: la caja del editor enlazaba `Text` sin `UpdateSourceTrigger`, así que en WinUI escribía **al perder el foco** y el recuento se quedaba con el valor viejo mientras el usuario teclea (el escritorio lo actualiza al teclear). Corregido en el enlace.
+2. **Del instrumento**: `window_text()` de una **fila enlazada** devuelve el nombre del **tipo del view model** (`FileFlow.App.ViewModels.AiModelItemViewModel`), no lo que se ve; el nombre vive en el `AutomationProperties.Name` del panel de la fila.
+3. **Del instrumento**: el píxel tras cerrar el modal **no vuelve al del lienzo** sino al de la **superficie de ajustes que sigue abierta detrás** (`#585454`); comparar contra la línea base medía mal el producto.
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` / `--selfcheck-controlbar` | **EXIT 0 · 83 `[OK]`** / **EXIT 0 · 42 `[OK]`** · VERIFICADO |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 24 `[OK]`** / **EXIT 0 · 18 `[OK]`** · VERIFICADO (antes 12) |
+| Guardias | **13 + 13 + 9 + 5 = 40** de 40 |
+| Mutaciones | **6 de 6 MUERDEN** (1 nueva + 5 corroboradas) · **80 declaradas** |
+| Suite completa | **1917 superadas + 1 omitida de 1918, 0 errores** (2 m 24 s) |
+| Rojo intermitente | **2 corridas con un rojo distinto cada una** (`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven` y `SystemPerformanceMonitorTests.TheHeartbeat_ShouldPublishAPlausibleSample`), **los dos verdes en aislamiento (1 de 1)** → **ruido de carga**, no regresión; la corrida final, verde |
+| Sesión con la app abierta | **24 de 24 pasos** |
+
+### 📌 Fronteras declaradas
+1. **El aviso de «URL requerida» no sale como segundo `ContentDialog`** (WinUI sólo admite uno y el editor ya está abierto): la petición del view model queda escrita en la consola y **el host la repite dentro del editor**, sin cerrar el modal sobre algo rechazado.
+2. **`WorkflowSettings` sigue siendo la única clave declarada**: su superficie tiene puerta en la barra y el cajón.
+3. **Hallazgo del escritorio, anotado y NO tocado**: su `AiModelUrlsConfigDialog` enlaza `{Binding SaveCommand}`, que su view model no expone; ese botón no guarda. El host no hereda el defecto (llama al mismo `Save()`) y el escritorio no se tocó.
+
+---
+
+## [2026-09-28] - Hito 261: El Diseñador de Datasets y las Dos Pestañas de Ajustes que Faltaban (El Contrato de Superficie del SDK)
+
+### 🎯 Objetivos y Alcance
+El hito 260 dejó **8 claves servidas + 2 declaradas**, y de esas dos la única **entrada de menú** sin superficie era el **Diseñador de Datasets**. Su ventana la monta el **propio plugin** con el toolkit del escritorio —un host WinUI no puede montar una ventana ajena—, así que el tramo anterior la había dejado declarada «con su razón exacta». Este tramo la **cruza sin reimplementar el diseñador**: un **contrato NUEVO del SDK** deja que el **nodo** declare qué diálogo quiere y qué contiene, y el host pinta esa clave con **su propia vista sobre el view model PORTABLE del plugin**. Además se sirven las **dos pestañas de ajustes** que faltaban —**Modelos de IA** y **Actualizaciones**— sobre sus secciones del núcleo, y `DeclaredPendingEntries` queda **VACÍA**: ya no hay ninguna orden de menú del escritorio sin dibujar, declarar o cumplir por el host.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.Sdk/Descriptors/INodeDialogSurfaceProvider.cs` | **Contrato nuevo del SDK**: el nodo dice **qué** diálogo quiere (`DialogKey`, la misma clave para todos los hosts) y **qué** contiene (`Payload`, su view model portable). La identidad del diálogo deja de decidirla el host. |
+| `Plugin.FileSystem/Nodes/Sources/SyntheticDataSourceNode.cs` | Implementa el contrato: declara `DialogKeys.DataSetDesigner` y entrega su `SyntheticDataSetDesignerViewModel`. |
+| `Controls/DataSetDesignerBody.xaml(.cs)` | La vista del host sobre ese view model: buscador, catálogo, las tres pestañas (árbol / DSL / JSON) y las órdenes de añadir y quitar. **Cero lógica de producto**: sus órdenes **son los comandos del VM del plugin**. |
+| `Controls/SettingsPanel.xaml(.cs)` | Las dos pestañas nuevas —**Modelos de IA** (catálogo, carpeta, estado, descargar / borrar por fila) y **Actualizaciones** (versión, formato, canales, comprobación automática)— sobre sus secciones portables. La superficie pasa a **seis secciones**. |
+| `Controls/MainMenuDrawer.xaml(.cs)` | La entrada **Diseñador de Datasets**, cumplida por el evento propio del cajón; el cajón pasa de 14 a **15 entradas** ancladas. |
+| `Controls/ControlBar.xaml.cs` | `DeclaredPendingEntries` **vacía** (la tabla se conserva con su guardia para que la próxima orden sin destino tenga dónde declararse) y `OpenSyntheticDataSetDesignerCommand` añadida a `HostOwnedOrders` con su mecanismo. |
+| `Platform/UnoWindowService.cs` + `IWindowService.cs` | `DataSetDesigner` **servida** con su vista; el censo pasa a **9 servidas + 1 declarada**. La razón de `AiModelUrlsConfig` se **corrige** (§7 del QA). |
+
+### 📐 La paridad, escrita
+**31 entradas censadas** (16 de la barra + 15 del cajón); **9 claves de catálogo servidas** con su vista y **1 declarada con su razón** (`WorkflowSettings`: abrirla por aquí sería una SEGUNDA copia de la superficie de ajustes del host); **cinco órdenes del escritorio** cumplidas por el canal propio (`HostOwnedOrders`); **cero entradas declaradas pendientes** y **cero atajos sin enrutar**.
+
+### 🛡️ Guardia y mutaciones
+La guardia sube a **13 + 13 + 9 + 5 casos** entre los cuatro ficheros: el censo de diálogos del servicio, la tabla `HostOwnedOrders` para el diseñador y el contrato del nodo (`TheDataSetDesigner_ShouldBeDeclaredByTheNode_AndServedByTheHost`), más la sección nueva de ajustes. Y **un caso nace de lo que este tramo encontró a ojo**: `TheAiModelRowActions_ShouldMatchWhatTheDialogCensusDeclares` ata las acciones dibujadas en la fila de modelos a lo que el censo de diálogos declara (ver «Una razón que había quedado falsa»). **Seis mutaciones muerden**: cinco nuevas (`nodo-que-declara-su-superficie-sin-clave`, `disenador-de-datasets-fuera-del-catalogo`, `vista-del-disenador-con-su-propio-modelo`, `seccion-que-pierde-el-panel-que-conmutaba`, `accion-de-urls-por-modelo-sin-declarar`) y `menu-que-no-declara-lo-que-falta` **reapuntada** a la tabla que cambió de estado. **Dos guardias del repositorio salieron rojas al cambiar el producto** (la del host libre de Avalonia —una razón declarada nombraba el ensamblado— y la del inventario de trabajo aplazado —la espera del arranque, registrada `RealTime` con su motivo—): es la señal de que las tablas de declaración son producto vigilado, no prosa.
+
+### 🟢 Ejercido con la aplicación abierta (sesión 271), 39 de 39 pasos
+Driver externo por UIA (`qa_windows2_uia.py`) + vigilante de píxeles. Las **dos ventanas que el pase anterior no había ejercido** y las dos nuevas: **Explorador VFS** (botón de la barra, chip `📁 | VFS (4)`) → **5 anclas**, **4 filas** con nombre real (`Sembrado 01..04.mkv`), pixel `#B0ACAC`, y al cerrar `#FCF8F8` y **0 filas**; **aviso de actualización** (distintivo `🚀 | v9.9.9`) → **6 anclas**, versión actual `1.0.0-beta+build.6759` contra `9.9.9`, pixel `#B0ACAC`, y al cerrar la superficie se va **pero el distintivo sigue puesto**; **Diseñador de Datasets** (entrada del cajón) → **8 anclas** y **7 filas** de dataset, pixel `#B0ACAC`; **Ajustes** → **6 secciones**, pestaña Modelos de IA con **24 filas** y carpeta `…\FileFlow\models`, pestaña Actualizaciones con su versión. `preferencias.md5` **idénticas** (`d5f199a068113d8a7e16ad6ee6f726b3`).
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` (lienzo) | **EXIT 0 · 83 `[OK]` · 0 `[FALLO]`** |
+| `--selfcheck-controlbar` (menú) | **EXIT 0 · 42 `[OK]` · 0 `[FALLO]`** · VERIFICADO (antes 37) |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 24 `[OK]`** / **EXIT 0 · 12 `[OK]`** · VERIFICADO (antes 9) |
+| Guardias | **13 + 13 + 9 + 5** = **40 casos** |
+| Mutaciones | **6 de 6 MUERDEN** (5 nuevas + 1 reapuntada) · **80 declaradas** |
+| Suite completa | **1917 superadas + 1 omitida de 1918, 0 errores** (2 m 26 s) |
+| Sesión con la app abierta | **39 de 39 pasos** · 3 tarjetas |
+| Guardias del repositorio que salieron rojas | **2 y las dos se arreglaron** |
+
+### 📌 Fronteras declaradas
+1. **El Diseñador de Datasets se sirve por el contrato del SDK, no por el comando canónico**: el comando del escritorio abre la ventana que monta el plugin con el toolkit del escritorio. El cajón lo cumple con su evento propio, la ventana pide al nodo la superficie declarada y el **catálogo de diálogos del host** la sirve con SU vista sobre ese mismo view model.
+2. **`WorkflowSettings` (la clave del catálogo) sigue declarada y no servida**: abrirla por `IWindowService` sería una SEGUNDA copia de la superficie de ajustes que el host ya tiene en la barra y el cajón.
+3. **`AiModelUrlsConfig` sigue declarada**, con razón corregida **y ahora vigilada**: la pestaña de modelos de IA del host lista el catálogo y gestiona descargas, pero **no ofrece la edición de URLs por modelo desde la fila**, que es la acción con la que el escritorio abre ese diálogo. Servirlo sin punto de entrada sería una ventana que nadie puede abrir. (La razón anterior —«esa pestaña no existe aquí»— había quedado falsa al añadirla este tramo; una razón obsoleta miente igual que un no-op mudo. **La encontró el ojo, así que las dos mitades quedan atadas por una prueba y por una mutación que muerde**: si alguien dibuja esa acción, la declaración deja de ser cierta y el caso cae nombrando la clave.)
+4. **Hallazgo del escritorio, anotado y NO tocado**: el botón Guardar del `AiModelUrlsConfigDialog` enlaza `{Binding SaveCommand}`, que el view model **no expone** (tiene `Save()` sin `[RelayCommand]`). Ese diálogo no puede guardar en el escritorio. Antes de portarlo «con paridad» hay que decidir cuál es el comportamiento correcto.
+5. **El `FileInfoText` del diseñador no se dibuja**: el escritorio lo rellena desde su catálogo de modelos y aquí no hay fuente; se dibujan los cuatro campos que el `VirtualFileEntry` del núcleo sí expone.
+
+---
+
+## [2026-09-28] - Hito 260: Las Ventanas que Faltaban del Menú del Host Uno (Las Cuatro Puertas del Catálogo de Diálogos)
+
+### 🎯 Objetivos y Alcance
+El hito 259 cerró la mitad del menú y dejó **cinco entradas declaradas**; cuatro de ellas abrían una **ventana** del escritorio que este host no tenía. Este tramo las **sirve por el catálogo de diálogos** (`DialogKeys`) sobre los **view models PORTABLES del núcleo** —cero lógica de producto en la vista—: el **Estudio de Temas**, las **Métricas**, el **Explorador Virtual (VFS)** y el **aviso de actualización**. El censo del servicio pasa de **3 servidas + 6 declaradas** a **7 + 2**, y la única que queda declarada —el **Diseñador de Datasets**— lleva ahora su razón exacta: su ventana la monta el propio plugin con su toolkit, y servirla pide una vista del host sobre un view model que vive dentro de su ensamblado.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `Controls/ThemeCustomizerBody.xaml(.cs)` | El **Estudio de Temas**: catálogo del núcleo, editor por secciones generado desde `ThemeSettingCatalog` (9 secciones, **34 ajustes editables**) y sus tres plantillas (color con su muestra, número con su rango y su paso, elección) repartidas por un **selector por TIPO de fila** —añadir un ajuste al catálogo no toca la vista—. Declara en `DeclaredPendingParts` lo que no sirve (Eliminar / Importar / Exportar, que piden el contrato SÍNCRONO de diálogos, y la vista previa en vivo). |
+| `Controls/MetricsDashboardBody.xaml(.cs)` | El **panel de Métricas**: las cuatro tarjetas y las **siete columnas** del escritorio, leídas del `WorkflowMetricsDashboardViewModel` —él formatea, la vista pinta—, con una cabecera y una plantilla de fila (WinUI no trae `DataGrid`). |
+| `Controls/VirtualFileSystemExplorerBody.xaml(.cs)` | El **Explorador VFS**: el host construye el `VirtualFileSystemExplorerViewModel` con el almacén que llega como carga útil (como el `AvaloniaWindowService` del escritorio) y la vista enlaza buscador, lista, selección y metadatos. Dibuja los cuatro campos que el `VirtualFileEntry` SÍ tiene. |
+| `Controls/UpdateDialogBody.xaml(.cs)` | El **aviso de actualización**: versiones, formato del paquete, novedades y progreso del `UpdateDialogViewModel`; sus tres órdenes son sus comandos y el cierre lo pide el propio view model por `RequestClose` (el servicio retira el modal). |
+| `Platform/UnoWindowService.cs` | Las cuatro claves **servidas** con su vista y las dos que quedan **declaradas con su razón**; el cuerpo como superficie del host (misma decisión que «Acerca de») con su **clave de catálogo como ancla** (`ActiveWindowKey`) y un `CloseActiveWindow()` que usan los pies de las ventanas. Una carga útil que no es la esperada se **declina con su motivo**, nunca en silencio. |
+| `Controls/ControlBar.xaml.cs` | Las dos entradas con **estado de contexto** de la barra: el chip **VFS (`HasVirtualFiles`)** con su recuento y el **distintivo de actualización (`HasPendingUpdate`)** con la versión nueva. La tabla nueva `ServedWindowEntries` deja escrito dónde vive cada una de las cuatro. La tabla de **declaradas baja a una fila**. |
+| `Controls/MainMenuDrawer.xaml(.cs)` | Las tres entradas del cajón (Estudio de Temas, Métricas y VFS) ejecutando las **órdenes CANÓNICAS** del núcleo; el cajón pasa de 11 a **14 entradas** ancladas. |
+| `App.xaml.cs` + `MainWindow.xaml.cs` | La **comprobación de actualizaciones del arranque**, la misma del escritorio (en segundo plano, sin forzar, respetando la versión ignorada) y **saltada entera en los modos de sondeo**; entrega la novedad a la ventana, que es quien enciende el distintivo. Sin esa mitad, el aviso que el host ya sirve no lo pediría nadie. |
+| `Resources/Strings*.resx` | **192 claves copiadas** del diccionario del escritorio en los dos idiomas (ThemeStudio, Metrics, VfsExplorer, Update, Drawer_*): los view models portables piden sus textos por clave y el host los resuelve con los suyos, así que el editor y las ventanas salen en el idioma elegido. |
+
+### 📐 La paridad, escrita
+**28 entradas censadas** (16 de la barra + 14 del cajón, con las 4 de ventana); **4 ventanas servidas** (2 nuevas claves de catálogo además de las 2 del 258 y la del 259) y **2 declaradas con su razón**; **una entrada declarada pendiente** (el diseñador de datasets del plugin, con la frontera del toolkit escrita); **4 claves de catálogo** con su vista en `ImplementedDialogs`.
+
+### 🛡️ Guardia y mutaciones
+`UnoControlBarParityGuardTests` pasa a **12 casos**: `TheWindowEntries_ShouldBeServedByTheHostsDialogCatalogue` (la tabla `ServedWindowEntries` + cada orden DIBUJADA fuera de las tablas + toda clave del SDK con destino), `TheThemeStudio_ShouldDeclareWhatItCannotServe_AndNotDrawIt` y `TheUpdateCheck_ShouldFeedTheBadge_AndStayOutOfTheProbes` (la **llamada**, no sólo la definición). **Siete mutaciones muerden**: cuatro nuevas (`ventana-servida-que-no-esta-en-el-catalogo`, `entrada-de-ventana-que-no-ejecuta-su-orden`, `aviso-de-actualizacion-que-nadie-enciende`, `estudio-de-temas-que-esconde-lo-que-no-sirve`), `menu-que-no-declara-lo-que-falta` **reapuntada** a la fila que queda, y dos de los hitos 257/258 re-verificadas. **Una debilidad de la guardia nueva la encontró la mutación**: buscar las órdenes en el texto de las vistas se conformaba con la propia tabla que las nombra, así que vaciar un manejador no caía; se añadió `WithoutDeclarationTables` y la mutación pasó de sobrevivir a morder.
+
+### 🟢 Ejercido con la aplicación abierta (sesión 270), 25 de 25 pasos
+Driver externo por UIA (`qa_menu3_uia.py`). Medido: cajón con **14/14 entradas** y su velo (`#FCF8F8` → `#585454`); **«Estudio de Temas»** → **6/6 anclas**, **9 temas** leídos por el canal externo («🌙 Oscuro Fluent», «☀️ Claro Minimalista»…), título del modal localizado, pixel **`#B0ACAC` 46,7 %** y el cajón recogido al elegir; **«Métricas»** → **4/4 anclas**, **3 filas** (una por nodo) y el pie «**3 nodos analizados. 0 cuello(s) de botella.**», pixel **`#B0ACAC` 49,4 %**; cerrar cada una devuelve el pixel a **`#FCF8F8` 77,8 %** y deja el árbol sin sus anclas; **preferencias md5 idénticas** (`d5f199a068113d8a7e16ad6ee6f726b3`).
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` (lienzo) | **EXIT 0 · 83 `[OK]` · 0 `[FALLO]`** |
+| `--selfcheck-controlbar` (menú) | **EXIT 0 · 37 `[OK]` · 0 `[FALLO]`** · VERIFICADO (antes 25) |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 24 `[OK]`** / **EXIT 0 · 9 `[OK]`** |
+| Guardia del menú | **12 de 12** (antes 9) |
+| Mutaciones | **7 de 7 MUERDEN** (4 nuevas + 1 reapuntada + 2 re-verificadas) · **75 declaradas** |
+| Suite completa | **1915 superadas + 1 omitida de 1916, 0 errores** (2 m 29 s en la corrida del tramo; **re-verificada al cierre, 2 m 26 s**) |
+| Sesión con la app abierta | **25 de 25 pasos** |
+| Guardias del repositorio que salieron rojas | **2 y las dos se arreglaron en el producto o en su registro** (la del host libre de Avalonia —una razón declarada nombraba el ensamblado— y la del inventario de trabajo aplazado —la espera nueva del arranque, registrada `RealTime` con su motivo—) |
+
+### 📌 Fronteras declaradas
+1. **Las cuatro ventanas son superficies modales dentro de la ventana del host**, no ventanas nuevas: el mismo criterio de «Acerca de» (hito 258).
+2. **El Estudio de temas no dibuja Eliminar / Importar / Exportar** ni la vista previa en vivo: los tres primeros dependen del contrato SÍNCRONO de diálogos (desde el hilo de UI devuelve «no»/nulo) y la vista previa necesitaría una copia propia de tokens. Todo declarado en `DeclaredPendingParts`, con su razón.
+3. **El canal del VFS con el almacén real de una ejecución** se mide con su estado de contexto (el chip de la barra) y con un almacén construido por la sonda por el MISMO camino del servicio; no se ejecutó un flujo que produjera archivos virtuales.
+4. **El aviso de actualización se ejerció con una novedad sintética** (`v9.9.9`); en la aplicación normal sólo aparece con una release nueva de verdad.
+5. **Hallazgo del escritorio, anotado y no tocado**: su rejilla del VFS declara «Tamaño» y «Modificado» enlazando a propiedades que no existen en el `VirtualFileEntry` del núcleo —columnas vacías en silencio—.
+
+---
+
+## [2026-09-28] - Hito 259: Las Entradas y los Atajos que Faltaban del Menú del Host Uno (El Contrato Síncrono, Cruzado por el Canal Asíncrono del Host)
+
+### 🎯 Objetivos y Alcance
+El hito 257 portó la barra de control y su cajón, y dejó **once entradas y seis atajos declarados pendientes** —en parte esperando al servicio de ventanas del 258—. Este tramo cierra esa mitad sin rehacer nada de lo portado: **tres órdenes de flujo** (Nuevo / Cargar / Guardar) cumplidas por el canal propio del host, **tres entradas de ayuda** (Manual / Ejemplos / Acerca de) por sus órdenes canónicas —con «Acerca de» ya como superficie real— y los **seis atajos** enrutados.
+
+### 🔴 La frontera que era el bloqueo real (y cómo se cruza)
+Las tres órdenes de flujo no estaban pendientes por falta de tiempo: su comando del núcleo pide un diálogo **SÍNCRONO**, y desde el hilo de UI este host devuelve `null` en el picker y `false` en la confirmación (medido y declarado desde el 240 en `UnoFileDialogService` / `UnoDialogService`). Dibujar la entrada y ejecutar el comando canónico habría sido **un botón que no hace nada**, sin crash y sin mensaje. El cruce no reimplementa el flujo en el host: **separa el diálogo de la operación en el view model portable**, que es la regla que el 254 ya usó con «cargar un flujo» —`ControlBarViewModel.CreateNewWorkflow()` y `SaveWorkflowToFileAsync(path)`, simétricos de `LoadWorkflowFromFileAsync`— y el host aporta lo que sí sabe hacer: `UnoDialogService.ShowConfirmationAsync` (la confirmación que se puede esperar sin bloquear el hilo de UI) y los pickers asíncronos de WinRT.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `MainMenuDrawer.xaml(.cs)` | **Dos secciones nuevas**, en el orden del escritorio: **GESTIÓN DE FLUJOS** (Nuevo / Cargar / Guardar) y **AYUDA Y RECURSOS** (Manual / Ejemplos / Acerca de). El cajón pasa de 5 a **11 entradas** ancladas; las de flujo declaran *qué se ha pedido* por evento y las de ayuda ejecutan la orden canónica. |
+| `MainWindow.xaml.cs` | Las tres manos de flujo (confirmación y pickers asíncronos + los métodos portables) y el **enrutado del teclado**: lo que el lienzo no reclama llega a la tabla de atajos del menú. |
+| `Controls/ControlBar.xaml.cs` | La tabla **`RoutedShortcuts`** (6 filas: gesto, tecla, modificadores, orden y vía) que **es la que enruta** —el manejador la recorre; no hay un `switch` paralelo que se pueda desincronizar— y las tablas del censo actualizadas. |
+| `Controls/AboutDialogBody.xaml(.cs)` | La ventana **«Acerca de»** del host: los mismos rótulos del escritorio (`Uno_About_*`, copiados), la versión de la misma fuente que el pie del cajón y las insignias de lo que este host es (`.NET 10.0`, `Uno Platform · WinUI 3`, `DAG Flow Engine`). |
+| `Platform/UnoWindowService.cs` | `ShowWindow(DialogKeys.About)` servido y anclado (`AboutDialog`): el censo pasa de 2 servidas + 7 declaradas a **3 + 6**. |
+| `App.Core/ViewModels/ControlBarViewModel.cs` | Los dos métodos portables sin diálogo del apartado anterior. |
+
+Los textos nuevos (`Uno_Drawer_FlowManagement`, `Uno_Drawer_New/Load/SaveWorkflow`, `Uno_Drawer_HelpResources`, `Uno_Drawer_UserManual(+ToolTip)`, `Uno_Drawer_ExampleFlows(+ToolTip)`, `Uno_Drawer_About(+ToolTip)`, `Uno_About_*`) se **copian** del diccionario del escritorio, clave por clave, en los dos idiomas.
+
+### 📐 La paridad, escrita
+**25 entradas censadas** (14 de la barra + 11 del cajón); **4 órdenes cumplidas por el host** (`OpenWorkflowSettingsCommand` y las tres de flujo); **6 atajos enrutados** (F5 / F10 / Shift+F5 al comando del ciclo del núcleo; Ctrl+N / Ctrl+O / Ctrl+S por el canal del host) con `DeclaredUnroutedShortcuts` **vacía**; y **5 entradas pendientes con su razón**: Estudio de temas, métricas, VFS, diseñador de dataset y aviso de actualización (el host no comprueba actualizaciones).
+
+### 🛡️ Guardia y mutaciones
+`UnoControlBarParityGuardTests` pasa a **9 casos**: el nuevo `TheFlowOrders_ShouldBeFulfilledByTheHostsOwnAsyncChannel_NotByTheSilentSyncOne` exige las dos mitades —las APIs asíncronas y los métodos portables, y **no** los `…Command.Execute` del núcleo ni el producto reimplementado en la vista— y el caso de atajos lee ahora **las dos tablas** (enrutados + declarados), con la exigencia de que ninguna contradiga a la otra. **🧬 Mutación nueva (71.ª): `flujo-que-se-cumple-por-el-picker-sincrono` → MUERDE** (35 s), y **dos mutaciones del 257 actualizadas al producto nuevo** (`menu-que-no-declara-lo-que-falta`, `menu-que-no-declara-un-atajo` —esta última borra ahora una fila de la tabla que enruta—) **también muerden**. La guardia de declaraciones **falló al cambiar el producto** y fue el aviso que hacía falta: dos mutantes habrían quedado mintiendo en silencio. COVERAGE → **71 declaraciones**.
+
+### 🟢 Ejercido con la aplicación abierta (sesión 269), 27 de 27 pasos
+Driver externo por UIA + **teclado FÍSICO** (`keybd_event`, el mismo canal que midió la sesión 268) con el **vigilante** midiendo (79 fotogramas, 15 cambios de escena). Medido: base `tarjetas=3` y **0 anclas del cajón** → «Menú» expone **11/11** entradas y el velo se ve en el pixel (`#FCF8F8` → **`#585454`**) → **«Acerca de»** abre la superficie del host (anclas `AboutDialog` / `AboutVersionText` / `AboutDescriptionText`; la versión leída por UIA: **`v1.0.0-beta+build.6664 · net10.0 · Uno Platform (WinUI 3)`**; el modal en el pixel: **`#B0ACAC` 67,1 %**) y al cerrarla el pixel vuelve a la base → **«Nuevo Flujo»** pide confirmación (**«¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.»**, pixel `#B0ACAC` 77,5 %) y **cancelar deja las mismas 3 tarjetas** → **Ctrl+N** por tecla física abre **la misma confirmación** y deja **el mismo pixel** → **F5** y **F10** por teclado físico quedan en el **rastro**: `menu atajo=F5 orden=ContinueWorkflowCommand` y `menu atajo=F10 orden=StepNextCommand`. Cierre: escena y tarjetas como al entrar y **preferencias del usuario byte-idénticas** (md5 `d5f199a068113d8a7e16ad6ee6f726b3`).
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` (lienzo) | **EXIT 0 · 83 `[OK]` · 0 `[FALLO]`** |
+| `--selfcheck-controlbar` (menú) | **EXIT 0 · 25 `[OK]` · 0 `[FALLO]`** · VERIFICADO (antes 14) |
+| `--selfcheck-dialogs` / `--selfcheck-settings` | **EXIT 0 · 24 `[OK]`** / **EXIT 0 · 9 `[OK]`** |
+| Guardia del menú | **9 de 9** |
+| Mutaciones | **3 de 3 MUERDEN** (la nueva + las dos del 257 actualizadas) |
+| Suite completa | **1912 superadas + 1 omitida de 1913, 0 errores** (2 m 26 s) |
+| Sesión con la app abierta | **27 de 27 pasos** |
+
+### 📌 Fronteras declaradas
+1. **Cinco entradas siguen pendientes** con su razón escrita (Estudio de temas, métricas, VFS, diseñador de dataset y aviso de actualización).
+2. **«Acerca de» es modal aquí y ventana en el escritorio**: el host sirve la misma información dentro de su única ventana. Diferencia declarada.
+3. **Las órdenes del núcleo siguen pidiendo el contrato síncrono**: el host las cumple por su canal, no cambiando el contrato; otro host tendrá la misma frontera y las mismas dos piezas portables para cruzarla.
+4. **Ctrl+O y Ctrl+S no se pulsaron con tecla física** (abren el picker del sistema, que se lleva la sesión de UIA): su camino lo ata la guardia y su mitad sin diálogo se ejerció por la sonda (guardar y cargar sobre un fichero temporal, medido).
+5. **La confirmación del host usa botones `OK`/`Cancel`**, como el adaptador de diálogos que ya existía: el escritorio no tiene esa confirmación con otros textos que copiar.
+
+---
+
+## [2026-09-28] - Hito 258: Los Paneles de Nodo del Host Uno: los Diálogos de Parámetro y el Selector de Variables, Sobre los View Models del Núcleo
+
+### 🎯 Objetivos y Alcance
+El host Uno tenía lienzo, paneles, atajos, ajustes y barra de control, pero **los paneles que cada nodo tiene dentro** —el editor de texto y prompts del parámetro largo y el selector de variables— seguían cayendo al **Nulo declarado**: el botón «✎» y el botón «{x}» existían y **no hacían nada** (sin crash y sin error en pantalla, el usuario pulsaba y no pasaba nada). Este tramo escribe el `IWindowService` del host, las dos vistas sobre los **view models portables del núcleo** y el **anclaje** que hace que las filas del inspector los alcancen, y **no toca ninguna otra superficie**.
+
+### 🧱 Lo construido (tres piezas en el host, cero líneas en `FileFlow.App`)
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.App.Uno/Platform/UnoWindowService.cs` | El `IWindowService` real: `ShowDialogAsync` por `DialogKeys` con `ContentDialog` y `DialogResultPayload`, `MainWindowOwner` real, y las dos tablas del censo — `ImplementedDialogs` (**2 servidas**) y `DeclaredPendingDialogs` (**7 declaradas con su razón**)—. Lo que el host no sirve **no se cancela mudo**: `Decline` escribe la clave y el motivo en `DeclinedDialogs` y en la consola de la aplicación, porque un «cancelado» sin traza se lee como un error del usuario. |
+| `Controls/TextEditorDialogBody.xaml(.cs)` y `Controls/VariablePickerDialogBody.xaml(.cs)` | Las vistas de los VMs **portables**: el editor con su caja `TwoWay`, sus botones de insertar variable y limpiar y su panel lateral del **propio VM** (WinUI no admite dos `ContentDialog` a la vez), insertando por `vm.InsertTokenAt(caret, token)` y devolviendo `vm.SaveResult()`; el catálogo con lista de selección `TwoWay`, buscador que filtra en caliente, recuento, detalle del token y devolución de `vm.SelectedToken`. |
+| `Controls/NodeInspectorPanel.xaml.cs` | Las **acciones de fila**: `HostRowActions` (**3 dibujadas**: explorar ruta «…», editor «✎», catálogo «{x}», con las anclas `ParamBrowse_` / `ParamEditor_` / `ParamVariable_`) y `DeclaredPendingRowActions` (**3 declaradas**). |
+
+`App.xaml.cs` registra `services.AddSingleton<IWindowService, UnoWindowService>()` **y ancla** `ServiceHolders.WindowService` —de ahí lo leen los `NodeParameterViewModel` que el inspector construye **sin recibir servicios por constructor**: sin ese anclaje el servicio existe en el contenedor y las filas siguen en el Nulo—. Los textos de los dos diálogos son claves `Uno_Dialog_*` **copiadas del diccionario del escritorio**, clave por clave y en los dos idiomas.
+
+### 🔴 El defecto REAL que destapó el driver (y que se arregló)
+Las cajas de texto de las filas del inspector **sólo escribían en un sentido**: del campo al parámetro. Cuando el valor lo escribía **el diálogo** —insertar `{FileName}` desde el catálogo—, el parámetro del nodo cambiaba pero **el campo seguía mostrando el texto viejo**: el usuario habría visto su inserción desaparecer de la pantalla. **Arreglo**: `WireBoxToParameter(TextBox, NodeParameterViewModel)` (ida + escucha de `Value` → `box.Text = value;`) y una lista `_rowValueSubscriptions` que se suelta en `RebuildParameters()` (sin ella, reconstruir el inspector dejaría escuchas huérfanas), aplicado a las **tres** cajas (estándar, multilínea y ruta con explorar).
+
+### 📐 La paridad, escrita (y lo que no llega, declarado)
+El **censo de diálogos** reparte las **9** claves de `DialogKeys` entre **2 servidas** (`TextEditor`, `VariablePicker`) y **7 declaradas** con su razón (`UpdateDialog`, `WorkflowSettings`, `VirtualFileSystemExplorer`, `About`, `WorkflowMetricsDashboard`, `ThemeCustomizer`, `AiModelUrlsConfig`); la guardia lo compara **contra las constantes del SDK**, así que una clave nueva sin destino cae en la tabla. Dos declaraciones que son decisión, no olvido: **`WorkflowSettings`** no se sirve por esta vía porque su superficie (hito 255) ya tiene punto de entrada en la barra y el cajón y una segunda puerta sería **una segunda copia**; y el **«{x}»** del host abre **directo el catálogo completo** en vez del **menú emergente** del escritorio (el host no tiene `IPopupMenuService` y el catálogo **es** la primera entrada de aquel menú).
+
+### 🛡️ Guardia y mutaciones
+`UnoNodeDialogsGuardTests` (**9 casos**): el censo contra `DialogKeys`; cada pendiente **contestada con su razón** y no con un cancelar mudo; las órdenes de fila del escritorio con destino; las acciones dibujadas **en las mismas filas** que el escritorio (leído de `NodeParameterTemplates.axaml`); el **atado bidireccional** de las cajas; los diálogos como **vistas de los VMs portables** (`vm.SaveResult()`, `vm.InsertTokenAt`); los **20 textos** copiados del escritorio en los dos idiomas; el diccionario del host sin claves huérfanas; y la sonda en **modo propio**. **🧬 Cuatro mutaciones (68.ª-71.ª): `panel-de-nodo-sin-su-servicio-de-ventanas`, `fila-de-variables-que-abre-el-menu-que-no-esta-portado`, `editor-que-no-devuelve-el-texto-confirmado` y `campo-que-no-muestra-lo-que-el-dialogo-escribio` → las cuatro MUERDEN** (testigo rojo, control verde, árbol restaurado por bytes; 34,8 s / 30 s / 29 s / 28 s). La cuarta **nació sobreviviente**: su primera versión (quitar la escucha) no moría, así que la guardia se endureció hasta exigir el atado completo (la escucha **y** su registro para soltarla) — y entonces mordió. COVERAGE → **70 declaraciones**, 15 de 17 subsistemas, guardias que auditan el repositorio con mutación que las muerda **15 de 44**.
+
+### 🟢 Ejercido con la aplicación abierta (sesión 268), 25 de 25 pasos
+Driver externo por UIA (`docs/qa/qa_dialogs_uia.py`) **actuando** sobre los controles reales con el **vigilante** de píxeles midiendo en paralelo. En la escena del ejemplo: base `tarjetas=3` y **0 filas `Param*`** → clic en la tarjeta **`Folder Source`** y aparecen **10 anclas `Param*`** → pulsar **«{x}»** de `ExtensionFilter` **abre el catálogo** y **el modal se ve en el pixel** (centro `#FCF8F8` → **`#B0ACAC` 52,6 %**) → el buscador escribe «Guid» y el recuento pasa de «47 de 47» a **«1 de 47»** y vuelve → elegir **`{FileName}`** llena el detalle y habilita «Insertar Variable» → pulsar y **el campo del nodo pasa de `''` a `'{FileName}'`** (la vuelta del §defecto), devuelto a `''`. Después, nodo real añadido por el cajón (`Registrar Log`): sus filas exponen `ParamBox_CustomMessage`, `ParamEditor_CustomMessage`, `ParamVariable_CustomMessage`, `ParamDropdown_LogLevel` y 3 toggles; pulsar **«✎»** abre el **editor** (`TextEditorBox`) **sembrado con el valor de la fila**; su «Insertar Variable» despliega el catálogo del VM (**13 variables**); escribir `'prompt de la sesion 268 + {FileName}'` y **«Guardar y Aplicar»** deja **ese texto en el parámetro del nodo**; y el nodo añadido se retira con `Supr`. **Preferencias del usuario byte-idénticas** (md5 `d5f199a068113d8a7e16ad6ee6f726b3`): los paneles de nodo no escriben nada del usuario. Nota metodológica medida: el **clic físico inyectado SÍ llega** al contenido de WinAppSDK (la casilla «Modo Prueba» conmuta 1→0→1), a diferencia del clic mediado por UIA.
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** |
+| `--selfcheck` (lienzo) | **EXIT 0 · 83 `[OK]` · 0 `[FALLO]`** — los paneles no rompieron ninguna sonda anterior |
+| `--selfcheck-dialogs` (paneles de nodo) | **EXIT 0 · 24 `[OK]` · 0 `[FALLO]`** · «RESULTADO: VERIFICADO» |
+| `--selfcheck-settings` / `--selfcheck-controlbar` | **EXIT 0 · 9 `[OK]`** / **EXIT 0 · 14 `[OK]`** |
+| Guardia de los paneles de nodo | **9 de 9** superados |
+| Mutaciones 68.ª-71.ª | **4 de 4 MUERDEN** |
+| Suite completa | **1910 superadas + 1 omitida de 1912** por corrida; el único rojo de cada una fue **un test distinto y pesado** (`EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven` una vez, `ExampleFlowsEndToEndTests.EveryExample_ShouldDeliverWhatItPromises` otra), **verde en aislamiento** (1/1 y 4/4): **ruido de carga, no regresión** |
+| Sesión con la app abierta | **25 de 25 pasos** |
+
+### 📌 Fronteras declaradas
+1. **Las 7 claves de diálogo que el host no sirve** (Actualizador, VFS, Acerca de, Métricas, Estudio de temas, configuración de modelos de IA y los ajustes por esta vía): declaradas con su razón, con traza de lo pedido y atadas por la guardia. Un botón que no puede abrir nada no se dibuja.
+2. **El «{x}» abre el catálogo completo, no el menú emergente**: el host no tiene `IPopupMenuService` y el catálogo es la primera entrada de aquel menú.
+3. **`WorkflowSettings` no se sirve por `IWindowService`** aunque la superficie exista: su entrada es la barra y el cajón; una segunda puerta sería una segunda copia.
+4. **Las ventanas que el host no tiene** (dashboard, VFS, gestor de presets de medios, gestor de contraseñas) siguen pendientes, cada una en su tabla.
+5. **Sigue pendiente** de la migración: las **11 entradas** y los **6 atajos** del menú del escritorio (hito 257), las pestañas **Actualizaciones** y **Modelos de IA** de los ajustes (hito 255) y el **empaquetado y la entrega** (fases 5.4-5.6 del plan de la rebanada 5).
+
+---
+
+## [2026-09-28] - Hito 257: El Menú Principal del Host Uno: La Barra de Control y su Cajón, Sobre el View Model del Núcleo
+
+### 🎯 Objetivos y Alcance
+El tramo de los ajustes dejó señalado su propio hueco: el **menú principal**. El host Uno tenía el botón de ajustes, la barra de zoom y los atajos del lienzo, pero **no la barra de control del escritorio ni sus menús**. Este tramo porta esa superficie —la barra (`FileFlow.App/Views/ControlBarView.axaml`) y el cajón (el `Border` de 320 px de `MainWindow.axaml`)— sobre el **MISMO `ControlBarViewModel` portable** que el contenedor del núcleo ya resolvía (el del botón Ejecutar del hito 243), con paridad de **entradas, órdenes, estado habilitado/deshabilitado por contexto y atajos**, y **sin tocar ninguna otra superficie**.
+
+### 🧱 Lo construido (dos controles del host, cero líneas en `FileFlow.App`)
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.App.Uno/Controls/ControlBar.xaml(.cs)` | La barra: marca, botón «Menú» y **tres islas** como el escritorio (modos · ciclo · herramientas), con **14 entradas** ancladas por `AutomationId`. Cada botón despacha el **comando canónico** del view model con su `CanExecute` respetado; el estado —visibilidad y habilitación— sale de **enlaces con el view model**, no de una copia local. |
+| `FileFlow.App.Uno/Controls/MainMenuDrawer.xaml(.cs)` | El cajón: velo + panel de 320 px a la izquierda, sobre el **mismo estado** (`IsMenuOpen`, el que conmuta el botón «Menú»). Sus dos desplegables (tema e idioma) son los del núcleo y **aplican y guardan al elegir**, como el cajón del escritorio; su entrada «Ajustes» abre la **misma** superficie del hito 255, y su pie enseña la versión del producto. |
+| `MainWindow.xaml(.cs)` | El montaje: `Bar.Vm = Drawer.Vm = mainVm.ControlBar` (una sola instancia), las **dos** entradas de ajustes al mismo `Settings.Open()`, y el Inspector conmutando la columna derecha del marco desde su `ToggleInspectorCommand`. |
+| `RuntimeSelfCheck.RunControlBarProbe` | El sondeo del menú (**14 `[OK]`**), en **modo propio** (`--selfcheck-controlbar`) porque su ciclo de ejecución mueve el documento y las sondas del lienzo no toleran esa mudanza a mitad. |
+
+⚠️ **Ninguna clave `Uno_*` nueva se inventó y ninguna traducción se reescribió**: los 30 textos de la barra y del cajón se **copian** del diccionario del escritorio, clave por clave, en los dos idiomas, y una guardia lo exige al carácter.
+
+### 📐 La paridad, escrita (y lo que no llega, declarado)
+El censo tiene **19 filas** con el AutomationId de cada entrada, la vista que la dibuja, **dónde vive su orden** —el code-behind si es un comando, el XAML si es un enlace bidireccional— y su **estado por contexto**. Frente a él, el escritorio se lee en sus **dos modos de enlace** (`{Binding XCommand}` en su barra y `{Binding ControlBar.XCommand}` en su ventana —mirar sólo el primero dejaba fuera la mitad del menú, el cajón: lo cazó la propia guardia al escribirse) y cada orden suya tiene destino en tres tablas del control:
+
+- **Dibujadas aquí (13)**: menú, Vigilante, Ejecutar, Depurar, Siguiente Paso, Continuar, Pausar, Detener, Deshacer, Rehacer, Revertir, Inspector y el Modo Prueba (casilla).
+- **Cumplida por el host (1)**: `OpenWorkflowSettingsCommand` —el ítem «Ajustes» del cajón del escritorio— se cumple por el **evento del host**, porque el comando del núcleo abre una *ventana* por `IWindowService`, que aquí es el Nulo declarado. `HostOwnedOrders`.
+- **Pendientes (11)**: Nuevo / Cargar / Guardar Flujo (piden diálogo **síncrono**, frontera de la fase 5.3), Estudio de temas, Métricas, VFS, Diseñador de dataset, Manual, Ejemplos, Acerca de y el aviso de actualización. `DeclaredPendingEntries`. **Un botón cuyo destino no existe no se dibuja: se declara.**
+- **Atajos (6)**: el host enruta **sólo** los del lienzo (`EditorKeyboardShortcuts`), así que F5 / F10 / Shift+F5 / Ctrl+N / Ctrl+O / Ctrl+S **no hacen nada aquí** y se declaran con su tecla y su razón (`DeclaredUnroutedShortcuts`). Enrutar una de ellas obliga a quitar su fila: la guardia exige que **ninguna tecla declarada como no enrutada esté en la tabla canónica del lienzo**.
+
+### 🛡️ Guardia y mutaciones
+`UnoControlBarParityGuardTests` (**8 casos**): el censo con su ancla y su estado; cada entrada con su orden en el artefacto que la posee y **sin reimplementar** el ciclo (`new ControlBarViewModel(` / `WorkflowExecutionCoordinator` prohibidos en la vista); el montaje compartido con el VM portable; la paridad de órdenes contra el escritorio con las tres tablas disjuntas; los **30 textos idénticos** al escritorio en los dos idiomas; el diccionario del host sin claves huérfanas; la sonda en modo propio; y los atajos declarados contra la tabla del lienzo. **🧬 Cuatro mutaciones (64.ª-67.ª): `menu-que-ejecuta-la-orden-de-otro`, `menu-que-no-declara-lo-que-falta`, `menu-sin-el-estado-de-su-contexto` y `menu-que-no-declara-un-atajo` → las cuatro MUERDEN** (testigo rojo, control verde, árbol restaurado por bytes). COVERAGE → **66 declaraciones**, 15 de 17 subsistemas, guardias con mutación que las muerda **14 de 43** (`UnoControlBarParityGuardTests` deja de estar en la lista de guardias sin mutación).
+
+### 🟢 Ejercido con la aplicación abierta (sesión 268)
+El **driver externo por UIA** (`docs/qa/qa_menu_uia.py`, que reutiliza el fontanero de la sesión de ajustes y el instrumento de píxeles del 247) actuó sobre los controles reales mientras el **vigilante** medía. **16 de 16 pasos verificados**:
+
+| Paso | Medición |
+| :--- | :--- |
+| Línea base | La barra expone **10 de sus 14** entradas y las 4 que faltan son **exactamente** las de contexto (Paso/Continuar son de la depuración; Pausar/Detener, del ciclo en marcha). El cajón: **0 de 5**. Deshacer y Rehacer llegan **deshabilitados** al canal externo (CanUndo/CanRedo del editor) y el control **rechaza** la orden. |
+| Pulsar «Menú» | El cajón aparece (**5 de 5** anclas) y **el velo se ve en el pixel**: la banda central del lienzo pasa de `#FCF8F8` (77,8 %) a **`#585454` (99,9 %)**. |
+| Pulsar «Ajustes» del cajón | La superficie de ajustes del host se abre (**6 de 6** anclas): la entrada del cajón y la de la barra abren la misma. |
+| Cerrar el cajón | Sus entradas **salen del árbol** y el pixel central **vuelve al de la línea base** (`#585454` → `#FCF8F8`). |
+| Pulsar el Inspector | La columna derecha **pasa a ser lienzo**: 0,0 % → **93,1 %** de la banda con el color del fondo. Insistiendo: **0,0 %**. |
+| Modo Prueba | La casilla conmuta por `TogglePattern` (**1 → 0**) y se devuelve a su estado original. |
+
+La línea de tiempo del vigilante lo corrobora (las 3 tarjetas pasan a 0 mientras el velo cubre la escena y vuelven a 3 al recogerse; **20 cambios materiales**). Al terminar, el fichero de preferencias del usuario queda **byte-idéntico** (md5 igual): el menú no escribe nada.
+
+### ✅ Validación (una corrida por comprobación)
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS 18) | **0 errores** (sólo avisos de nulabilidad preexistentes) |
+| `--selfcheck` (lienzo) | **EXIT 0 · 83 `[OK]` · 0 `[FALLO]`** — el menú no rompió ninguna sonda anterior |
+| `--selfcheck-controlbar` (menú) | **EXIT 0 · 14 `[OK]` · 0 `[FALLO]`** · «RESULTADO: VERIFICADO» |
+| `--selfcheck-settings` (ajustes) | **EXIT 0 · 9 `[OK]` · 0 `[FALLO]`** |
+| Guardia del menú | **8 de 8** superados |
+| Mutaciones 64.ª-67.ª | **4 de 4 MUERDEN** (testigo rojo, control verde, árbol restaurado) |
+| Suite completa | **1902 superadas + 1 omitida de 1903, 0 errores** (RC 0, 2 m 36 s) |
+
+### 📌 Fronteras declaradas
+1. **Las once entradas pendientes y los seis atajos** del menú del escritorio: declarados en el control, con su razón, y atados por la guardia. No se dibuja un botón que no puede hacer nada.
+2. **El Inspector**: el host arranca con el panel abierto (es una columna del marco, como hasta ahora) y su entrada lo conmuta. El estado inicial es decisión del marco; **la conmutación sí es la del núcleo**.
+3. **Los desplegables de tema e idioma del cajón** se ejercen en esta sesión por su presencia, su enlace bidireccional y su catálogo (guardia + sonda); su **selección en vivo** es la del `ControlBarViewModel` portable —write-through, ya medida con la app abierta en la sesión de ajustes para el mismo par de preferencias— y no se volvió a tocar aquí para no escribir en el fichero del usuario.
+4. **`MainMenuDrawer` y `DrawerScrim` llevan su `AutomationId` en un `Border`**, que no tiene peer de automatización (la lección de la sesión 267): la presencia del cajón se prueba por sus **entradas**, que sí son controles.
+5. **Sigue pendiente** de lo que nombró el usuario: los **paneles que algunos nodos tienen** (los diálogos de nodo y los pickers de variables de la fase 5.3), y del menú del escritorio, las once entradas y los seis atajos de arriba.
+
+## [2026-09-28] - Hito 256: Los Ajustes del Host Uno Ejercidos con la Aplicación Abierta (Verificación a Fondo)
+
+### 🎯 Objetivos y Alcance
+El tramo anterior dejó la superficie de **ajustes / apariencia e idioma** del host Uno en el árbol, pero **pidió permiso sin cerrar la verificación**: desde las últimas ediciones (el arranque que aplica el tema y el idioma guardados, la guardia nueva) no había compilación, ni sondas, ni suite demostradas, y la superficie **no se había ejercido nunca en la aplicación real**. Este tramo cierra eso y **no toca el producto**: reconstruye el host, corre sus dos sondas, deja la suite verde, **repite en aislamiento los dos fallos que se habían atribuido a la carga** y ejerce la superficie de verdad con la aplicación abierta, el vigilante de píxeles y un driver externo por UI Automation (el reparto de las sesiones 252-260: el driver **actúa** sobre los controles reales, el vigilante **mide**).
+
+### 📊 Ejercida de verdad, medida en píxeles (sesión 267)
+El tema se lee como **la tonalidad que más superficie ocupa de la ventana** (el fondo del lienzo es el área mayor), que es una huella directa del tema vigente y, al reabrir, de cuál se aplicó:
+
+| Paso (app abierta, driver externo + vigilante) | Preferencia tras guardar | Píxel dominante |
+| :--- | :--- | :--- |
+| Arranque con lo guardado del usuario | `pastel_spring` · `es-ES` | `#FFF8FA` **73,1 %** (claro) |
+| Tema por el desplegable real (3 flechas) + Guardar | `dark_fluent` | `#10131B` **72,9 %** (oscuro) |
+| Idioma por el desplegable real + Guardar | `en-US` | marco: «Guardar ajustes» → **«Save settings»**/**«Settings»** |
+| **Cerrar y reabrir** la aplicación | `dark_fluent` · `en-US` | `#10131B` **73,1 %** + el botón lee **«Settings»** |
+| Preferencias del usuario restauradas y reabierto | `pastel_spring` · `es-ES` | `#FFF8FA` **73,1 %** + «Ajustes» |
+
+Las dos preferencias **sobreviven al cierre**, medido en píxeles y en el texto que UIA lee del marco. Además, con la app abierta: **las cuatro secciones** son alcanzables por su conmutador segmentado y cada una expone exactamente sus controles (Almacenamiento 16 anclas, Apariencia 13, Rendimiento 14, Herramientas 13); una **casilla** (`SettingsAutoSaveCheck`) se conmuta por `TogglePattern` y escribe la preferencia (`EnableAutoSave: True → False`); y **tres guardados seguidos** dejan el primero cerrando la superficie y los siguientes sin botón que pulsar (sin caída).
+
+### 🔍 El comportamiento del tema y el idioma, precisado
+Medido con las tres pulsaciones: el desplegable **sí registra** cada flecha (el guardado escribió `midnight_oled` = índice 1+3) pero **no aplica nada en vivo**: el lienzo no se repinta hasta que se pulsa Guardar, y por eso mismo **Cancelar deja la aplicación como estaba**. Es la misma semántica que la **ventana de ajustes del escritorio** (el `SelectedThemeId` del VM portable no aplica; aplican `SaveSettingsCommand` → `SetThemeById`/`SetCulture`), y distinta del **cajón de control**, que sí aplica en vivo. Queda escrito para que nadie lo lea como defecto.
+
+### 🛠️ Seis defectos del instrumento (ninguno del producto), encontrados usándolo
+El playtest no cambió el producto: cambió las herramientas que lo miden, porque se rompían delante del usuario.
+1. **El instrumento no medía el tema**: `--shot` no tenía renglón con el color dominante → se añadió `METRIC top_colors` (la huella del tema, sin tocar la escena del vigilante).
+2. **El driver moría con los emoji de los temas**: la consola cp1252 lanzaba `UnicodeEncodeError` al imprimir la lista de items **antes de elegir** → salida fijada a UTF-8 con reemplazo.
+3. **Una ancla que nunca podía aparecer**: `SettingsPanel` está puesto en un `Border` y un `Border` **no tiene peer** de automatización; el driver lo tomaba por prueba de presencia y decía «panel ausente» con la superficie abierta → la presencia se prueba por las anclas propias de la superficie.
+4. **Mensaje que culpaba a la búsqueda**: cuando la selección se enviaba pero el canal no la podía leer, el driver decía «no se encontró un tema cuyo nombre contenga …» → resultado propio (`SIN_LECTURA`) que se declara en vez de mentir.
+5. **Índice del árbol cacheado tras actuar**: tras pulsar Guardar el panel ya estaba cerrado y el caché seguía dando sus anclas por presentes → lectura fresca en `read_state`.
+6. **El respaldo de comtypes no existía**: `comtypes.client.GetPattern` no es una función, y un `except` ancho lo tragaba: los patrones **nunca** llegaban por ese camino y varias lecturas salían como «sin lectura» culpando a WinUI → patrones por `iface_*` de pywinauto. De paso, los items del desplegable venían **duplicados** (20 items para 10 temas) y elegir la copia equivocada era una de las razones de la intermitencia; el driver ahora deduplica y tiene `--open <sección>`, `--toggle` y `--value`.
+
+### 📐 La frontera declarada del canal externo
+`SettingsMaxCpuThreadsBox` (un `NumberBox` de WinUI) no expone `ValuePattern` al exterior: se ve como un `Spinner` sin hijos. Los tres campos numéricos ya están verificados **por dentro** (sonda de ajustes: `hilos=28->29` write-through), y los `ComboBox` no exponen su selección (`GetCurrentSelection` vacío, `SelectionItem` dice «no seleccionado» para todos): el driver lo declara y lo que zanja es la **preferencia guardada** y el **píxel**.
+
+### ✅ Validación
+| Pieza | Resultado |
+| :--- | :--- |
+| Compilación del host Uno (MSBuild de VS) | **0 errores** (solo avisos de nulabilidad preexistentes) |
+| Selfcheck del lienzo (`--selfcheck`) | **EXIT 0 · 83 OK · 0 FALLO** |
+| Selfcheck de ajustes (`--selfcheck-settings`) | **EXIT 0 · 9 OK · 0 FALLO** (con `pastel_spring` guardado: arranque verde en los dos sentidos) |
+| Suite completa | **1894 superadas + 1 omitida de 1895, 0 errores** (RC 0) |
+| Los dos fallos «de carga» (`TheHeartbeat_ShouldPublishAPlausibleSample`, `FirstRun_ShouldUseEveryThreadItWasGiven`) | **pasan 3 rondas de 3 en aislamiento** → **ruido del entorno, no regresión** |
+| Guardia de la superficie (`UnoSettingsSurfaceGuardTests`) | **12 superados de 12, 0 fallos** (53 ms) |
+| Mutación del arranque (`arranque-que-no-aplica-el-tema-guardado`) | **MUERDE**: testigo rojo (1 de 1), control verde (1 de 1), árbol restaurado por bytes y recompilado (33,9 s) |
+| Preferencias del usuario | **byte-idénticas** al terminar (la sonda no las toca; el playtest las restauró) |
+
+El `RC=1` de una corrida intermedia **no era del producto**: dos `dotnet test` concurrentes en el mismo directorio de salida (`MSB3027/MSB3021` por `testhost` vivo bloqueando los `*.resources.dll`). Repetida en solitario, la suite cierra en **RC 0**.
+
+### 📄 Evidencia
+[`docs/qa/qa_ajustes_host_255.md`](file:///docs/qa/qa_ajustes_host_255.md) (§8, esta sesión) + `docs/qa/qa-manual-267/` (`timeline.jsonl`, `watch.log`, los catorce fotogramas rotulados) + el driver `docs/qa/qa_ajustes_uia.py` (con `--open <sección>`, `--toggle`, `--value`).
+
+### 📌 Fronteras
+No hay driver de puntero (el clic físico es humano). El **menú principal / barra de control completa** del escritorio sigue **pendiente**, igual que las pestañas **Actualizaciones** y **Modelos de IA** del propio ajustes, los **pickers de variables y los diálogos de nodo** (5.3) y el **empaquetado/CI/release** del host (5.5). Sin commit ni push.
+
+---
+
+## [2026-09-28] - Los Ajustes del Host Uno: La Superficie Que Faltaba, y el Tema Guardado Que No Llegaba al Lienzo (Hito 255)
+
+### El encargo
+
+«Termina de realizar la migración completa a Uno Platform… entre otras cosas el menú principal, **ajustes, temas, idioma**, los paneles que tienen algunos nodos». Este tramo cierra **la superficie de ajustes / apariencia e idioma** del host multiplataforma, y con ella los dos defectos que sólo se ven al **usarla con la aplicación abierta**.
+
+### Lo construido (antes de esta sesión, en el árbol)
+
+- **`FileFlow.App.Uno/Controls/SettingsPanel.xaml(.cs)`**: superficie de cuatro secciones (Almacenamiento, Apariencia, Rendimiento, Herramientas) montada en la ventana, con el `WorkflowSettingsViewModel` **portable** por DataContext (el mismo de la ventana del escritorio) y persistencia por sus comandos canónicos (`SaveSettingsCommand` → `UpdatePreferences` + `SetCulture` + `SetThemeById`). Los exploradores de rutas y la autodetección de herramientas van por los **pickers asíncronos** del host (el contrato síncrono del núcleo aborta en el hilo de UI, declarado en `UnoFileDialogService`).
+- **Diccionario PROPIO del host** (`Resources/Strings.resx` y `Strings.es.resx`, ~60 claves `Uno_*`) registrado en `App.xaml.cs`: sin él, elegir English re-culturaba el proceso y los textos seguían saliendo del fallback incrustado — el defecto que la superficie mide.
+- **Conmutación de secciones por VISIBILIDAD con los cuatro paneles siempre materializados**: el `Pivot` de WinUI materializa el cuerpo de la pestaña en el pase de layout SIGUIENTE y conmutarlo dentro de un callback de su propia reconstrucción muere con `COMException` (medido: `Failed to assign to property 'Content'`, proceso muerto con exit 127).
+- **Sonda en modo propio** (`--selfcheck-settings`): su medición cambia tema e idioma (estado global) y conviviendo con las del lienzo hacía caer la sonda de selección, la de paneles y la de foco del lienzo. Dos tiempos (desplegar y dejar asentar el layout; medir) y **restauración de lo guardado**.
+
+### Los dos defectos que sólo salieron al usarla
+
+**1. El tema guardado se aplicaba al gestor de temas y no al lienzo.** El arranque aplicaba las preferencias guardadas **antes de crear la ventana**; el renglón de la sonda lo midió en rojo (`arranque: tema guardado='light_studio'->'light_studio' aplicado='light_studio'` **y** el token del lienzo en `#FF10131B`, el oscuro por defecto), y el playtest lo confirmó **en píxeles**: con `light_studio` guardado, el fotograma base era oscuro (medio RGB `(17,7 · 21,1 · 29,6)`, 0 % de píxeles claros). La publicación del tema pasa por `UnoThemeHost.PublishThemeVariant`, que muta pinceles y variante **a través de la ventana**: sin ventana la notificación se pierde **sin ruido** — ni excepción ni aviso. **Arreglo**: crear la ventana, aplicar lo guardado y **después** activarla (el usuario no ve el tema de por defecto ni un fotograma). Medido después: `(242,0 · 244,2 · 247,0)`, 97 % claro con el mismo valor guardado.
+
+**2. La sonda del lienzo medía su propia suposición.** Con el arreglo puesto, el selfcheck del lienzo pasó a ROJO (2 fallos deterministas) y el renglón `[color]` crudo que se añadió a la sonda lo explicó en una línea: `fondo #FFFFF8FA->#FFF8FAFC tarjeta #FFFFFFFF->#FFFFFFFF restaurado #FF10131B contra #FFFFF8FA`. El fondo de entrada era **`#FFFFF8FA` = `pastel_spring`**, el tema guardado (y ahora sí aplicado); la sonda probaba con `light_studio` **fijo** —el mismo tema que ya estaba— y «restauraba» a un `dark_fluent` **fijo** que no era el de la entrada. **Era verde porque el producto ignoraba el tema guardado**: el defecto 1 era su condición de verde. **Arreglo**: elegir el tema **contrario al activo** y devolver **el de la entrada** (la regla que la sonda de ajustes ya usaba), con el `[color]` crudo en el informe. Verde en las dos direcciones (guardado oscuro y guardado claro, 83 OK las dos).
+
+### La sesión con la aplicación abierta (261-266)
+
+Sin puntero humano (el puntero inyectado sigue descartado por WinAppSDK, medido en 231/247), el reparto es: **actúa** un driver externo por UI Automation (`docs/qa/qa_ajustes_uia.py`: el botón del marco, las pestañas, los dos desplegables y el botón de guardar por sus `AutomationId`) y **mide** el vigilante del 247 (`qa_manual_session.py`: `--launch`, `--shot`, `--watch`, `--stop`) más el fotograma base de cada reapertura.
+
+| sesión | qué se hizo | medición |
+| :--- | :--- | :--- |
+| 261 | abrir ajustes por el botón real, elegir tema e idioma en sus desplegables, **Guardar** | preferencia escrita (`dark_fluent`, `en-US`); el marco pasa a «Settings»/«Save settings» **en caliente**; `vigilante.log` + `timeline.jsonl` |
+| 263 / 264 / 265 | lanzar con `light_studio` guardado, antes y después del arreglo del orden | **0 % claro → 97 % claro** (medio RGB `(17,7·21,1·29,6)` → `(242,0·244,2·247,0)`) |
+| 264 / 265 / 266 | reabrir y leer el marco por UIA | «Settings» con `en-US` guardado; «Ajustes» con `es-ES` guardado |
+| 266 | reabrir con `dark_fluent` **guardado por el driver** | **0 % claro**: la elección hecha en la app real sobrevive al cierre |
+
+### Ruido del entorno, atribuido
+
+El perfil de usuario está **compartido con otras sesiones de la máquina**: un vigilante de 1 s midió **~70 reescrituras seguidas del mismo valor** y el tema pasando a `pastel_spring` sin que nada de esta sesión corriera (las escrituras siguieron **después** de terminar el selfcheck, sin ningún proceso `FileFlow*` vivo), con campos que esta superficie no toca modificados (`NodeUsageCounts`, `LastUpdateCheckUtc`). La sonda de ajustes deja el fichero **byte-idéntico** en las comparaciones pareadas. Las **dos pruebas de medida real** que fallaron en corridas cargadas (`TheHeartbeat_ShouldPublishAPlausibleSample`, `FirstRun_ShouldUseEveryThreadItWasGiven`) **pasan en aislamiento** (dos rondas cada una) y no tocan esta superficie: es carga, no regresión.
+
+### Sonda, guardia y mutaciones
+
+- **Sondas**: `--selfcheck-settings` **EXIT 0 con 9 OK** (con el renglón `arranque:` comparando lo GUARDADO con lo APLICADO antes de tocar nada) y `--selfcheck` del lienzo **EXIT 0 con 83 OK** en las dos direcciones de tema guardado.
+- **Guardia** `UnoSettingsSurfaceGuardTests` (12 casos): cableado al view model portable, **censo de los 21 controles** con su camino hasta la preferencia (enlace `TwoWay` o **write-back declarado** — los tres campos numéricos van por `NumberBox`, cuyo `Value` es `double` y el VM guarda `int`), el diccionario del host en los dos idiomas sin claves huérfanas, el arranque que aplica lo guardado con su orden, la sonda en modo propio y la restauración de lo del usuario.
+- **Mutaciones (61.ª, 62.ª y 63.ª)**: `ajuste-que-no-devuelve-el-idioma`, `ajuste-sin-su-texto` y `arranque-que-no-aplica-el-tema-guardado` → las tres **MUERDEN** (testigo rojo, control verde, árbol restaurado por bytes). COVERAGE: **62 declaraciones**, 15 de 17 subsistemas, guardias con mutación que las muerda **13 de 42**.
+
+### Verificación
+
+Host Uno 0 errores (MSBuild de VS); suite **1894 superadas + 1 omitida de 1895, 0 errores**; las dos sondas en verde; las tres mutaciones mordiendo. Evidencia en [`docs/qa/qa_ajustes_host_255.md`](file:///docs/qa/qa_ajustes_host_255.md) y `docs/qa/qa-manual-261..266/`. **Sin commitear**.
+
+### Frontera declarada
+
+Faltan las pestañas **Actualizaciones** y **Modelos de IA** de la ventana de ajustes (el VM portable las trae, la vista del host no), los **pickers de variables y los diálogos de nodo** (5.3), y el **menú principal / barra de control** completa del escritorio (el host tiene el botón de ajustes y la barra de zoom). Los `ComboBox` de esta pantalla no exponen su selección al canal externo (medido), y la elección de tema por UIA es intermitente: es del driver, no del producto.
+
+## [2026-09-27] - El Cable del Lienzo Uno: Pegado a sus Sockets y con Forma de Cable (Hito 254)
+
+### El encargo
+
+«Al mover o ajustar el zoom las líneas de conexión se desplazan quedando fuera de su sitio.» Y, ya con los cables tocando: «**al mover un nodo la parte recta es demasiado grande y se ve mal**… el algoritmo de la forma tiende a dejar una forma como de **Z** que no cuadra con la forma que haría un cable real o un hilo. Avalonia tampoco lo hace bien del todo. ¿Puedes mejorar el algoritmo?»
+
+### La causa, medida (no supuesta)
+
+La sonda nueva `ProbeWireTracking` mide, en la **raíz** y en la app viva, el extremo dibujado del cable contra el centro dibujado de su socket —el espacio que ve el usuario— antes y después de los dos gestos:
+
+| estado | extremo vs socket | ancla medida (grafo) | tarjeta (grafo) |
+| :--- | ---: | :--- | :--- |
+| plano sin mover | **45,0 px** | 542,234 → 600,234 | 350,0 → 600,0 |
+| tras pan (+140,+90) | 0,0 px | 542,234 → 600,234 | 350,0 → 600,0 |
+| tras zoom ×1,25 | **6,1 px** | **538,233 → 597,233** | 350,0 → 600,0 |
+| redibujando con el plano movido | 0,0 px | 538,233 → 597,233 | 350,0 → 600,0 |
+
+Tres hechos: (1) los 45,0 px de reposo eran el `spacing` del control —la figura abría en el primer punto de control y descartaba los tramos que unían la curva con las anclas—; (2) tras el zoom la **tarjeta no se movía** (`350,0 → 350,0`) y el **ancla sí** (`542 → 538`), así que el defecto estaba en cómo se medía el centro: `TransformToVisualCenter` transformaba el vértice `(0,0)` y le **sumaba** después la mitad del tamaño, olvidando la **escala** (error `0,25 · (w/2)` ≈ 5 px con el socket de 39 px del árbol; cero al 100 % o con un pan, que es por qué sólo se veía al tocar el zoom); (3) con las anclas cerca, el cuello (45 px por punta) y los controles (hasta 100 px por fuera) no cabían en el hueco y la curva salía **invertida**: el rulo con forma de «2».
+
+### Los arreglos
+
+- **El trazo**: `ConnectionGeometry` dibuja **una Bézier que nace y muere en las anclas**, con los cuellos horizontales como puntos de control y **sin ningún tramo recto** —los dos bajíos del algoritmo del control, que allí existen porque allí la Bézier sí sale retirada, eran los palos de la Z—. El largo del cuello es `min(100 + √(25 · ancho), ancho/2)`: el techo del control se conserva y el **tope de la mitad del hueco** es lo que impide que los controles se crucen.
+- **La medida del ancla**: el centro **local** del elemento es lo que viaja por la cadena. No sólo movía los cables: es la misma medida del hit-testing del lienzo y de «qué tarjeta hay bajo el puntero».
+- **La cesión de `spacing`**: el parámetro desaparece (con la curva en las anclas no tenía papel) y el host llama a `BuildWire(ancla, ancla, dirección)`.
+
+Tabla de formas: al mismo nivel y con hueco amplio, un cable tenso (igual que antes); en diagonal con hueco de sobra, la misma ese; **hueco 30 px y caída 80 px**, cuello 15 y controles a 15 (antes: 45 y 125, curva invertida); **hueco 70 px y caída 120 px** —el caso reportado—, `cuello 35,0 y 35,0 — nace y muere en las anclas, sin salirse`; anclas apiladas, recta vertical (antes asomaba 145 px a cada lado).
+
+### La certificación con puntero real (sesiones 258-260)
+
+Tres rondas del operador con el vigilante midiendo. En las dos primeras movió tarjetas, paneó y zoomó (14 cambios de escena con captura). La medición de píxeles del cierre da **un único tramo de cable por columna** en el hueco (534–539 → 531–535 px): una curva, no una Z —la Z mostraría dos o tres tramos por columna, que es lo que se midió en la ronda del defecto—. El operador cerró las dos mitades: primero «*todo parece correcto*» (los cables ya tocaban) y después «*ya parece un cable: sin Z y sin bajío*».
+
+### Sonda, guardia y mutaciones
+
+- **Sonda** `ProbeWireTracking` (ampliada): los cuatro estados de la tabla más la forma en el hueco estrecho. Autochequeo **EXIT 0 con 83 OK**.
+- **Guardia** `UnoCanvasWireGuardTests` (3 casos) + **9 casos de comportamiento** en `ConnectionGeometryTests`.
+- **Mutaciones** que **muerden** (testigo, control y árbol restaurado por bytes): `cable-que-no-toca-su-socket`, `ancla-que-ignora-la-escala` y `cuello-que-no-cabe-en-el-hueco`; la del 216 (`cable-con-la-curva-al-reves`) se actualizó a la línea nueva del algoritmo. COVERAGE: **59 declaraciones**, 15 de 17 subsistemas, guardias con mutación que las muerda **12 de 41**.
+
+### Verificación
+
+Suite **1882 superadas + 1 omitida de 1883, 0 errores**; autochequeo interno **EXIT 0 (83 OK)**; sondeo externo UIA **VERIFICADO (8/8, exit 0)**. Evidencia en `docs/qa/qa_manual_gestos_254.md` y las carpetas `qa-manual-258..260`.
+
+### Frontera declarada
+
+El **escritorio (Avalonia)** dibuja con el `Connection` de Nodify, así que su forma sigue siendo la del control; llevarle la nueva exige que dibuje con `ConnectionGeometry` (el movimiento que el Uno ya hizo). **CERRADO en el hito 266**: el escritorio dibuja con `FlowConnection` sobre la geometría del núcleo, con guardia y mutación. El caso **apilado** dibuja recta vertical y no se ha medido con puntero. La **caída tipo hilo** (no simétrica) no está implementada.
+
+## [2026-09-27] - El Ladrón del Foco: Identificado como Envoltorio del Framework y el Teclado Reclamado (Hito 253)
+
+### El encargo
+
+«Identifica qué elemento desprendido se lleva el foco ~0,5 s después del clic en el lienzo Uno y, si es del producto, haz que deje de robarlo, con su sonda y su guardia.»
+
+### La identificación: no es del producto
+
+Cuatro sesiones con puntero real (254-257). El instrumento ganó **la ficha del ladrón** (`DescribeThief`: tipo, nombre, `IsLoaded`, tamaño, padre LÓGICO, `XamlRoot`, `DataContext`, contenido), **dos lecturas del foco** (origen del `GotFocus` en la raíz más una re-lectura un tick después) y **nombres** en los envoltorios de las pestañas del inspector y del cajón, que hasta ahora eran anónimos.
+
+Lo que dice el rastro, literal:
+
+```
+press src=Border punto=(437,225) foco=True enfocado=EditorCanvasControl#Canvas
+LostFocus enfocado=ScrollViewer# | cargado=True | mide=3072x1657 | padreLogico=DependencyObject
+          | datacontext=sin DataContext | contenido=Border#<-ScrollContentPresenter#<-ScrollViewer# | popups=ninguno
+```
+
+Tres hechos lo cierran: (1) **no burbujea** — no hay ninguna línea `foco global ->` para él, porque **no está en el árbol visual** y su `GotFocus` no puede llegar a la raíz; (2) **es de la ventana entera** — mide `3072x1657`, el área de contenido, mientras los paneles del producto miden 280/300 px y **tienen nombre** (el rastro no imprime ninguno), y no hay popups abiertos; (3) **lo dispara la pulsación, no la selección** — la ronda discriminante lo midió dos veces, con el fondo (`press src=Grid`, 141 ms) y con una tarjeta (`press src=Border`, 78 ms). Conclusión: es un **envoltorio de la plantilla de ventana de Uno/WinAppSDK**, no código del producto.
+
+### El arreglo: reclamación acotada del teclado
+
+Lo que sí es del producto es la consecuencia —el lienzo perdía el teclado con cada clic—, y eso se arregla en el lienzo: el clic declara el teclado **suyo durante 700 ms**, y si un dueño ajeno se lo lleva dentro de esa ventana el lienzo lo **recupera en el tick siguiente** (el envoltorio necesita su pase de layout; reclamar antes sería una carrera). Cuatro guardias, en orden: la ventana del clic, el cuadro de texto (manda en su teclado), lo que ya está **dentro** del lienzo (las teclas le llegan por burbujeo) y los **paneles del editor** (si el usuario acaba de clicar ahí, el teclado es suyo).
+
+### La certificación con puntero real (sesión 257)
+
+```
+LostFocus enfocado=ScrollViewer# | mide=3072x1657 | datacontext=sin DataContext | popups=ninguno
+foco RECUPERADO del envoltorio ajeno (ScrollViewer#)
+tecla=Delete src=EditorCanvasControl enfocado=EditorCanvasControl#Canvas
+tecla=Z      src=EditorCanvasControl enfocado=EditorCanvasControl#Canvas
+enrutado tecla=I/M/Back consumido=False enfocado=TextBox#SearchBox<-...<-NodeToolboxPanel#Toolbox
+```
+
+| t | Gesto | Medición |
+| :--- | :--- | :--- |
+| 44,2 s | clic en la cara de la tarjeta del medio | `sel1 4 → 1453` y **reclamación medida** |
+| 47,3 s | **`Supr`** | **`nglobal 3 → 2`** |
+| 51,8 s | **`Ctrl+Z`** | **`nglobal 2 → 3`** |
+| 54,9 → 59,5 s | clic en el buscador del cajón y escribir **`im`** | las letras llegan (`dpx 4412 → 98880`, el cajón **filtra**) y el rastro dice `consumido=False` con dueño `TextBox#SearchBox` |
+| 67,2 → 68,8 s | volver al lienzo y clic en el fondo | `dpx → 0`, con segunda reclamación medida |
+
+### Sonda, guardia y mutación
+
+- **Sonda** `ProbeKeyboardReclaim` (selfcheck **EXIT 0 con 80 OK**): simula el robo con **objetivos reales** de la ventana y mide los cuatro casos, declarando con qué midió (`ajeno=Button#`, `cuadro=TextBox#SearchBox`, `panel=Button#ViewModeToggle`, `lienzo=Button#`). Su primera corrida cazó un **error de la sonda misma** (el filtro dentro/fuera de los paneles estaba invertido) y el renglón con los objetivos lo hizo evidente.
+- **Guardia** `UnoCanvasKeyboardGuardTests` → **6 casos** (+1: la ventana de propiedad, las tres cortesías, el censo de los tres usos de la reclamación, el tick siguiente, la sonda y la cita de la mutación).
+- **Mutación** `reclamacion-que-roba-al-cuadro-de-texto` (la 56.ª): quita sólo la cortesía del cuadro de texto → **MUERDE** (testigo rojo, control verde, árbol restaurado por bytes). Es el defecto inverso al arreglado y no produce ningún error visible. COVERAGE: **56 declaraciones**, 15 de 17 subsistemas, guardias con mutación que las muerda **11 de 40**.
+
+### Estado
+
+- **Un mismo arreglo, dos mitades**: primero el teclado dejó de **depender** del foco (enrutado, hito 252) y ahora el lienzo lo **recupera** cuando el framework se lo lleva (reclamación, hito 253). La primera mitad protege los atajos; la segunda, el dueño del teclado.
+- **Suite completa: 1875 superadas + 1 omitida de 1876, 0 errores** (con los dos casos nuevos de guardia).
+- Evidencia: [`docs/qa/qa_manual_gestos_253.md`](file:///docs/qa/qa_manual_gestos_253.md) + `docs/qa/qa-manual-254/`, `qa-manual-255/`, `qa-manual-256/` (identificación) y `qa-manual-257/` (certificación).
+- Lo que **sigue sin medir**: la diana del socket (~12 px), el rubber band con transform no identidad y las rondas de zoom y de arrastre desde el cajón, tal como los dejó el 250.
+
+## [2026-09-27] - El Teclado del Lienzo con Puntero Real: el Clic deja los Atajos Funcionando (Hito 252)
+
+### El encargo
+
+«Arregla el foco del lienzo Uno para que un clic con el puntero deje los atajos funcionando (`Ctrl+Z`, `Ctrl+Y`, `Supr`, `F2`), con su sonda, su guardia y su mutación.»
+
+### El arreglo: el atajo deja de necesitar el foco
+
+El primer arreglo —entregar el foco al `UserControl` del lienzo en vez del `Grid` del handler— no bastó: el rastro con puntero real dejó escrito que el clic **sí** entregaba el foco (`GotFocus enfocado=EditorCanvasControl#Canvas`) y que ~0,5 s después un `ScrollViewer` anónimo se lo llevaba (`LostFocus`), con `Ctrl+Z`, `Ctrl+Y`, `Supr` y `F2` muriendo con él. Ese robo **no se reproduce sin puntero** (el vigilante que lo intentó desde el sondeo seleccionaba un nodo por el mismo camino y el foco no se movía), así que el arreglo no persigue al ladrón: quita el foco del contrato.
+
+El teclado pasa al modelo del escritorio, donde el `KeyDown` **burbujea** desde el elemento enfocado hasta la vista del editor: el lienzo resuelve en un único método (`TryHandleShortcutKey(key, source)`, que usan su propio handler y la ventana) y la raíz de `MainWindow` enruta al lienzo las teclas que **nadie consumió** —respetando primero `e.Handled`, para que un botón con la barra espaciadora o un `ListView` sigan mandando en su tecla, y con la cortesía del cuadro de texto dentro del propio resolver (`IsTextInput` sube por el árbol).
+
+### La sonda, la guardia y la mutación
+
+- **Sonda** `ProbeShortcutResolution`: con el foco **fuera** del lienzo (entregado a la barra de zoom, `focusAway=True`), resuelve `Espacio` (abre el buscador) y `Escape` (lo cierra) por el mismo método que usa el enrutador, y comprueba que a un `TextBox` no se le secuestra el teclado. Son las dos claves sin modificador a propósito: un modificador exige la tecla físicamente pulsada y el sondeo no puede inyectarla. Selfcheck: **EXIT 0 con 78 OK** (dos comprobaciones nuevas).
+- **Guardia** `UnoCanvasKeyboardGuardTests` (5 casos): la ventana enruta a la raíz y respeta `e.Handled`; el lienzo resuelve en un sitio (`Resolve(` aparece exactamente una vez); el clic sigue entregando el foco, pero ya no como contrato; las cortesías siguen en pie; y la sonda la corre el selfcheck. La guardia de paridad (`UnoShortcutParityGuardTests`) se actualizó: la cortesía del `TextBox` ahora se expresa en el resolver compartido.
+- **Mutación** `atajo-que-no-llega-sin-foco` (la 55.ª declarada): quita el cableado de la raíz → **MUERDE** (testigo rojo: el caso del enrutado; control verde: las cortesías; árbol restaurado por bytes). COVERAGE: 55 declaraciones, 15 de 17 subsistemas, guardias con mutación que las muerda 11 de 40.
+
+### La certificación con puntero real (sesión 252)
+
+Escena calibrada (tres tarjetas, barras en `y=281`, caras a `y≈500`, `gap0=159`, `gap1=151`), 78 fotogramas y 22 cambios materiales. Predicciones escritas antes de cada gesto:
+
+| t | Gesto | Medición | Veredicto |
+| :--- | :--- | :--- | :--- |
+| 40,0 s | clic en la cara de la tarjeta **del medio** | `sel1 4 → 1453`, las otras en ruido (3/3), `dpx 3036` | ✅ |
+| 69,0 s | **`Supr`** | **`nglobal 3 → 2`**, `gspans` a dos cajas, `gap0/gap1 → 0` | ✅ |
+| 72,2 s | **`Ctrl+Z`** | **`nglobal 2 → 3`**, la tarjeta vuelve a `cx1=922` con `sel1=1448` | ✅ |
+| 83,0 / 84,6 s | **`Ctrl+Y`** / **`Ctrl+Z`** | `3 → 2` y `2 → 3` | ✅ |
+| 92,3 / 93,9 s | repetición del operador | `3 → 2` y `2 → 3` | ✅ |
+| 98,5 → 101,7 s | **`F2`** / **`Escape`** | `dpx 3036 → 9124 → 3036` (la caja tapa parte de la barra: `sel1 1453 → 1255 → 1453`) | ✅ |
+
+El mismo par borrar/deshacer que el 250 midió **sin llegar** (18 s sin un píxel de cambio y `nglobal` intacto). Y el rastro firma la tesis: `enrutado tecla=Delete/Z/Y/F2 consumido=True enfocado=ScrollViewer#` — las cuatro teclas entran por la vía enrutada, **con el foco fuera del lienzo**, y el `Control` suelto pasa de largo (`consumido=False`).
+
+### El ladrón: identificado en clase, sin nombre (y nombrado en el hito 253)
+
+La ronda 253 añadió al rastro la consulta de popups abiertos: `LostFocus enfocado=ScrollViewer# | popups=ninguno`, y el `ScrollViewer` **no tiene ancestros en el árbol visual**. Queda descartado el `ToolTip` y cualquier desplegable: es un **elemento desprendido** que el gestor de foco entrega, sin nombre y sin padre. Se declara como frontera del instrumento, no como pendiente del arreglo: el atajo ya no depende de él.
+
+### Estado
+
+- **Suite completa: 1875 superadas + 1 omitida de 1876, 0 errores.**
+- Evidencia: [`docs/qa/qa_manual_gestos_252.md`](file:///docs/qa/qa_manual_gestos_252.md), carpetas `docs/qa/qa-manual-252/` (certificación) y `docs/qa/qa-manual-253/` (identificación del ladrón).
+- Lo que **sigue sin medir**: el ladrón sin nombre, los gestos de puntero fino (sockets de ~12 px) y el rubber band con transform no identidad — como los dejó el 250.
+
+## [2026-09-27] - La Re-Sesión Manual con Puntero Real: la Mitad Bloqueada Queda Certificada y el Teclado del Lienzo Destapado (Hito 250)
+
+### El encargo
+
+«Repite la sesión manual con puntero real del 247 sobre el hit-test ya arreglado y deja en `docs/qa` la evidencia de qué pasos del guion quedan certificados ahora.»
+
+### El escenario cambió (y con ello la causa de la toma invalidada del 247)
+
+El chat vivía en el **segundo monitor** (rect `(3886,224)-(6124,1762)`), así que no solapó la región de la app. La forense de capturas lo confirma: en los 41 fotogramas guardados la cobertura del fondo del lienzo es `bg≈0.795` y la de la rejilla `grid=0.002`, constantes — la región capturada fue el lienzo de la app de principio a fin. El instrumento sólo cambió en una cosa: la carpeta de la sesión se elige con `FILEFLOW_QA_WORK` (esta escribió en `qa-manual-250/`, sin mezclar la toma del defecto con la de su arreglo).
+
+### Las nueve rondas (lo medido)
+
+| # | Gesto | Predicción escrita antes | Medición |
+| :--- | :--- | :--- | :--- |
+| 1 | clic en el fondo; clic en la cara de la IZQUIERDA | selecciona ESA (en el 247 no seleccionaba nada) | `sel0 3 → 1154` con el cursor en (622,365); las otras dos en ruido (4/3) ✅ |
+| 2 | clic en el fondo; clic en la cara del MEDIO | el fondo deselecciona; el clic selecciona el medio | `dpx = 0` (escena idéntica a la base) tras el fondo; `sel1 4 → 1453` con `sel0` en 3 ✅ |
+| 3 | arrastre del medio; `Ctrl+Z`; `Ctrl+Y`; `Ctrl+Z` | el arrastre mueve; `Ctrl+Z` devuelve | `gap0 159 → 302`, `gap1 151 → 118`, la barra sale de su caja; **las teclas no cambian ni un píxel en 18 s** |
+| 4 | clic; `Shift+A`; doble clic | — | **ronda NULA**: `center 0,000` y los fotogramas con el cursor sobre las tarjetas (el doble clic sobre una tarjeta no abre el buscador por diseño) |
+| 5 | doble clic en el fondo; `Shift+A` | el doble clic abre; `Shift+A` no | **dos aperturas** (`center 0,152` y `0,070`, `dpx 15408→54768→15408`), panel en `f03424`; la segunda **no atribuible** |
+| 6 | clic en la cara; **Supr** | Supr no borra | `sel2 1461→6→1454` (el clic reparte a la tarjeta clicada) y **`nglobal` sigue en 3** ✅ |
+| 7 | rubber band (760,800)→(1400,160) | medio + derecha, no la izquierda | rectángulo dibujado (`dpx 361184`, span `488..1541@127`); tras soltar `sel1 685`, `sel2 1454`, `sel0 8` ✅ |
+| 8 | clic derecho en el socket del medio (807,179) | desconecta el cable | el clic cayó en (≈810,340), 110–160 px bajo el socket: **pan `(+154,+322)`** de las tres tarjetas, ancho de barra idéntico (243 px) |
+| 9 | rubber band envolviendo las tarjetas; clic derecho seco (961,504) | con el plano paneado no saldrán las tres | `sel1 613`, `sel2 579`, `sel0 9`: las dos derechas sí, la izquierda **no**; el clic derecho cayó otra vez ~100 px bajo el socket |
+
+### Estado del guion 3.2/3.3
+
+- **CERTIFICADO ahora**: 3.2.1 (clic selecciona con glow, en las tres tarjetas), 3.2.2 (clic en el fondo deselecciona, `dpx 0`), 3.2.3 (arrastre por la cara de la tarjeta clicada), 3.2.7 por puntero (doble clic en el fondo abre el buscador, medido dos veces), y —sin buscarlo— el **pan con el botón derecho** (`+154,+322` con ancho de barra constante).
+- **FALLA ahora**: 3.2.4/3.2.5 (`Ctrl+Z`/`Ctrl+Y`) y 3.2.9 (`Supr`), con la app en primer plano y la tarjeta seleccionada.
+- **Certificado sólo con transform identidad**: 3.2.6 rubber band (ronda 7 ✅); con `translate=(154,322)` seleccionó 2 de las 3 envueltas (ronda 9).
+- **Sin certificar por puntería**: 3.3.1 (desconexión por clic derecho en el socket) y 3.3.4 (cable pendiente y reconectar): el operador cae ~100–160 px bajo un objetivo de ~12 px, en las dos sesiones.
+- **Sin ejecutar**: zoom con la rueda, `F2`, duplicar y el arrastre desde el cajón.
+
+### Los hallazgos
+
+1. **El hit-test está arreglado y se ve en el reparto** (§3.1): el mismo tipo de clic que en el 247 seleccionaba otra tarjeta o ninguna, aquí acierta **siempre** — izquierda (`sel0 3→1154`), medio (`sel1 4→1453`) y derecha (`sel2 6→1454`); y el arrastre por la cara mueve esa tarjeta. Lo que bloqueaba el 247 queda desbloqueado.
+2. **🔴 Los atajos del lienzo no llegan en un flujo que empieza con el puntero**: `Ctrl+Z`, `Ctrl+Y` y `Supr` medidos con `fg True` y sin efecto alguno (18 s sin un píxel, `nglobal` intacto). Causa candidata LEÍDA del fuente, no medida en runtime: `OnCanvasPressed` enfoca con `((FrameworkElement)sender).Focus(...)` donde `sender` es `RootGrid` — un `Grid`, que no es focusable — y descarta el retorno; en la sesión UIA del 238 sí funcionaba porque el `set_focus` externo enfoca el `UserControl`, dueño del handler. `Shift+A` no se pudo atribuir (dos aperturas del buscador sin saber cuál gesto las provocó).
+3. **🟠 El botón derecho SOBRE UNA TARJETA panea el lienzo**, contra su propio comentario: la condición del pan sólo excluye controles interactivos (`!HitsInteractiveControl(point)`), no tarjetas. La medición es la traslación `(+154,+322)` con ancho de barra idéntico.
+4. **🟠 La duda del rubber band es real**: con `translate ≠ 0` el rectángulo que envolvía las tres tarjetas seleccionó dos y dejó fuera la izquierda — el síntoma de comparar el rectángulo del puntero (espacio del lienzo) contra `Canvas.GetLeft/Top` (espacio local del plano). Y con la transform identidad el mismo gesto acierta. Lo que **no** cuadra del todo (el eje Y de la comparación usa una caja de `card.Width`×`140`, no la geometría dibujada) queda declarado, con la sonda que lo cerraría.
+5. **⚪ La puntería del socket, medida por segunda vez** (~100–160 px de sesgo bajo la barra) y con una consecuencia nueva: fallar ese clic **arranca un pan**, no es neutro.
+
+### Validación
+
+- Línea de tiempo: **626 fotogramas** (0,56 s → 918,44 s), **50 cambios materiales**, la app viva de principio a fin y **sin ninguna muerte del proceso** (a diferencia de la frontera LATENTE del 245 en el canal UIA).
+- Límites declarados: captura sólo en los primeros 40 cambios materiales (las rondas 8 y 9 sin fotograma), cajas ancladas a la calibración inicial (un pan las invalida: `gap0/gap1 = 0` al final es el pan, no cables borrados) y muestreo de ~1,4 s (el rectángulo del rubber band no se reconstruye).
+- Sin cambios de producto: esta sesión ha MEDIDO. Suite al 100% tras los cambios de documentación (**1870 superadas + 1 omitida de 1871, 0 errores**); la primera corrida completa marcó `EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven` en rojo bajo carga (con el vigilante capturando a 4K) y pasa en aislamiento (1 s): sensibilidad a la carga, no regresión — los cambios de esta sesión son de documentación.
+- Evidencia: [`docs/qa/qa_manual_gestos_250.md`](file:///docs/qa/qa_manual_gestos_250.md) + `docs/qa/qa-manual-250/` (línea de tiempo, calibración, base y 40 fotogramas).
+
+---
+
+## [2026-09-27] - El Hit-Test del Lienzo Uno: el Área de Clic Vuelve a Coincidir con el Dibujo (Hito 249)
+
+### El encargo
+
+«Empieza la fase 5.1 del plan de la rebanada 5: arregla el hit-test del lienzo y deja la sonda del área de clic contra la geometría dibujada, su guardia y su mutación.»
+
+### La sonda primero, para que cace el defecto antes de arreglarlo
+
+- **`ProbeHitAreas()`** en [`EditorCanvasControl.xaml.cs`](file:///FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs): para cada tarjeta materializada toma el centro de su caja DIBUJADA del árbol visual (`TransformToVisualCenter(contenedor, RootGrid)`) y lo mete por el **MISMO `CardAt` que usan los handlers** — es la única forma de comparar lo que se ve con lo que se clica, y MIDE el desplazamiento del defecto en vez de describirlo.
+- **En rojo antes del arreglo**, con la medida exacta: `0/3 tarjetas; el centro dibujado (700,220) resolvió OTRA tarjeta (#2); el lienzo está en (280,42) de la raíz`. Es el mismo desplazamiento que la sesión con puntero real del 247 midió a mano —`(280, 41)`: la columna del cajón y la barra superior—, ahora medido SIN puntero y sin UIAccess.
+
+### El arreglo: un solo cruce de espacio
+
+- **`PointInHostSpace(canvasPoint)`**: el cruce se pregunta al árbol (`RootGrid.TransformToVisual(null)`) y vive en UN solo sitio; el transform nulo (control aún sin enganchar al árbol) devuelve el punto tal cual — una excepción ahí tumbaría el primer gesto, justo antes del layout.
+- **Los dos puntos de entrada del gesto cruzan por él**: `CardAt` (selección, arrastre, doble clic y la sonda) y `HitsInteractiveControl` (la guardia de la barra de zoom). La lección del defecto queda escrita en el doc del método: el «host» de `FindElementsInHostCoordinates` es la RAÍZ del contenido, no el subárbol que se inspecciona — su segundo argumento (`this`) no cambia el espacio del PUNTO.
+
+### La guardia y la mutación
+
+- **`UnoHitTestSpaceGuardTests`** (4 casos): censa CADA llamada de hit-testing del control y exige que su argumento cruce al espacio de la raíz por el helper único; la tabla del censo tiene que cubrir todas las llamadas (una llamada nueva sin declarar es justo la que entraría con el espacio equivocado); la sonda mide el centro dibujado entrando por el mismo `CardAt`; y la guardia cita la mutación que la muerde.
+- **`mutations/hit-test-en-el-espacio-equivocado.json`**: quita SOLO el cruce de la llamada de `CardAt`. Testigo rojo (el censo del espacio), control verde (la prueba hermana, que audita la sonda). **MUERDE**, y el árbol queda restaurado por bytes y recompilado.
+- **Corrección al plan, declarada**: el plan citaba la SONDA como testigo de la mutación; no puede serlo — el andamiaje mide con `dotnet test` y la sonda corre dentro de la app. Lo que muerde es la guardia; la sonda es lo que dejó el defecto MEDIDO en rojo. [`mutations/COVERAGE.md`](file:///mutations/COVERAGE.md) regenerado: **54** mutaciones declaradas, 15 de 17 subsistemas, y las guardias del repositorio con mutación que las muerda pasan de 9 a **10 de 39**.
+
+### Validación
+
+- Selfcheck del host Uno: **EXIT 0 con 75 OK** (los 74 + la sonda nueva) — `el área de clic coincide con la tarjeta dibujada (3/3): 3/3 tarjetas resuelven por su centro dibujado (el lienzo está en (280,42) de la raíz)`.
+- El primer intento marcó el frame de drag a 35,3 ms (umbral 33): ese frame no pasa por `CardAt` (mide `Location + Reposition + DrawWires`), y en reposo da 1,3 ms — sensibilidad al umbral, no regresión del arreglo.
+- Suite: **1870 superadas + 1 omitida de 1871, 0 errores** (los 4 casos de la guardia nueva incluidos).
+- **Lo que queda de la 5.1, sin fingir**: la puntería del clic real sobre la cara de cada tarjeta (el criterio de salida del plan) es sesión humana —fase 5.2—, y la duda del rubber band sigue DERIVADA y no medida: `UpdateRubberSelection` compara el rectángulo del puntero (espacio del lienzo, `GetCurrentPoint(RootGrid)`) contra `Canvas.GetLeft/Top` del contenedor, que es espacio LOCAL del plano que lleva la `CompositeTransform`, así que el error es `localLeft*(scale-1) + translateX` — cero sólo con la transform identidad. Entra en la 5.2 como sospecha a medir.
+
+---
+
+## [2026-09-27] - El Plan de la Rebanada 5: el Host Uno como Producto (Hito 248)
+
+### El encargo
+
+«Escribe el plan de la rebanada 5 del host Uno: gestos de puntero real, pickers de variables y empaquetado.»
+
+### Lo medido antes de decidir (el plan no decide de memoria)
+
+- **Gestos**: el 247 ya midio el canal del puntero real (certificado) y el defecto de hit-test `(280, 41)` de las tarjetas; el rubber band queda con duda de espacios declarada y la diana del socket (~12 px) como hallazgo de usabilidad. La certificacion es una sesion HUMANA: el puntero inyectado da 0 px (medido dos veces).
+- **Pickers**: los contratos son portables y ya existen (`IWindowService` + `DialogKeys` y `IPopupMenuService` en el SDK; `VariablePickerViewModel`, `VariablePickerRequest`, `IVariableDiscoveryService` en el nucleo). El host Uno registra CUATRO servicios (`IDialogService`, `IClipboardService`, `IUiDispatcher`, `IFileDialogService`) y deja `IWindowService`/`IPopupMenuService` en Null — lo declara su propio comentario en `App.xaml.cs` —; el escritorio registra los cuatro con sus ventanas. No falta logica: falta adaptador y VISTA.
+- **Empaquetado**: `WindowsPackageType=None` + `WindowsAppSDKSelfContained=true` (se ejecuta desde la carpeta, sin runtime que instalar); el `Package.appxmanifest` apunta los logos a `assets\FileFlow.ico` y NO hay `Assets/` en el proyecto (no validaria para MSIX); sin perfiles de publicacion (el escritorio tiene `publish-all.ps1`); `ci.yml` declara **.NET 9.0.x** y hace `dotnet build` sobre un `FileFlow.slnx` que INCLUYE el host Uno — que targeta `net10.0-windows…` y exige MSBuild de Visual Studio; `release.yml` publica solo el escritorio; `.build_number` (6310) y el manifest (0.1.0.0) no se alimentan entre si.
+
+### El plan
+
+[`docs/uno_slice5_plan.md`](file:///docs/uno_slice5_plan.md) — seis fases por dependencia, con su contrato, sus guardias y sus mutaciones: **5.1** el hit-test arreglado, atrapado por una sonda que compara el AREA DE CLIC con la GEOMETRIA DIBUJADA (la clase de defecto que ninguna prueba de unidad veia) mas su mutacion; **5.2** las **24** interacciones de la tabla de paridad del 234 certificadas o declaradas, con el protocolo del 247 escrito; **5.3** los pickers (`UnoWindowService` + `UnoPopupMenuService` con `ContentDialog`/`MenuFlyout`, el editor multilinea y el picker sobre el VM del nucleo, y el ancla de `ServiceHolders` que hoy falta) con guardia y mutacion; **5.4** la observacion UIA de los dialogos, respetando la frontera LATENTE del 245; **5.5** el empaquetado (`pack-uno.ps1`, decision MSIX con su coste y su aviso de firma autofirmada, la CI corregida al SDK 10 con el trabajo de MSBuild, el artefacto del release y la deuda declarada NU1903/NU1902); **5.6** el cierre.
+
+### Validacion
+
+- Sin codigo tocado: es un plan. Suite al 100% tras el cambio (la escritura no altera guardias).
+
+---
+
+## [2026-09-27] - La Sesion Manual con Puntero Real: el Canal Queda Certificado y el Hit-Test Desplazado Medido (Hito 247)
+
+### El encargo
+
+«Hazme la sesion manual de gestos con puntero real sobre el lienzo del host Uno y deja la evidencia en `docs/qa`» — el pendiente que los hitos 231/237/238 dejaron declarado.
+
+### Lo construido
+
+- **El instrumento de la sesion** ([`docs/qa/qa_manual_session.py`](file:///docs/qa/qa_manual_session.py)): NO inyecta puntero — lo mueve el operador — y mide el, que es lo que el operador no puede hacer con precision: `--launch` arranca y CALIBRA la escena por pixel; `--watch` mide cada ~1,25 s mientras se gesticula (acento por tarjeta, **borde de seleccion**, **diferencia general de pixeles**, huecos de cable, panel del spotlight, **ventana en primer plano** y **posicion del cursor**); `--timeline` resume los cambios materiales; `--frames` es la forense de las capturas; `--windows` volca el Z-ORDER. La leccion de esta sesion va dentro: sin la ventana en primer plano y el Z-ORDER, una ventana encima se confunde con la app y la sesion mide otra cosa.
+- **La frontera del 231, re-medida hoy** (`--inject-test` sobre escena calibrada): el puntero inyectado no cambia NI UN PIXEL (delta 0 en las tres senales) — sigue bloqueado; el puntero REAL si llega, medido.
+- **El error del propio instrumento, cazado**: la metrica del 231 media la seleccion con el color del ACENTO `#818CF8`, cuando el borde de seleccion es `CanvasAccentPrimaryBrush = #6366F1`. Era CIEGA a la seleccion: su «0 px» no probaba nada. De ahi las dos senales nuevas (el borde real y la diferencia general de pixeles).
+
+### El hallazgo: el hit-test de las tarjetas resuelve desplazado
+
+- **Lo que ve el operador**: clicar la cara de una tarjeta NO la selecciona; clicar a su derecha/abajo si (y entonces selecciona la vecina); clicar su cara puede deseleccionar todo.
+- **Lo medido** (cursor real + cajas de las tarjetas por su barra de acento): clic en (830,358) -> selecciona la tarjeta IZQUIERDA; clic en (1217,349) -> selecciona la DEL MEDIO; clic en (517,709) -> ninguna (deselecciona todo). **Prediccion verificada fuera de muestra**: se predijo por escrito que clicar la cara de la DERECHA seleccionaria la DEL MEDIO y que 400 px mas abajo no seleccionaria nada — las dos cumplidas.
+- **El sitio del codigo**: el lienzo vive en la columna 1 (cajon de 280) y la fila 1 (barra superior ~41) de [`MainWindow.xaml`](file:///FileFlow.App.Uno/MainWindow.xaml), y `CardAt`/`HitsInteractiveControl` ([`EditorCanvasControl.xaml.cs`](file:///FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs)) pasan a `VisualTreeHelper.FindElementsInHostCoordinates` un punto tomado con `GetCurrentPoint(RootGrid)`: no es el espacio que esa API espera, la sonda cae `(280, 41)` fuera. Contamina la seleccion por clic, el arrastre, el doble clic y la guardia de la barra de zoom; **los sockets van por su propio hit-testing y NO estan contaminados** (el clic derecho del guion fallo por punteria: 100 px por debajo de una diana de ~12 px).
+- **Lo que NO se finge**: el rubber band no quedo certificado y su lectura deja una duda declarada (`UpdateRubberSelection` compara el rectangulo del puntero en espacio de pantalla contra `Canvas.GetLeft/Top` del contenedor, que es espacio LOCAL del plano). La primera toma se INVALIDA y se archiva con su motivo: el chat quedo por encima de la region y el instrumento era ciego a la seleccion.
+
+### Validacion
+
+- Evidencia en [`docs/qa/qa_manual_gestos_247.md`](file:///docs/qa/qa_manual_gestos_247.md): el instrumento, las cuatro tomas, la tabla de medidas y el estado paso a paso del guion (un paso certificado, el resto bloqueado o no certificado por el defecto).
+- Toma valida: 240 fotogramas (~355 s) con la app viva de principio a fin; `gap0`/`gap1` sin cambio en toda la toma (el cable no se desconecto).
+- Sin cambios de producto: la sesion MIDIO. El arreglo del hit-test y la repeticion del guion quedan como el siguiente paso.
+
+---
+
+## [2026-09-27] - El Toggle Compacto/Detallado del Cajón: el Último Pendiente de Código de la Rebanada 4 (Hito 246)
 
 ### 🎯 El encargo
 

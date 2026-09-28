@@ -59,3 +59,8 @@ coverage-report/
 
 ## Mutation harness journal (copias y hashes de los ficheros mutados; se borra al cerrar cada corrida)
 .mutation-journal/
+
+## Evidencia de las sesiones QA (capturas y JSON de la máquina donde se midió; los guiones y los informes
+## de `docs/qa/*.py` y `docs/qa/*.md` SÍ se versionan, que son el instrumento)
+docs/qa/qa-manual-*/
+**/__pycache__/
