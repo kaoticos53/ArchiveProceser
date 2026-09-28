@@ -147,12 +147,11 @@
 
 
 
-            <!-- Connection Wires -->
+            <!-- Connection Wires: la curva la traza el núcleo (ConnectionGeometry), no el control de Nodify -->
             <nodify:NodifyEditor.ConnectionTemplate>
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
-                    <nodifyConn:Connection Source="{Binding Source.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}"
+                    <components:FlowConnection Source="{Binding Source.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}"
                                     Target="{Binding Target.Anchor, Converter={x:Static conv:SdkPointConverter.Instance}}"
-                                    Spacing="45"
                                     StrokeThickness="3.5"
                                     StrokeDashArray="{x:Null}"
                                     Direction="Forward"
@@ -163,7 +162,7 @@
                                     Classes.wireBinary="{Binding Source.IsBinaryType}"
                                     Classes.wireCollection="{Binding Source.IsCollectionType}"
                                     Classes.wireAny="{Binding Source.IsAnyType}">
-                        <nodifyConn:Connection.ContextMenu>
+                        <components:FlowConnection.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="{Binding Source={x:Static loc:LocalizationManager.Instance}, Path=[DeleteConnection]}"
                                           Command="{Binding DeleteCommand}">
@@ -172,8 +171,8 @@
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
-                        </nodifyConn:Connection.ContextMenu>
-                    </nodifyConn:Connection>
+                        </components:FlowConnection.ContextMenu>
+                    </components:FlowConnection>
                 </DataTemplate>
             </nodify:NodifyEditor.ConnectionTemplate>
         </nodify:NodifyEditor>

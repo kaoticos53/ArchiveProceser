@@ -761,6 +761,8 @@
   <data name="AiModelManager_CustomUrlsBadge" xml:space="preserve"><value>{0} custom URL(s)</value></data>
   <data name="AiModelManager_LastErrorTitle" xml:space="preserve"><value>The last download failed:</value></data>
   <data name="AiModelManager_EmptyState" xml:space="preserve"><value>The model catalog is empty.</value></data>
+  <data name="AiModelManager_ConfirmDeleteMsg" xml:space="preserve"><value>Are you sure you want to delete the model '{0}' from the local disk?</value></data>
+  <data name="AiModelManager_ConfirmDeleteTitle" xml:space="preserve"><value>Delete Model</value></data>
   <data name="AiModelUrls_Title" xml:space="preserve"><value>Configure Download URLs</value></data>
   <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure one or more download URLs for this model. If a link fails or changes, the engine will automatically try the next mirror.</value></data>
   <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>Download URLs (one per line, in priority order):</value></data>

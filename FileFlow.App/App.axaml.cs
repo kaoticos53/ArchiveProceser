@@ -188,7 +188,8 @@ public partial class App : Application
         FileFlow.App.Core.HostUi.Install(
             dispatcher: Services.GetRequiredService<IUiDispatcher>(),
             clipboard: Services.GetRequiredService<IClipboardService>(),
-            colorPicker: Services.GetRequiredService<IColorPickerService>());
+            colorPicker: Services.GetRequiredService<IColorPickerService>(),
+            windowService: Services.GetRequiredService<IWindowService>());
         FileFlow.App.Core.CoreDialogHost.Services = Services;
         FileFlow.App.Services.AvaloniaThemeHost.Install();
 

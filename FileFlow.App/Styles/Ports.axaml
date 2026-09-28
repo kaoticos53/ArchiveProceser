@@ -1,6 +1,8 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:nodifyConn="using:Nodify.Avalonia.Connections">
+        xmlns:nodifyConn="using:Nodify.Avalonia.Connections"
+        xmlns:components="using:FileFlow.App.Views.Components"
+        xmlns:conv="using:FileFlow.App.Converters">
 
     <!--
         Capa de puertos y cables del sistema de diseño.
@@ -250,44 +252,47 @@
          El cable en reposo usa el gradiente del tema (ConnectionWireBrush); al transportar datos se
          superpone una capa de energía con guiones que se desplazan en el sentido del flujo. -->
 
-    <Style Selector="nodifyConn|Connection">
+    <!-- El cable del escritorio lo dibuja el núcleo (components|FlowConnection): el control de conexión de
+         Nodify traía su propia curva y el mismo flujo se veía distinto en los dos hosts. Las clases por
+         familia de tipo y el aspecto no cambian; sólo cambia quién decide la forma. -->
+    <Style Selector="components|FlowConnection">
         <Setter Property="Stroke" Value="{DynamicResource ConnectionWireBrush}" />
         <Setter Property="StrokeThickness" Value="3" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Hand" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireFiles">
+    <Style Selector="components|FlowConnection.wireFiles">
         <Setter Property="Stroke" Value="{DynamicResource AccentSuccessBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireText">
+    <Style Selector="components|FlowConnection.wireText">
         <Setter Property="Stroke" Value="{DynamicResource AccentCyanBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireBoolean">
+    <Style Selector="components|FlowConnection.wireBoolean">
         <Setter Property="Stroke" Value="{DynamicResource AccentWarningBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireNumber">
+    <Style Selector="components|FlowConnection.wireNumber">
         <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireBinary">
+    <Style Selector="components|FlowConnection.wireBinary">
         <Setter Property="Stroke" Value="{DynamicResource AccentPurpleBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireCollection">
+    <Style Selector="components|FlowConnection.wireCollection">
         <Setter Property="Stroke" Value="{DynamicResource AccentErrorBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
 
-    <Style Selector="nodifyConn|Connection.wireAny">
+    <Style Selector="components|FlowConnection.wireAny">
         <Setter Property="Stroke" Value="{DynamicResource AccentGlowBrush}" />
         <Setter Property="StrokeDashArray" Value="{x:Null}" />
     </Style>
@@ -301,10 +306,12 @@
         <Setter Property="Template">
             <ControlTemplate TargetType="nodifyConn:PendingConnection">
                 <Canvas>
-                    <nodifyConn:Connection Source="{TemplateBinding SourceAnchor}"
+                    <!-- El cable en curso es el mismo cable: misma geometría compartida, para que el trazo no
+                         cambie de forma al soltar el botón. Su dirección la marca el control de arrastre
+                         (desde una entrada va hacia atrás) y la traduce el conversor al vocabulario del núcleo. -->
+                    <components:FlowConnection Source="{TemplateBinding SourceAnchor}"
                                            Target="{TemplateBinding TargetAnchor}"
-                                           Spacing="45"
-                                           Direction="{TemplateBinding Direction}"
+                                           Direction="{Binding Direction, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:ConnectionDirectionConverter.Instance}}"
                                            Stroke="{TemplateBinding Stroke}"
                                            StrokeThickness="{TemplateBinding StrokeThickness}"
                                            StrokeDashArray="{TemplateBinding StrokeDashArray}" />

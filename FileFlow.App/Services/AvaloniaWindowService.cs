@@ -7,6 +7,8 @@ using Avalonia.Markup.Xaml;
 using FileFlow.App.Models;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
+using FileFlow.Plugin.Integrations.UI.ViewModels;
+using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
@@ -34,6 +36,13 @@ public sealed class AvaloniaWindowService : IWindowService
             DialogKeys.TextEditor => new Views.Components.TextEditorDialogWindow(RequirePayload<NodeParameterViewModel>(dialogKey, payload)),
             DialogKeys.VariablePicker => CreateVariablePicker(dialogKey, payload),
             DialogKeys.AiModelUrlsConfig => new Views.Components.AiModelUrlsConfigDialog(payload as string ?? string.Empty),
+            // El GESTOR DE PRESETS (hito 263): el nodo de transcodificación declara la superficie al SDK y esta
+            // es la ventana que la sirve —la del propio plugin, que es quien tiene el toolkit— sobre el MISMO
+            // view model portable que declara el nodo. Antes la montaba el nodo dentro de su acción
+            // personalizada; ahora la sirve el catálogo de ventanas del host, así que los dos hosts sirven la
+            // misma superficie por el mismo contrato y sólo cambia la vista.
+            DialogKeys.MediaPresetManager => new MediaPresetManagerWindow(
+                RequirePayload<MediaPresetManagerViewModel>(dialogKey, payload)),
             _ => throw new ArgumentOutOfRangeException(nameof(dialogKey), dialogKey, "El host Avalonia no conoce este diálogo."),
         };
 

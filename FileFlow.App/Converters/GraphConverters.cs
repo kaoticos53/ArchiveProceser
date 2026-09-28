@@ -27,6 +27,31 @@ public class SdkPointConverter : IValueConverter
         => value is AvaloniaPoint p ? p.ToSdk() : AvaloniaProperty.UnsetValue;
 }
 
+/// <summary>
+/// Traduce la dirección de un cable en curso: el control de arrastre de Nodify la expresa con su propio
+/// flag (arrastrar <b>desde una entrada</b> va hacia atrás) y el dibujo del cable se pide en el vocabulario
+/// del núcleo (<see cref="FileFlow.App.Services.ConnectionGeometry.FlowDirection"/>), que es quien decide la
+/// forma. Los dos flags tienen los mismos dos valores, así que la traducción es un emparejamiento directo.
+/// </summary>
+public class ConnectionDirectionConverter : IValueConverter
+{
+    public static readonly ConnectionDirectionConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is Nodify.Avalonia.Connections.ConnectionDirection direction
+            ? direction == Nodify.Avalonia.Connections.ConnectionDirection.Backward
+                ? FileFlow.App.Services.ConnectionGeometry.FlowDirection.Backward
+                : FileFlow.App.Services.ConnectionGeometry.FlowDirection.Forward
+            : AvaloniaProperty.UnsetValue;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is FileFlow.App.Services.ConnectionGeometry.FlowDirection direction
+            ? direction == FileFlow.App.Services.ConnectionGeometry.FlowDirection.Backward
+                ? Nodify.Avalonia.Connections.ConnectionDirection.Backward
+                : Nodify.Avalonia.Connections.ConnectionDirection.Forward
+            : AvaloniaProperty.UnsetValue;
+}
+
 public class NodeExecutionStatusToBrushConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

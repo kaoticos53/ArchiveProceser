@@ -761,6 +761,8 @@
   <data name="AiModelManager_CustomUrlsBadge" xml:space="preserve"><value>{0} URL(s) propias</value></data>
   <data name="AiModelManager_LastErrorTitle" xml:space="preserve"><value>La última descarga falló:</value></data>
   <data name="AiModelManager_EmptyState" xml:space="preserve"><value>El catálogo de modelos está vacío.</value></data>
+  <data name="AiModelManager_ConfirmDeleteMsg" xml:space="preserve"><value>¿Estás seguro de que deseas eliminar el modelo '{0}' del disco local?</value></data>
+  <data name="AiModelManager_ConfirmDeleteTitle" xml:space="preserve"><value>Eliminar Modelo</value></data>
   <data name="AiModelUrls_Title" xml:space="preserve"><value>Configurar URLs de Descarga</value></data>
   <data name="AiModelUrls_Subtitle" xml:space="preserve"><value>Configure una o varias URLs de descarga para este modelo. Si un enlace falla o cambia, el motor intentará automáticamente el siguiente espejo.</value></data>
   <data name="AiModelUrls_UrlsLabel" xml:space="preserve"><value>URLs de descarga (una por línea, en orden de prioridad):</value></data>
