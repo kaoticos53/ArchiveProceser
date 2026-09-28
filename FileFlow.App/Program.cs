@@ -26,6 +26,15 @@ public static class Program
             return WorkflowCliRunner.RunAsync(cliOptions).GetAwaiter().GetResult();
         }
 
+        // La sonda de autorrevisión (--selfcheck): la MISMA aplicación sobre la plataforma headless con Skia
+        // real, que es la única que sabe inyectar un puntero por el pipeline de entrada del framework. El
+        // veredicto es el código de salida del proceso (SelfCheck.DesktopSelfCheck.Run lo cierra).
+        if (SelfCheck.DesktopSelfCheck.IsRequested(args))
+        {
+            return SelfCheck.DesktopSelfCheck.ConfigureHost()
+                .StartWithClassicDesktopLifetime(args);
+        }
+
         return BuildAvaloniaApp()
             .StartWithClassicDesktopLifetime(args);
     }

@@ -1,10 +1,16 @@
 param (
     [switch]$NoBuild,
     [switch]$Fast,
+    [switch]$SelfCheck,
     [string]$Configuration = "Debug",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$AppArgs
 )
+
+# La sonda de autorrevisión del host (--selfcheck): corre la aplicación real sobre la plataforma headless con
+# Skia real, mide el lienzo con puntero inyectado y ESPERA el proceso — el veredicto es su código de salida
+# (0 = verificado), y el informe queda en FileFlow.App\bin\<config>\net10.0\selfcheck-report.txt.
+if ($SelfCheck) { $AppArgs = @("--selfcheck") + $AppArgs }
 
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
@@ -44,6 +50,12 @@ if (-not (Test-Path $exePath)) {
 }
 
 Write-Host "Iniciando FileFlow Studio ($Configuration)..." -ForegroundColor Green
+
+if ($SelfCheck) {
+    # El veredicto de la sonda es su código de salida: el script lo hereda.
+    & $exePath @AppArgs
+    exit $LASTEXITCODE
+}
 
 if ($AppArgs -and $AppArgs.Count -gt 0) {
     Start-Process -FilePath $exePath -ArgumentList $AppArgs -WorkingDirectory (Split-Path -Parent $exePath)

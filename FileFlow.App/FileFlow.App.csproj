@@ -33,6 +33,10 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
+    <!-- La sonda de autorrevisión del host (el modo selfcheck) corre la aplicación sobre la plataforma headless
+         con Skia real: es la única forma de meter un puntero por el pipeline de entrada de Avalonia desde
+         dentro del proceso (el escritorio no expone inyección de entrada cruda). Fuera de ese modo no se usa. -->
+    <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
     <!-- Iconografía vectorial multiplataforma (Material Design Icons). Sustituye a los emojis,

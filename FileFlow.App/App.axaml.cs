@@ -146,7 +146,12 @@ public partial class App : Application
             }
             else
             {
-                if (preferences is not null)
+                // La sonda de autorrevisión (--selfcheck) es un modo de MEDIDA: su veredicto tiene que ser
+                // hermético y reproducible, así que no se lanza la comprobación de actualizaciones (ni su red,
+                // ni un aviso que se abriría en mitad de la medición). Se salta entera, como en el host Uno.
+                bool selfCheck = SelfCheck.DesktopSelfCheck.IsRequested(Environment.GetCommandLineArgs());
+
+                if (preferences is not null && !selfCheck)
                 {
                     StartBackgroundWork(preferences);
                 }
@@ -155,6 +160,14 @@ public partial class App : Application
                 // Fire-and-forget deliberado; la retirada no puede abortar un arranque ya completado.
                 splash?.UpdateStatus(LocalizationString("Splash_StatusReady", "¡Listo!"), 100);
                 _ = splash?.CloseWithFadeAsync();
+
+                // La medida corre con la ventana YA en pantalla, sobre la aplicación de verdad (servicios,
+                // plugins, vistas y estilos del producto): la sonda mide el lienzo con puntero inyectado y
+                // termina el proceso con su veredicto.
+                if (selfCheck && desktop.MainWindow is Window mainWindow)
+                {
+                    SelfCheck.DesktopSelfCheck.Run(mainWindow, desktop);
+                }
             }
         }
 

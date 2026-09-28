@@ -1,8 +1,13 @@
 param (
+    [switch]$SelfCheck,
     [string]$Configuration = "Debug",
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$AppArgs
 )
+
+# La sonda de autorrevisión del host (--selfcheck), sin compilar: mide el lienzo con puntero inyectado y el
+# veredicto es el código de salida del proceso (el informe queda en selfcheck-report.txt, junto al ejecutable).
+if ($SelfCheck) { $AppArgs = @("--selfcheck") + $AppArgs }
 
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
@@ -31,6 +36,12 @@ if (-not (Test-Path $exePath)) {
 }
 
 Write-Host "`n[OK] Iniciando FileFlow Studio ($Configuration)..." -ForegroundColor Green
+
+if ($SelfCheck) {
+    # El veredicto de la sonda es su código de salida: el script lo hereda.
+    & $exePath @AppArgs
+    exit $LASTEXITCODE
+}
 
 if ($AppArgs -and $AppArgs.Count -gt 0) {
     Start-Process -FilePath $exePath -ArgumentList $AppArgs -WorkingDirectory (Split-Path -Parent $exePath)
