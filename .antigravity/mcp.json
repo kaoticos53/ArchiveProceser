@@ -26,6 +26,19 @@
         "mcp-ripgrep",
         "D:\\Users\\Ricardo\\Documents\\GitHub\\ArchiveProceser"
       ]
+    },
+    "uno": {
+      "url": "https://mcp.platform.uno/v1"
+    },
+    "uno-app": {
+      "command": "dotnet",
+      "args": [
+        "dnx",
+        "-y",
+        "uno.devserver",
+        "--mcp-app",
+        "--mcp-wait-tools-list"
+      ]
     }
   }
 }
