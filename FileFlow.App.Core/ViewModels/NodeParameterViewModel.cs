@@ -398,14 +398,46 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         key.Equals("FalseFile", StringComparison.OrdinalIgnoreCase) ||
         key.Equals("FileVersion", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Abre el GESTOR DE PRESETS del nodo por el camino que este host pueda cumplir.
+    ///
+    /// <para><b>Por qué hay dos caminos.</b> El botón «🎬» de la fila del preset y el de la tarjeta del nodo
+    /// llaman a la MISMA acción (<c>ManageMediaPresets</c>), y esa acción, en el host que tiene el toolkit del
+    /// plugin, monta la ventana del plugin. Un host que no lo tiene no puede montarla: por eso el nodo declara
+    /// la superficie al SDK (<see cref="INodeDialogSurfaceProvider"/>, con su clave del catálogo y su view model
+    /// portable) y dice qué acción sustituye. Cuando la declara, la sirve el servicio de ventanas del host
+    /// —el ÚNICO que sabe pintar en este host— sobre ese mismo view model; cuando no, se cae al camino del
+    /// toolkit, que es el del escritorio. La lógica del gestor no se duplica: cambia quién la pinta.</para>
+    ///
+    /// <para>La vuelta también importa: al cerrarse la superficie se resincronizan los parámetros del nodo,
+    /// porque el catálogo de presets pudo cambiar y la fila tiene que enseñar el catálogo nuevo.</para>
+    /// </summary>
     [RelayCommand]
-    public void OpenMediaPresetManager()
+    public async Task OpenMediaPresetManagerAsync()
     {
+        const string ActionId = "ManageMediaPresets";
+
         try
         {
+            // Los avisos del contenido salen por el servicio de diálogos de ESTE host, no por el nulo: el nodo
+            // no puede resolverlo (no conoce la UI del host) y se lo pasa quien abre.
+            var context = new NodeCustomActionContext(
+                _windows.MainWindowOwner,
+                () => NodeOwner?.SyncParametersFromNodeInstance(),
+                _dialogService);
+
+            if (NodeOwner?.NodeInstance is INodeDialogSurfaceProvider surface
+                && surface.ReplacesCustomActionId is { } replaced
+                && string.Equals(replaced, ActionId, StringComparison.OrdinalIgnoreCase))
+            {
+                await _windows.ShowDialogAsync(surface.DialogKey, surface.CreateDialogPayload(context));
+                NodeOwner?.SyncParametersFromNodeInstance();
+                return;
+            }
+
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                provider.ExecuteCustomAction("ManageMediaPresets", new NodeCustomActionContext(_windows.MainWindowOwner, () => NodeOwner?.SyncParametersFromNodeInstance()));
+                provider.ExecuteCustomAction(ActionId, context);
             }
         }
         catch (Exception ex)
@@ -637,7 +669,11 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         IWindowService? windowService = null, IFileDialogService? fileDialogService = null, IPopupMenuService? popupMenuService = null)
     {
         _loc = localizationService ?? LocalizationManager.Instance;
-        _dialogService = dialogService ?? NullDialogService.Instance;
+        // Los diálogos de ESTA fila salen por el servicio del HOST, resuelto igual que en la puerta de la
+        // tarjeta del nodo (`CoreDialogHost`). Si aquí cayera el Nulo, la misma orden destructiva pediría la
+        // confirmación a un servicio que responde «sí» sin preguntar y la puerta de la fila borraría en
+        // silencio mientras la de la tarjeta no borra: dos comportamientos para una sola regla.
+        _dialogService = dialogService ?? FileFlow.App.Core.CoreDialogHost.ResolveDialogService();
         _windows = windowService ?? Services.ServiceHolders.WindowService;
         _files = fileDialogService ?? Services.ServiceHolders.FileDialog;
         _menus = popupMenuService ?? Services.ServiceHolders.PopupMenu;

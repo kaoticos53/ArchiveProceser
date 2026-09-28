@@ -76,6 +76,22 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         HasPendingUpdate = true;
     }
 
+    /// <summary>
+    /// Adopta un almacén virtual como «el de la última ejecución»: es la mitad que ningún host puede producir
+    /// por su cuenta (la ejecución la corre el motor) y que la sesión de medida necesita para ejercer el
+    /// explorador virtual en la aplicación abierta sin lanzar un flujo que escriba en el disco del usuario.
+    ///
+    /// <para>Pone el DATO, no el camino: el chip de la barra, la entrada del cajón y la ventana del host se
+    /// comportan igual que después de una ejecución que dejó archivos virtuales (<see cref="HasVirtualFiles"/> y
+    /// <see cref="VirtualFilesCount"/> salen del propio almacén).</para>
+    /// </summary>
+    public void SetVirtualFileSystem(FileFlow.Sdk.VirtualFileSystem.IVirtualFileSystemStore? store)
+    {
+        _lastVirtualFileSystem = store;
+        HasVirtualFiles = store is not null && store.TotalFiles > 0;
+        VirtualFilesCount = store?.TotalFiles ?? 0;
+    }
+
     [RelayCommand]
     public async Task OpenUpdateDialogAsync()
     {
@@ -638,7 +654,11 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
 
         string confirmMsg = string.Format(_loc.GetString("Msg_RollbackConfirm", "¿Deseas revertir {0} operaciones realizadas en la última ejecución?"), _lastJournalService.Entries.Count);
         string confirmTitle = _loc.GetString("RollbackExecutionBtn", "Revertir Archivos");
-        if (_dialogService.ShowConfirmation(confirmMsg, confirmTitle))
+
+        // La confirmación es la ASÍNCRONA del contrato: revertir mueve archivos y no puede depender de una
+        // respuesta que el host invente (la síncrona contesta «no» desde el hilo de UI en un host WinUI, así
+        // que el botón no haría nada y tampoco avisaría).
+        if (await _dialogService.ConfirmAsync(confirmMsg, confirmTitle))
         {
             _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_RollbackStarting", "Iniciando Rollback de operaciones..."));
             int undone = await _lastJournalService.RollbackAsync();
@@ -712,20 +732,40 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Un flujo nuevo, previa confirmación cuando hay algo que perder.
+    ///
+    /// <para><b>Por qué es asíncrona.</b> La pregunta va por <see cref="IDialogService.ConfirmAsync"/>, que es
+    /// la vía que cualquier host puede contestar de verdad (la síncrona contesta «no» desde el hilo de UI en
+    /// un host WinUI y «sí» sin preguntar en un servicio sin diálogos). Vaciar el lienzo es destructivo:
+    /// depende de la respuesta REAL del usuario, y sin ella no se toca nada.</para>
+    /// </summary>
     [RelayCommand]
-    public void NewWorkflow()
+    public async Task NewWorkflowAsync()
     {
         IsMenuOpen = false;
         if (_editorViewModel.Nodes.Count > 0)
         {
             string confirmMsg = _loc.GetString("Msg_NewWorkflowConfirm", "¿Deseas crear un nuevo flujo? Se limpiará el lienzo actual.");
             string confirmTitle = _loc.GetString("NewWorkflowBtn", "Nuevo Flujo");
-            if (!_dialogService.ShowConfirmation(confirmMsg, confirmTitle))
+            if (!await _dialogService.ConfirmAsync(confirmMsg, confirmTitle))
             {
                 return;
             }
         }
 
+        CreateNewWorkflow();
+    }
+
+    /// <summary>
+    /// Crea el flujo nuevo: vacía el lienzo, repone el nombre y deja la constancia en la consola.
+    ///
+    /// Es un método y no parte del comando porque <b>confirmar no es parte de crear un flujo</b>: quien ya
+    /// tiene la respuesta —un host que confirmó por su propio canal— no necesita el diálogo, y ahí siguen
+    /// <see cref="LoadWorkflowFromFileAsync"/> con su ruta y el comando con su pregunta.
+    /// </summary>
+    public void CreateNewWorkflow()
+    {
         _editorViewModel.ClearGraph();
         WorkflowName = "Flujo de Procesamiento de Archivos";
         _logViewModel.AddLog(LogLevel.Information, _loc.GetString("Log_NewWorkflowCreated", "Nuevo flujo creado."));
@@ -762,8 +802,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         // El cajón se cierra al elegir su entrada, como el resto de las órdenes del menú.
         IsMenuOpen = false;
 
-        var syntheticNodeType = _pluginLoader.DiscoveredNodeTypes.Values
-            .FirstOrDefault(t => t.Name.Equals("SyntheticDataSourceNode", StringComparison.OrdinalIgnoreCase));
+        var syntheticNodeType = FindSyntheticDataSourceNodeType();
 
         if (syntheticNodeType != null && Activator.CreateInstance(syntheticNodeType) is INodeCustomActionProvider provider)
         {
@@ -772,13 +811,47 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Invoca la acción de apertura del diseñador sobre el nodo proporcionado.
+    /// La <b>superficie</b> del Diseñador de Datasets que el nodo de datos sintéticos declara al SDK
+    /// (<see cref="INodeDialogSurfaceProvider"/>), resuelta <b>sin abrir nada</b>.
+    ///
+    /// <para><b>Por qué el host la necesita aparte del comando.</b> La orden canónica
+    /// (<see cref="OpenSyntheticDataSetDesigner"/>) abre la ventana que el PROPIO plugin construye con el
+    /// toolkit del escritorio: en un host que no es ese toolkit, ejecutarla sería un botón mudo. Un host así
+    /// pide aquí <b>qué</b> diálogo se quiere y <b>qué contiene</b>, y lo sirve con su propia vista sobre el
+    /// mismo view model portable —sin reimplementar ni una regla del diseñador—.</para>
+    ///
+    /// <para>Devuelve <c>null</c> cuando ningún nodo del catálogo declara la superficie (el plugin no está
+    /// cargado, por ejemplo): quien la pida debe decirlo con su motivo, no quedarse en silencio.</para>
+    /// </summary>
+    public INodeDialogSurfaceProvider? GetDataSetDesignerSurface()
+    {
+        var syntheticNodeType = FindSyntheticDataSourceNodeType();
+
+        return syntheticNodeType != null && Activator.CreateInstance(syntheticNodeType) is INodeDialogSurfaceProvider surface
+            ? surface
+            : null;
+    }
+
+    /// <summary>
+    /// El tipo REAL del nodo de datos sintéticos, leído del catálogo ya descubierto por el cargador de
+    /// plugins (la única fuente que conoce el tipo efectivo, incluido el del ensamblado aislado del plugin).
+    /// </summary>
+    private Type? FindSyntheticDataSourceNodeType() =>
+        _pluginLoader.DiscoveredNodeTypes.Values
+            .FirstOrDefault(t => t.Name.Equals("SyntheticDataSourceNode", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Abre el Diseñador de Datasets sobre el nodo que lo declara, entregándole <b>los diálogos de este
+    /// host</b>: el contenido que el nodo construye para la superficie no puede resolverlos por sí mismo —vive
+    /// en un plugin— y sin ellos su borrado confirmaría contra el doble nulo, que contesta «sí» sin preguntar.
     ///
     /// Es <c>virtual</c> para que las pruebas puedan observar que la orden del cajón <b>llega</b> al plugin con el
     /// identificador correcto sin quedarse como un botón mudo.
     /// </summary>
     protected virtual void OpenDataSetDesigner(INodeCustomActionProvider provider) =>
-        provider.ExecuteCustomAction("OpenDataSetDesigner", new NodeCustomActionContext(_windows.MainWindowOwner, null));
+        provider.ExecuteCustomAction(
+            "OpenDataSetDesigner",
+            new NodeCustomActionContext(_windows.MainWindowOwner, null, _dialogService));
 
     [RelayCommand]
     public async Task SaveWorkflowAsync()
@@ -788,18 +861,31 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
         var filePath = _fileDialogService.ShowSaveFileDialog(saveTitle, "Flujo FileFlow (*.json)|*.json|Todos los archivos (*.*)|*.*", ".json", "flujo.json");
         if (!string.IsNullOrEmpty(filePath))
         {
-            try
-            {
-                var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
-                await _workflowStorageService.SaveWorkflowAsync(filePath, graph);
-                _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("LogSavedWorkflow", "Flujo guardado en {0}", filePath));
-            }
-            catch (Exception ex)
-            {
-                string errorMsg = string.Format(_loc.GetString("Msg_SaveError", "Error al guardar el flujo: {0}"), ex.Message);
-                string errorTitle = _loc.GetString("Error", "Error");
-                _dialogService.ShowError(errorMsg, errorTitle);
-            }
+            await SaveWorkflowToFileAsync(filePath);
+        }
+    }
+
+    /// <summary>
+    /// Guarda el flujo en esa ruta, informando del resultado por los mismos canales que el comando.
+    ///
+    /// Elige la ruta quien llame —el comando, por su diálogo; un host con diálogo asíncrono, por el suyo—,
+    /// porque <b>elegir la ruta no es parte de guardar</b>: es la mitad simétrica de
+    /// <see cref="LoadWorkflowFromFileAsync"/>. El informe del error vive aquí, no en el comando, para que
+    /// todos los caminos que guardan cuenten lo mismo.
+    /// </summary>
+    public async Task SaveWorkflowToFileAsync(string filePath)
+    {
+        try
+        {
+            var graph = _editorViewModel.ExportToGraphModel(WorkflowName);
+            await _workflowStorageService.SaveWorkflowAsync(filePath, graph);
+            _logViewModel.AddLog(LogLevel.Information, _loc.GetFormattedString("LogSavedWorkflow", "Flujo guardado en {0}", filePath));
+        }
+        catch (Exception ex)
+        {
+            string errorMsg = string.Format(_loc.GetString("Msg_SaveError", "Error al guardar el flujo: {0}"), ex.Message);
+            string errorTitle = _loc.GetString("Error", "Error");
+            _dialogService.ShowError(errorMsg, errorTitle);
         }
     }
 

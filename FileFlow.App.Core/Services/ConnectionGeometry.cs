@@ -6,22 +6,31 @@ namespace FileFlow.App.Services;
 /// <summary>
 /// La geometría del cable entre dos puertos, en espacio de grafo y en el <see cref="Point"/> del Sdk.
 ///
-/// <para><b>Qué reproduce</b>: el algoritmo exacto del control <c>Connection</c> de Nodify —una curva de
-/// Bézier cúbica con las anclas de control que salen de <c>Spacing</c> y la distancia entre extremos—, medido
-/// de su fuente (hito 216). El host Avalonia lo pinta porque Nodify lo dibuja; el host Uno lo necesitará para
-/// <b>dibujar el mismo cable</b> (fase 3.1 del plan Uno) y para el <b>hit-testing</b> del menú contextual del
-/// cable (fase 3.3): dos hosts, una sola geometría, y las pruebas que fijan que es la misma.</para>
+/// <para><b>Qué dibuja</b>: una Bézier cúbica que sale del <b>ancla</b> de un socket y llega al <b>ancla</b> del
+/// otro, con los dos cuellos horizontales (los sockets del lienzo miran a los lados). La forma la fijó el
+/// usuario en el hito 254 después de verla en la app: la primera versión transcribía el algoritmo del control
+/// <c>Connection</c> de Nodify —una curva retirada de las anclas y unida a ellas por dos <b>tramos rectos</b>—
+/// y el resultado, en la pantalla, se leía como una <b>Z</b>: dos bajíos rectos y una ese apretada en medio,
+/// que no se parece a un cable. Aquí la curva nace en el ancla, así que el trazo no tiene ningún tramo recto y
+/// el cable sale del socket ya curvando.</para>
 ///
-/// <para><b>Por qué vive en el núcleo y no en un host</b>: es matemática pura sin framework — la misma regla
-/// del <see cref="EditorViewportCalculator"/>. Y por eso está aquí, cualquier divergencia entre lo que pinta
-/// el escritorio y lo que pinte el host Uno sería un defecto del producto y no una decisión de plataforma.</para>
+/// <para>Del control se conserva lo que sí era bueno: el cuello sale <b>en horizontal</b> y su largo crece
+/// despacio con la distancia, con el techo <c>100 + √(25 · ancho)</c>. Lo que se añade es el tope que el
+/// control no tenía: el cuello nunca pasa de la mitad del hueco entre las anclas, así que los dos cuellos no
+/// se cruzan y la curva no se dobla hacia atrás (el rulo con forma de «2» que se veía al dejar dos tarjetas
+/// cerca).</para>
+///
+/// <para><b>Por qué vive en el núcleo y no en un host</b>: es matemática pura sin framework — la misma regla del
+/// <see cref="EditorViewportCalculator"/>—, y por eso está aquí: el host Uno la dibuja y el host Avalonia usa
+/// los mismos puntos para el hit-testing del cable, así que un defecto de forma o de medida aquí se pinta (o se
+/// mide) en los dos.</para>
 /// </summary>
 public static class ConnectionGeometry
 {
-    /// <summary>El ancho base del cuello de la curva, igual que la constante privada del control.</summary>
+    /// <summary>El largo base del cuello, la constante con la que el control mide su cuello.</summary>
     private const double BaseOffset = 100d;
 
-    /// <summary>Con qué velocidad crece el cuello con la distancia, igual que la constante privada del control.</summary>
+    /// <summary>Con qué velocidad crece el cuello con la distancia, igual que la constante del control.</summary>
     private const double OffsetGrowthRate = 25d;
 
     /// <summary>Los cuatro puntos de una Bézier cúbica: inicio, ancla de control de salida, ancla de control de llegada y fin.</summary>
@@ -35,34 +44,36 @@ public static class ConnectionGeometry
     }
 
     /// <summary>
-    /// Las anclas de control de la curva que Nodify dibuja de <paramref name="source"/> a <paramref name="target"/>,
-    /// con la orientación horizontal que usan los sockets del lienzo (entradas a la izquierda, salidas a la derecha).
+    /// La curva del cable de <paramref name="source"/> a <paramref name="target"/>, con la orientación
+    /// horizontal que usan los sockets del lienzo (las entradas miran a la izquierda, las salidas a la derecha).
     ///
-    /// <para>Es el algoritmo de <c>Connection.GetBezierControlPoints</c> transcrito y probado: el cuello sale
-    /// de <paramref name="spacing"/>, se suaviza cuando los extremos están cerca (no más de 100) y crece con la
-    /// distancia (no más de 100 + √(ancho · 25)).</para>
+    /// <para><b>La curva nace y muere en las anclas</b>: <c>P0</c> es el centro del socket de origen y <c>P3</c>
+    /// el del destino, así que el cable <b>toca</b> sus dos sockets. Sus dos puntos de control son horizontales
+    /// —el cable sale y entra del socket sin torcerse— y su largo (<c>offset</c>) es lo que hace que la forma
+    /// parezca un cable y no una Z: crece despacio con la distancia (techo <c>100 + √(25 · ancho)</c>) y nunca
+    /// pasa de la <b>mitad del hueco</b> entre las anclas, que es lo que impide que los cuellos se crucen y la
+    /// curva se doble hacia atrás.</para>
+    ///
+    /// <para>Con hueco de sobra y las anclas a la misma altura, la curva degenera en una recta tirante (un
+    /// cable tenso); con las anclas apiladas (sin hueco horizontal) degenera en una vertical; en cualquier
+    /// diagonal queda una ese suave <b>dentro</b> del hueco.</para>
     /// </summary>
-    public static CubicBezier BezierControlPoints(Point source, Point target, double spacing = 45, FlowDirection direction = FlowDirection.Forward)
+    public static CubicBezier BezierControlPoints(Point source, Point target, FlowDirection direction = FlowDirection.Forward)
     {
         double sign = direction == FlowDirection.Forward ? 1d : -1d;
 
-        Point start = new(source.X + (spacing * sign), source.Y);
-        Point end = new(target.X - (spacing * sign), target.Y);
-
         double width = Math.Abs(target.X - source.X);
-        double height = Math.Abs(target.Y - source.Y);
 
-        // Suaviza la curva cuando la distancia es menor que el cuello base (los nodos pegados no hacen rulos).
-        double smooth = Math.Min(BaseOffset, height);
+        // El cuello: la mitad del hueco es su tope, y el techo del control lo mantiene corto cuando el hueco
+        // es enorme (sin él, dos tarjetas lejanas dibujarían un cuello larguísimo y el cable parecería recto
+        // justo en el tramo donde más se nota).
+        double ceiling = BaseOffset + Math.Sqrt(width * OffsetGrowthRate);
+        double offset = Math.Min(ceiling, width / 2d);
 
-        // El cuello nunca es menor que la mitad de la distancia horizontal, y crece despacio con ella.
-        double offset = Math.Max(smooth, width / 2d);
-        offset = Math.Min(BaseOffset + Math.Sqrt(width * OffsetGrowthRate), offset);
+        Point exit = new(source.X + (offset * sign), source.Y);
+        Point arrival = new(target.X - (offset * sign), target.Y);
 
-        Point exit = new(start.X + (offset * sign), start.Y);
-        Point arrival = new(end.X - (offset * sign), end.Y);
-
-        return new CubicBezier(start, exit, arrival, end);
+        return new CubicBezier(source, exit, arrival, target);
     }
 
     /// <summary>
@@ -129,6 +140,36 @@ public static class ConnectionGeometry
         return Math.Sqrt(best);
     }
 
-    /// <summary>El cable de referencia con el que se declara y se prueba el estilo del lienzo.</summary>
-    public const double DefaultSpacing = 45d;
+    /// <summary>
+    /// El trazado del cable entre dos anclas, listo para dibujar: la Bézier que las une, con sus dos cuellos.
+    /// </summary>
+    /// <param name="Source">El ancla de salida: el centro dibujado del socket de origen.</param>
+    /// <param name="Target">El ancla de llegada: el centro dibujado del socket de destino.</param>
+    /// <param name="Curve">La Bézier, que ya empieza y termina en las anclas.</param>
+    public readonly record struct WirePath(Point Source, Point Target, CubicBezier Curve)
+    {
+        /// <summary>El cuello de salida: el primer punto de control, a la derecha del ancla de origen.</summary>
+        public Point Exit => Curve.P1;
+
+        /// <summary>El cuello de llegada: el último punto de control, a la izquierda del ancla de destino.</summary>
+        public Point Arrival => Curve.P2;
+
+        /// <summary>
+        /// Las cuatro paradas del trazo, en orden: <b>ancla de salida, cuello de salida, cuello de llegada y
+        /// ancla de destino</b>. Son los cuatro puntos de una Bézier cúbica y el host las dibuja como UNA curva:
+        /// no hay ningún tramo recto que unir, y por eso el cable sale del socket ya curvando en vez de mostrar
+        /// el bajío recto que se leía como una Z.
+        ///
+        /// <para><b>El primero y el último son las anclas</b>, y eso es contrato: un host que abriera la figura
+        /// en el cuello de salida y la cerrara en el de llegada dibujaría un cable separado de sus dos sockets.</para>
+        /// </summary>
+        public IReadOnlyList<Point> Trace => [Source, Exit, Arrival, Target];
+    }
+
+    /// <summary>El trazado del cable entre dos anclas, del que sale y al que llega.</summary>
+    public static WirePath BuildWire(
+        Point source,
+        Point target,
+        FlowDirection direction = FlowDirection.Forward)
+        => new(source, target, BezierControlPoints(source, target, direction));
 }

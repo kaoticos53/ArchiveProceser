@@ -210,10 +210,16 @@ public partial class VirtualFileSystemExplorerViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Vacía el registro del Sistema de Archivos Virtual, previa confirmación.
+    ///
+    /// <para>La pregunta va por <see cref="IDialogService.ConfirmAsync"/>: es la vía que cualquier host puede
+    /// contestar de verdad, y lo que se vacía es el registro del usuario —no hay vuelta atrás sin él—.</para>
+    /// </summary>
     [RelayCommand]
-    public void ClearVirtualFileSystem()
+    public async Task ClearVirtualFileSystemAsync()
     {
-        bool confirm = _dialogService.ShowConfirmation(
+        bool confirm = await _dialogService.ConfirmAsync(
             _loc.GetString("VfsExplorer_ConfirmClear", "¿Deseas limpiar todos los archivos registrados en el Sistema de Archivos Virtual?"),
             _loc.GetString("VfsExplorer_Title", "Explorador de Archivos Virtual"));
 

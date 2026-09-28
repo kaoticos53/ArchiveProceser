@@ -376,14 +376,27 @@ public partial class AiModelManagerViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Borra un modelo descargado del disco, previa confirmación.
+    ///
+    /// <para>La pregunta va por <see cref="IDialogService.ConfirmAsync"/>: borrar el modelo obliga a volver a
+    /// descargarlo, así que la orden depende de la respuesta REAL del usuario —y no de la que un host pueda
+    /// inventarse—.</para>
+    /// </summary>
     [RelayCommand]
-    public void DeleteModel(AiModelItemViewModel? item)
+    public async Task DeleteModelAsync(AiModelItemViewModel? item)
     {
         if (item == null) return;
 
-        bool confirm = _dialogService.ShowConfirmation(
-            $"¿Estás seguro de que deseas eliminar el modelo '{item.Name}' del disco local?",
-            "Eliminar Modelo");
+        // El texto de la pregunta viaja por el diccionario como el resto de la superficie: el borrado de un
+        // modelo es una orden del usuario y su pregunta tiene que poder leerse en su idioma (hasta este pase
+        // era el único de los textos de la superficie escrito en el código, así que no cambiaba nunca).
+        bool confirm = await _dialogService.ConfirmAsync(
+            _loc.GetFormattedString(
+                "AiModelManager_ConfirmDeleteMsg",
+                "¿Estás seguro de que deseas eliminar el modelo '{0}' del disco local?",
+                item.Name),
+            _loc.GetString("AiModelManager_ConfirmDeleteTitle", "Eliminar Modelo"));
 
         if (confirm)
         {

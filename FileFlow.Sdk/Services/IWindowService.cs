@@ -18,6 +18,23 @@ public static class DialogKeys
     public const string WorkflowMetricsDashboard = "WorkflowMetricsDashboard";
     public const string ThemeCustomizer = "ThemeCustomizer";
     public const string AiModelUrlsConfig = "AiModelUrlsConfig";
+
+    /// <summary>
+    /// El Diseñador de Datasets Sintéticos: la superficie que declara el nodo de datos sintéticos del plugin
+    /// de sistema de archivos (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). En el
+    /// escritorio la monta el propio plugin con su toolkit; en un host sin el toolkit del escritorio se sirve
+    /// con la vista de ESE host sobre el mismo view model portable que declara el nodo.
+    /// </summary>
+    public const string DataSetDesigner = "DataSetDesigner";
+
+    /// <summary>
+    /// El Gestor de Presets de Medios: la superficie que declara el nodo de transcodificación del plugin de
+    /// integraciones (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). El escritorio la
+    /// abre desde el botón «🎬» de la fila del parámetro «Preset»; un host sin el toolkit del escritorio la
+    /// sirve con SU vista sobre el mismo view model portable que declara el nodo, que a su vez escribe en el
+    /// mismo almacén de presets (el que lee el motor de transcodificación).
+    /// </summary>
+    public const string MediaPresetManager = "MediaPresetManager";
 }
 
 /// <summary>

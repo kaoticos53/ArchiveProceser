@@ -38,6 +38,17 @@ public static class HostUi
 
     private static object? s_mainWindowOwner;
 
+    /// <summary>
+    /// El CATÁLOGO DE VENTANAS Y DIÁLOGOS del host, para las piezas del núcleo que no reciben servicios por
+    /// constructor (la tarjeta de un nodo, por ejemplo) y tienen que cumplir una superficie que el NODO
+    /// declara (<see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). Sin host queda el nulo
+    /// declarado del Sdk: no se abre nada y quien lo pidió lo sabe, en vez de construirse una ventana que
+    /// este host no puede montar.
+    /// </summary>
+    public static IWindowService Windows => s_windowService;
+
+    private static IWindowService s_windowService = NullWindowService.Instance;
+
     /// <summary>Escribe texto en el portapapeles del sistema, tolerante a fallos.</summary>
     public static void SetClipboardText(string? text)
     {
@@ -90,12 +101,14 @@ public static class HostUi
         IUiDispatcher? dispatcher = null,
         IClipboardService? clipboard = null,
         IColorPickerService? colorPicker = null,
-        object? mainWindowOwner = null)
+        object? mainWindowOwner = null,
+        IWindowService? windowService = null)
     {
         s_dispatcher = dispatcher ?? NullUiDispatcher.Instance;
         s_clipboard = clipboard ?? NullClipboardService.Instance;
         s_colorPicker = colorPicker ?? NullColorPickerService.Instance;
         s_mainWindowOwner = mainWindowOwner;
+        s_windowService = windowService ?? NullWindowService.Instance;
     }
 }
 

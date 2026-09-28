@@ -231,7 +231,7 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void DeleteTheme()
+    public async Task DeleteThemeAsync()
     {
         if (SelectedTheme == null || SelectedTheme.IsBuiltIn)
         {
@@ -247,7 +247,9 @@ public partial class ThemeCustomizerViewModel : ObservableObject
             SelectedTheme.Name);
         string confirmTitle = LocalizationManager.Instance.GetString("ThemeStudio_ConfirmDeleteTitle", "Confirm deletion");
 
-        if (!_dialogService.ShowConfirmation(confirmMessage, confirmTitle)) return;
+        // Borrar un tema personalizado es destructivo: la pregunta va por la vía ASÍNCRONA del contrato, la
+        // única que un host puede contestar de verdad (la síncrona contesta «no» desde el hilo de UI en WinUI).
+        if (!await _dialogService.ConfirmAsync(confirmMessage, confirmTitle)) return;
 
         _themeService.DeleteCustomTheme(SelectedTheme.Id);
         LoadThemes();

@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Storage;
@@ -93,8 +94,29 @@ public sealed class AppUpdateService : IAppUpdateService
         return AppPackagingFormat.Unknown;
     }
 
+    /// <summary>
+    /// La versión del producto que corre.
+    ///
+    /// <para><b>La fuente es <see cref="AppVersionInfo"/></b> —la misma cadena que enseñan el pie del cajón y la
+    /// ventana «Acerca de» en los dos hosts—, y el ensamblado de ENTRADA queda como respaldo. Medido: en un host
+    /// cuyo punto de entrada no está sellado con la versión del producto, la lectura del ensamblado de entrada
+    /// devolvía <c>0.0.0</c>, y con ella la pestaña de actualizaciones anunciaba «0.0.0» y cualquier release
+    /// parecía más nueva. El ensamblado de entrada no es una fuente fiable de la versión del PRODUCTO.</para>
+    /// </summary>
     private static SemVersion DetectCurrentVersion()
     {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(AppVersionInfo.InformationalVersion))
+            {
+                return SemVersion.Parse(AppVersionInfo.InformationalVersion);
+            }
+        }
+        catch
+        {
+            // Un identificador raro no impide arrancar: se sigue por el ensamblado de entrada.
+        }
+
         try
         {
             var asm = Assembly.GetEntryAssembly() ?? typeof(AppUpdateService).Assembly;

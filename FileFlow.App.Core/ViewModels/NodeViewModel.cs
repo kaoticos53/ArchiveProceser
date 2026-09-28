@@ -469,6 +469,18 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
     public void ExecuteCustomAction(string actionId)
     {
+        // La superficie que el nodo DECLARA al SDK es la puerta que cualquier host puede cumplir: se reconoce
+        // por la acción personalizada que sustituye, así que el botón de la tarjeta abre la MISMA superficie
+        // por el servicio de ventanas de este host (sobre el view model portable del nodo) en vez de caer en la
+        // ventana del toolkit que este host no puede montar. El nodo que no declara nada sigue por su camino.
+        if (_nodeInstance is INodeDialogSurfaceProvider declared
+            && declared.ReplacesCustomActionId is { } replaced
+            && string.Equals(replaced, actionId, StringComparison.OrdinalIgnoreCase))
+        {
+            _ = ShowDeclaredSurfaceAsync(declared);
+            return;
+        }
+
         if (_nodeInstance is INodeCustomActionProvider provider)
         {
             provider.ExecuteCustomAction(actionId, new NodeCustomActionContext(FileFlow.App.Core.HostUi.MainWindowOwner, () => SyncParametersFromNodeInstance()));
@@ -488,6 +500,22 @@ public partial class NodeViewModel : ObservableObject, IDisposable
                 ParentEditor?.OpenSubflow(this);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Abre la superficie que declara el nodo por el catálogo de ventanas del host y, al cerrarse, vuelve a
+    /// sincronizar los parámetros: el contenido de la superficie puede haber cambiado el catálogo del que
+    /// vive un parámetro (los presets de un transcodificador, por ejemplo) y la fila tiene que enseñarlo.
+    /// </summary>
+    private async Task ShowDeclaredSurfaceAsync(INodeDialogSurfaceProvider surface)
+    {
+        var context = new NodeCustomActionContext(
+            FileFlow.App.Core.HostUi.MainWindowOwner,
+            () => SyncParametersFromNodeInstance(),
+            FileFlow.App.Core.CoreDialogHost.ResolveDialogService());
+
+        await FileFlow.App.Core.HostUi.Windows.ShowDialogAsync(surface.DialogKey, surface.CreateDialogPayload(context));
+        SyncParametersFromNodeInstance();
     }
 
     /// <summary>
