@@ -1,0 +1,26 @@
+{
+  "id": "pan-que-responde-al-boton-izquierdo",
+  "hito": 267,
+  "claim": "El paneo del lienzo del escritorio es del boton DERECHO: arrastrar el fondo con el derecho mueve el encuadre y el contenido sigue a la mano.",
+  "why": "El reparto de botones es una decision de producto escrita en el constructor estatico del editor (Pan = RightClick) y no rompe ningun dato: el lienzo sigue funcionando, los cables siguen dibujandose y el grafo sigue ejecutando. Lo que cambia es el gesto, y un cambio de gesto solo se ve con un gesto. Antes del hito 267 no habia ninguna prueba que inyectara un puntero sobre el lienzo del escritorio, asi que este defecto era invisible para la suite.",
+  "edits": [
+    {
+      "file": "FileFlow.App/Views/EditorView.axaml.cs",
+      "replacements": [
+        {
+          "old": "Nodify.Avalonia.Helpers.Gestures.MouseAction.RightClick);",
+          "new": "Nodify.Avalonia.Helpers.Gestures.MouseAction.LeftClick);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheRightDragOnTheCanvas_ShouldPanThePlane_AndTheCableShouldFollowItsSockets",
+    "why": "Ese caso arrastra el fondo del lienzo con el boton derecho por el pipeline de entrada del framework y exige que el encuadre se mueva el gesto dividido por el zoom, que el contenido siga a la mano y que el trazo no se despegue de sus sockets. Con el mutante el derecho deja de panear: el encuadre no se mueve, el trazo no se desplaza y el caso cae nombrando la mitad que fallo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheLeftDragOnANodeCard_ShouldMoveTheNode_AndNotThePlane",
+    "why": "Esa es justo la mitad que el mutante NO rompe, y esta medido: el arrastre de una tarjeta se queda el gesto antes de que el editor vea el paneo, asi que con Pan=LeftClick la tarjeta se sigue moviendo y el plano sigue quieto. Verde con el mutante es lo que separa «el paneo cambio de boton» de «los gestos del lienzo se rompieron»."
+  }
+}

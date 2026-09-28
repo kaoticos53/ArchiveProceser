@@ -4,9 +4,9 @@
 > **No se edita a mano.**
 > Regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`.
 
-Mutaciones declaradas: 96
+Mutaciones declaradas: 98
 Subsistemas del producto con alguna mutación: 15 de 17
-Guardias que auditan el repositorio con mutación que las muerda: 16 de 44
+Guardias que auditan el repositorio con mutación que las muerda: 17 de 45
 
 ## Qué declara cada mutación
 
@@ -75,6 +75,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 16 de 44
 | `modo-virtual-heredado` | `FileFlow.Core/Engine/WorkflowExecutor.cs` | `ASyntheticRun_ShouldNotLeaveTheNextOneInVirtualMode` | `VirtualEmptyFolderCleanupIntegrationTests` |
 | `nodo-que-declara-su-superficie-sin-clave` | `FileFlow.Plugin.FileSystem/Nodes/Sources/SyntheticDataSourceNode.cs` | `TheDataSetDesigner_ShouldBeDeclaredByTheNode_AndServedByTheHost` | `TheWindowEntries_ShouldBeServedByTheHostsDialogCatalogue` |
 | `orden-destructiva-que-vuelve-a-la-via-sincrona` | `FileFlow.App.Core/ViewModels/ControlBarViewModel.cs` | `EveryDestructiveOrder_ShouldAskByTheAsyncPath_NotByTheSilentSyncOne` | `TheFlowOrders_ShouldBeFulfilledByTheHostsOwnAsyncChannel_NotByTheSilentSyncOne` |
+| `pan-que-responde-al-boton-izquierdo` | `FileFlow.App/Views/EditorView.axaml.cs` | `TheRightDragOnTheCanvas_ShouldPanThePlane_AndTheCableShouldFollowItsSockets` | `TheLeftDragOnANodeCard_ShouldMoveTheNode_AndNotThePlane` |
 | `panel-de-nodo-sin-su-servicio-de-ventanas` | `FileFlow.App.Uno/App.xaml.cs` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` | `TheDialogs_ShouldBeViewsOfThePortableViewModels_NotCopiesOfThem` |
 | `pasos-de-renombrado-ilegibles` | `FileFlow.Sdk/Renaming/RenamerPresetService.cs` | `AdvancedRenamer_WhenTheStepsArriveWithEnumNames_ShouldApplyThemInsteadOfTheDefaultTemplate` | `AdvancedRenamer_MethodStepsPipeline_ShouldExecuteCorrectly` |
 | `portapapeles-sin-vigilante` | `FileFlow.Tests/TestHelpers/TestCollectionContractAnalyzer.cs` | `TestCollectionContractGuardTests` | `Analyzer_ShouldRequireTheExampleFlowBank_WhenClassMovesTheProcessWorkingDirectory` |
@@ -90,6 +91,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 16 de 44
 | `salida-global-sin-expandir` | `FileFlow.Sdk/ParameterHelper.cs` | `VariableTemplateResolver_WithATemplateOutputFolder_ResolvesAFolderInAnyParameter|ResolveOutputPath_WithGlobalOutputDirDeclaredAsATemplate_ExpandsAndAnchorsItUnderTheSourceRoot|AFlowWhoseOutputFolderIsATemplate_ShouldAnchorTheArchiveInARealFolder|WithAFlowFolderDeclaredAsATemplate_ShouldAnchorItInsideTheOrigin|CsvExportNode_WithTheFlowFolderToken_ShouldWriteInsideTheFolderTheFlowDeclares|CsvExportNode_WithAnAliasOfTheFlowFolder_ShouldWriteWhereTheCanonicalTokenWrites|ExcelReportGeneratorNode_WithATemplateFlowFolder_ShouldWriteTheReportInsideTheOrigin` | `ResolveOutputPath_WithRelativePath_AnchorsUnderGlobalOutputDir|ResolveOutputPath_WithoutGlobalOutputDir_AnchorsUnderSourceDirectory|VariableTemplateResolver_WithoutExplicitMetadata_FallsBackToAppPathsDefault` |
 | `seccion-que-pierde-el-panel-que-conmutaba` | `FileFlow.App.Uno/Controls/SettingsPanel.xaml.cs` | `TheSixSections_ShouldBeDeclared_WithTheirPaneAndTheirButton` | `ThePersistence_ShouldBeTheViewModelsOwnCommands` |
 | `snapshots-congelados-en-el-panel` | `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | `InspectorPanel_ShouldBuildSnapshotTabsFromTheNodeCollectionsAndTheCoreDiff` | `InspectorPanel_ShouldWireTheTestButtonThroughTheCanonicalCoreCommand` |
+| `sonda-de-escritorio-sin-el-anfitrion-del-puntero` | `FileFlow.App/Program.cs` | `TheProbe_ShouldBeItsOwnCommandLineMode_OnTheHostThatCanInjectAPointer` | `TheCable_ShouldTouchItsSockets_InWindowSpace` |
 | `sondeo-uia-sin-hijo-externo` | `FileFlow.App.Uno/SelfCheckUia.cs` | `TheExternalUiaProbeMode_ShouldBeWired_WithTheHouseInstrumentAndHonestVerdicts` | `TheUiAnchorTable_ShouldCoverTheObservableSurface` |
 | `stderr-del-cli-que-se-desvanece` | `FileFlow.Plugin.Integrations/CliExecutionNode.cs` | `CliExecutionNode_WhenExitCodeNonZero_ShouldEmitFailedAndCaptureStdErr` | `PdfTextExtractorNode_ExtractsTextSuccessfully` |
 | `struct-de-shell-desalineado` | `FileFlow.Core/Platform/WindowsPlatformService.cs` | `WindowsShellFileOperationLayoutTests` | `ForkJoinBarrierNodeTests` |
@@ -117,7 +119,7 @@ defecto declarado demuestra que sus pruebas muerdan. Es la lista de trabajo, no 
 - `FileFlow.Plugin.Scripting`
 - `FileFlow.Plugin.Subflows`
 
-## Guardias del repositorio sin ninguna mutación que las muerda (28 de 44)
+## Guardias del repositorio sin ninguna mutación que las muerda (28 de 45)
 
 Las guardias que auditan el árbol (usan `SourceTree`, `TestRepositoryLocator` o `TestSuiteIndex`) y no
 aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostrado que muerdan.
@@ -153,7 +155,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 
 ## Dónde muta cada declaración
 
-- **FileFlow.App**: `cable-de-escritorio-por-el-control-de-nodify`, `enlace-de-geometria-sin-proyeccion`, `token-de-tema-que-desaparece`
+- **FileFlow.App**: `cable-de-escritorio-por-el-control-de-nodify`, `enlace-de-geometria-sin-proyeccion`, `pan-que-responde-al-boton-izquierdo`, `sonda-de-escritorio-sin-el-anfitrion-del-puntero`, `token-de-tema-que-desaparece`
 - **FileFlow.App.Core**: `cable-con-la-curva-al-reves`, `cuello-que-no-cabe-en-el-hueco`, `inspector-sin-write-back`, `latido-rearrancado-que-no-late`, `orden-destructiva-que-vuelve-a-la-via-sincrona`, `pregunta-destructiva-escrita-en-el-codigo`, `prueba-sincrona-en-hilo-de-ui`, `tarjeta-que-no-habla-por-su-color`, `toggle-que-no-persiste`, `toolbox-sin-filtro`, `vfs-que-se-vacia-sin-preguntar`
 - **FileFlow.App.Uno**: `accion-de-urls-que-descarga-el-modelo`, `ajuste-que-no-devuelve-el-idioma`, `ajuste-sin-su-texto`, `ancla-que-ignora-la-escala`, `arranque-que-no-aplica-el-tema-guardado`, `atajo-que-no-llega-sin-foco`, `aviso-de-actualizacion-que-nadie-enciende`, `cable-con-anclas-estimadas`, `cable-que-no-toca-su-socket`, `cables-que-no-llegan-tarde`, `campo-que-no-muestra-lo-que-el-dialogo-escribio`, `conmutador-de-parametros-que-no-refresca`, `cuerpo-del-gestor-que-habla-con-el-almacen`, `decoradores-que-no-llegan-al-arbol`, `disenador-de-datasets-fuera-del-catalogo`, `editor-que-no-devuelve-el-texto-confirmado`, `entrada-de-ventana-que-no-ejecuta-su-orden`, `estudio-de-temas-que-esconde-lo-que-no-sirve`, `fila-de-presets-sin-su-boton`, `fila-de-variables-que-abre-el-menu-que-no-esta-portado`, `flujo-que-se-cumple-por-el-picker-sincrono`, `hit-test-en-el-espacio-equivocado`, `lienzo-sin-peer-uia`, `menu-que-ejecuta-la-orden-de-otro`, `menu-que-no-declara-lo-que-falta`, `menu-que-no-declara-un-atajo`, `menu-sin-el-estado-de-su-contexto`, `panel-de-nodo-sin-su-servicio-de-ventanas`, `reclamacion-que-roba-al-cuadro-de-texto`, `seccion-que-pierde-el-panel-que-conmutaba`, `snapshots-congelados-en-el-panel`, `sondeo-uia-sin-hijo-externo`, `tarjeta-sin-la-puerta-de-sus-parametros`, `tema-sin-repintado`, `ventana-servida-que-no-esta-en-el-catalogo`, `vista-del-disenador-con-su-propio-modelo`
 - **FileFlow.Core**: `diario-acumula-ejecuciones`, `ejecucion-pausada-heredada`, `modo-virtual-heredado`, `punto-de-control-sobrevive-a-la-ejecucion`, `punto-de-control-vuelve-a-escribir-por-archivo`, `retroalimentacion-de-barrera-contada-como-ciclo`, `retroalimentacion-sin-avisos`, `struct-de-shell-desalineado`, `validador-sin-materializar-puertos`
