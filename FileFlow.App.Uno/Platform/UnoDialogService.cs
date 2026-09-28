@@ -191,6 +191,11 @@ public sealed class UnoDialogService : IDialogService
             CloseButtonText = secondary ?? loc.GetString("Common_Close", "Cerrar"),
             XamlRoot = root.XamlRoot,
         };
-        return await dialog.ShowAsync();
+
+        // El aviso se muestra PUBLICÁNDOSE como el modal abierto (hito 270): el estado lo consulta el propio
+        // host antes de abrir otro ContentDialog —WinUI sólo admite uno— y lo lee la sonda, que sin él no puede
+        // distinguir un aviso mostrado de un botón que no hizo nada. Antes se mostraba por fuera de ese estado:
+        // el aviso se veía, pero el host no sabía que estaba ahí.
+        return await UnoWindowService.RunOwnedAsync(dialog);
     }
 }

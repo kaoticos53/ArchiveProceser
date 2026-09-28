@@ -72,6 +72,55 @@ public sealed partial class MainWindow : Window
     private ControlBarViewModel? _controlBar;
 
     /// <summary>
+    /// El ancho que la FICHA tenía antes de plegarse, para devolvérselo al volver (hito 270).
+    ///
+    /// <para>Es la mitad que un redimensionado a medias no tiene: el panel se pliega a ancho CERO —la columna
+    /// se queda sin sitio, como en el escritorio—, así que sin recordar lo que medía el usuario, abrirlo otra
+    /// vez lo devolvería a un ancho por defecto y el sitio que acababa de darle a la ficha se perdería en cada
+    /// visita al botón del inspector.</para>
+    /// </summary>
+    private double _inspectorWidthBeforeCollapse = 300;
+
+    /// <summary>
+    /// Ata las dos asas del marco a sus columnas, con el reparto que el escritorio declara (cajón 180–480,
+    /// ficha 220–750) y el mínimo del LIENZO como segunda cota. Se llama en el arranque, antes de que la
+    /// primera orden de layout necesite el ancho.
+    /// </summary>
+    private void AttachPanelSplitters()
+    {
+        ToolboxSplitter.Attach(ToolboxColumn, min: 180, max: 480, widensToTheRight: true, canvas: CanvasColumn);
+        InspectorSplitter.Attach(InspectorColumn, min: 220, max: 750, widensToTheRight: false, canvas: CanvasColumn);
+        ApplySplitterNames();
+    }
+
+    /// <summary>Los rótulos de las asas con el idioma vigente (los lee el árbol de accesibilidad).</summary>
+    private void ApplySplitterNames()
+    {
+        AutomationProperties.SetName(ToolboxSplitter, LocalizationManager.Instance.GetString(
+            "Uno_SplitterToolbox", "Redimensionar el cajón de nodos"));
+        AutomationProperties.SetName(InspectorSplitter, LocalizationManager.Instance.GetString(
+            "Uno_SplitterInspector", "Redimensionar la ficha del nodo"));
+    }
+
+    /// <summary>
+    /// Aplica la visibilidad del panel al marco entero: la ficha plegada se lleva su columna (a ancho cero) y su
+    /// asa, y al abrirse vuelve al ancho que el usuario le había dado —no al de fábrica—.
+    /// </summary>
+    private void ApplyInspectorVisibility(bool isOpen)
+    {
+        if (isOpen && InspectorColumn.ActualWidth > 0)
+        {
+            _inspectorWidthBeforeCollapse = InspectorColumn.ActualWidth;
+        }
+
+        Inspector.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
+        InspectorSplitter.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
+        InspectorColumn.Width = isOpen
+            ? new GridLength(_inspectorWidthBeforeCollapse, GridUnitType.Pixel)
+            : new GridLength(0, GridUnitType.Pixel);
+    }
+
+    /// <summary>
     /// El catálogo de diálogos del host: por él se sirven las superficies que las órdenes del núcleo piden por
     /// clave (<c>DialogKeys</c>) —la ventana de «Acerca de» y el DISEÑADOR DE DATASETS, que declara el nodo de
     /// datos sintéticos—.
@@ -134,6 +183,11 @@ public sealed partial class MainWindow : Window
             var loader = services.GetRequiredService<PluginLoader>();
             int nodes = loader.DiscoveredNodesCount;
 
+            // Las dos ASAS del marco (hito 270): se atan antes de montar nada que mida el lienzo —el ancho de
+            // la columna del cajón es el desplazamiento con el que el lienzo calcula su área de clic—, y con
+            // el reparto del escritorio (cajón 180–480, ficha 220–750) más el mínimo del lienzo.
+            AttachPanelSplitters();
+
             var mainVm = services.GetRequiredService<MainViewModel>();            Canvas.Editor = mainVm.Editor;
             TryLoadSampleFlow(mainVm.Editor);
 
@@ -183,13 +237,12 @@ public sealed partial class MainWindow : Window
             // nace cerrado porque en el escritorio el panel es colapsable; el estado inicial es decisión
             // del marco del host, y la conmutación sí es la del núcleo (ToggleInspectorCommand).
             mainVm.NodeInspector.IsOpen = true;
+            ApplyInspectorVisibility(true);
             mainVm.NodeInspector.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName == nameof(NodeInspectorViewModel.IsOpen))
                 {
-                    Inspector.Visibility = mainVm.NodeInspector.IsOpen
-                        ? Visibility.Visible
-                        : Visibility.Collapsed;
+                    ApplyInspectorVisibility(mainVm.NodeInspector.IsOpen);
                 }
             };
 
@@ -482,6 +535,7 @@ public sealed partial class MainWindow : Window
     {
         Bar.RefreshLocalization();
         Drawer.RefreshLocalization();
+        ApplySplitterNames();
     }
 
     /// <summary>El error del último intento de carga del ejemplo (vacío si no hubo): visible para el sondeo.</summary>

@@ -1,9 +1,12 @@
 using System.IO;
 using System.Text.Json;
 using FileFlow.Plugin.Archives.Services;
+#if !FILEFLOW_NO_DESKTOP_TOOLKIT
 using FileFlow.Plugin.Archives.UI.Views;
+#endif
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.SyntheticData;
 using FileFlow.Sdk.VirtualFileSystem;
@@ -63,6 +66,19 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
             if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
                 actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
             {
+#if FILEFLOW_NO_DESKTOP_TOOLKIT
+                // El Gestor de Contraseñas es una VENTANA DEL ESCRITORIO y este host no tiene el toolkit que la
+                // monta (hito 268): la frontera se DECLARA por los diálogos de quien lo abrió —el usuario se
+                // entera y queda la traza— en vez de construir a ciegas una ventana de otro framework.
+                DesktopOnlySurface.Declare(
+                    (context as NodeCustomActionContext)?.Dialogs,
+                    LocalizationManager.Instance.GetString("PasswordManager_WindowTitle", "Gestor de Claves y Contraseñas"),
+                    LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                    LocalizationManager.Instance.GetFormattedString(
+                        "Plugin_DesktopOnly_Message",
+                        "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                        LocalizationManager.Instance.GetString("PasswordManager_WindowTitle", "Gestor de Claves y Contraseñas")));
+#else
                 Action? onCompleted = null;
                 object? parentWindow = context;
 
@@ -103,6 +119,7 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
                     }
                     onCompleted?.Invoke();
                 }
+#endif
             }
         }
         catch (Exception ex)

@@ -1,8 +1,8 @@
 # Notas de versión — FileFlow Studio
 
-**Versión 1.0.0 · compilación 7039 · 28 de septiembre de 2026**
+**Versión 1.0.0 · compilación 7096 · 28 de septiembre de 2026**
 
-Estas notas recogen **veinte tramos**:
+Estas notas recogen **veintisiete tramos**:
 
 - **El del rediseño visual** (compilación 4743 → 5018): el aspecto, los estados de los controles, el arranque y
   la infraestructura de pruebas que lo sostiene. Son los apartados **1 a 3**.
@@ -55,8 +55,10 @@ Los tramos siguientes —los **ajustes del host** (apartado **14**), su **menú 
 de nodo** (**16**), las **entradas y los atajos que faltaban** (**17**), las **ventanas que faltaban** (**18**), el
 **diseñador de datasets, las dos pestañas de ajustes que quedaban y el editor de URLs por modelo** (**19**), el
 **gestor de presets de medios** (**20**) con su **confirmación** (**21**), las **seis órdenes destructivas que
-quedaban mudas** (**22**) y el **cable que ahora es el mismo en las dos aplicaciones** (**23**)— están en sus
-apartados.
+quedaban mudas** (**22**), el **cable que ahora es el mismo en las dos aplicaciones** (**23**), la **sonda de la
+aplicación de escritorio** (**24**), el **host multiplataforma que se compila sin Avalonia y con `dotnet`**
+(**25**), las **tarjetas del host que dejan de enseñar lo que no se puede tocar** (**26**) y los **paneles
+laterales que ahora se redimensionan y el botón del nodo que avisa** (**27**)— están en sus apartados.
 
 Están escritas en dos mitades a propósito —**lo que ves** al usar la aplicación y **lo que no se ve** pero es lo
 que impide que lo primero se rompa sin que nadie se entere—. Todo lo que se afirma aquí está medido en el
@@ -1512,11 +1514,152 @@ medido sólo «en el dibujo», nunca con un gesto encima.
 
 ---
 
-## 25. Cómo verificarlo
+## 25. El tramo del host Uno que se compila sin Avalonia (compilación 7039 → 7059)
 
-```powershell
-# La suite completa (pruebas unitarias, de integración y de aspecto)
-.\test.ps1
+Esta entrega **tampoco cambia lo que ves** al usar la aplicación: los dos programas hacen lo mismo que en el
+tramo anterior. Lo que cambia es **cómo se compila el de la interfaz multiplataforma** y **qué lleva dentro**.
+
+Hasta aquí ese programa se compilaba con el compilador del entorno de desarrollo (MSBuild de Visual Studio) y su
+carpeta arrastraba **16 bibliotecas de Avalonia** —el juego de piezas con el que está hecho el programa de
+escritorio—, que entraban por cinco plugins: los que traen **ventanas propias** (el gestor de contraseñas, el
+editor de renombrado, el estudio de scripts, la configuración de IA multimodal y el selector de archivos del
+diseñador de datasets).
+
+### Lo que ahora puedes hacer
+
+- **Compilar el host multiplataforma con el mismo comando que todo lo demás**, sin abrir Visual Studio:
+  `dotnet build FileFlow.Uno.slnx`. Y **abrir esa solución en Visual Studio** (existe ya un archivo de solución
+  para él: `FileFlow.Uno.slnx`), sin arrastrar el programa de escritorio ni las pruebas.
+- **Un programa que no lleva el juego de piezas del otro**: la carpeta del host multiplataforma ya **no tiene una
+  sola biblioteca de Avalonia**. Su compilación lo demuestra (**0 errores**) y su comprobación automática sigue
+  pasando igual: **88 comprobaciones, ninguna falla**.
+- **Lanzarlo sigue siendo un comando**: `.\run-uno.ps1` (compila y abre) y `.\run-uno-fast.ps1` (abre sin
+  compilar).
+
+### Lo que sigue viéndose así (declarado)
+
+- **Las ventanas que son del programa de escritorio no existen en el multiplataforma**, y ahora **lo dicen**: si
+  empujas uno de esos botones (por ejemplo, el gestor de contraseñas), verás **un aviso con el nombre de la
+  ventana** que falta y su motivo, en vez de un botón que no hace nada. Dos de esas superficies —el diseñador de
+  datasets y el gestor de presets de medios— **sí están** y funcionan igual que en el escritorio, porque su
+  contenido lo sirve el propio host.
+- **El selector de archivos** del diseñador de datasets (importar y exportar un conjunto) **tampoco está** en el
+  multiplataforma: ahora lo dice, antes no hacía nada y no avisaba.
+- **El programa de escritorio no cambia**: sigue siendo el mismo, con sus ventanas y su compilación.
+- **El empaquetado y la entrega siguen pendientes**: el programa no se reparte instalado; lo ejecuta quien lo
+  compila.
+
+### Cómo se comprobó
+
+La suite completa pasa de **1950** a **1959 pruebas superadas** (1 omitida, 0 errores): siete casos vigilan el
+nuevo modo de compilación —que la solución del host no lleve el programa de escritorio ni las pruebas, que el
+modo lo elija el **nombre de la solución**, que ningún plugin arrastre las bibliotecas gráficas fuera de su
+condición, que **ningún archivo** que este modo compila mencione Avalonia **fuera de su región**, que cada nodo
+de ventana ajena **avise** en vez de quedarse mudo y que los avisos estén en los **dos idiomas**— y dos miden que
+el aviso se dice de verdad. Una **mutación** que deja la frontera **sin aviso** **muerde** (el catálogo
+publicado sube a **99 declaraciones**). Y la carpeta del host, **medida después de limpiarla**, tiene **cero**
+bibliotecas de Avalonia donde antes había **dieciséis**.
+
+---
+
+## 26. El tramo de las tarjetas del host Uno que dejaron de enseñar lo que no se puede tocar (compilación 7059 → 7080)
+
+Este tramo cambia **una cosa que ves** en la aplicación multiplataforma y **otra que no veías porque no estaba**:
+las tarjetas del lienzo, al desplegarlas, ya no listan los parámetros del nodo —nombres y nada más, sin ninguna
+forma de editarlos desde ahí— y la **ficha del inspector** (el panel de la derecha) pasa a mostrar las **acciones
+del nodo**, que hasta aquí sólo vivían dentro de esa lista desplegable.
+
+### Lo que ahora puedes ver
+
+- **Las tarjetas del lienzo sólo enseñan lo que hace algo al pulsarlo.** Al desplegar una tarjeta aparecen sus
+  **acciones** (por ejemplo, «🎬 Presets...» en el nodo que convierte vídeo, o «configurar proveedores y
+  plantillas» en el de IA multimodal). el listado de parámetros que había debajo ha desaparecido: era una lista
+  muerta —nombres sin ningún control— y lo que se podía pulsar quedaba escondido entre lo que no.
+- **Los parámetros se editan en el inspector**, con sus controles reales (casilla, deslizador, número,
+  desplegable, ruta con explorar, editor de texto y catálogo de variables). Es donde ya se editaban.
+- **La ficha del inspector tiene ahora un bloque «Acciones»** con las acciones del nodo, cada una con su botón y
+  su explicación. Es la misma puerta que el botón de la tarjeta: sirven lo mismo y abren lo mismo. Antes, si no
+  sabías que la tarjeta se desplegaba con su chevron, la superficie del nodo era inalcanzable desde el inspector.
+- **Un nodo sin acciones no trae chevron**: si no hay nada que desplegar, el botón no se dibuja (antes se dibujaba
+  y desplegaba un panel que ya no tenía más que la lista muerta).
+- **El rótulo del chevron dice lo que hace**: al pasar el puntero por encima lee «mostrar/ocultar las acciones del
+  nodo», no «parámetros».
+
+### Lo que sigue viéndose así (declarado)
+
+- **La aplicación de escritorio no cambia**: allí los parámetros **sí** se editan en la propia tarjeta (tiene sus
+  deslizadores, desplegables y botones en línea) y siguen donde estaban. Igualar las dos aplicaciones aquí sería
+  quitarle al escritorio algo que funciona.
+- **Las acciones del nodo están ahora en dos sitios** del host multiplataforma —el panel de la tarjeta y el bloque
+  de la ficha—: el atajo del lienzo se conserva a propósito y la ficha garantiza que no dependa de saber desplegar
+  una tarjeta.
+- **Las ventanas que son del programa de escritorio siguen sin existir aquí**, y el botón de la ficha **avisa con
+  su nombre** en vez de no hacer nada (el mismo comportamiento que el botón de la tarjeta, porque es la misma
+  orden). Las que el host sí sirve —el gestor de presets y el diseñador de datasets— se abren con normalidad.
+- **El empaquetado y la entrega siguen pendientes**: el programa no se reparte instalado; lo ejecuta quien lo
+  compila.
+
+### Cómo se comprobó
+
+La suite completa queda en **1959 pruebas superadas** (1 omitida, 0 errores) sobre un total de **1961** —el caso
+nuevo que vigila el bloque de acciones suma el suyo, y el único rojo de la corrida es el **flake de CPU ya
+declarado**, que pasa en aislamiento—. Las
+comprobaciones automáticas de la aplicación —con la aplicación real arrancada— quedan verdes: **85
+comprobaciones de la sonda general** y **48 de la de los paneles de nodo**, ninguna falla, con dos medidas nuevas
+—las acciones del nodo pintadas en la ficha (un botón, con su ancla `InspectorAction_ManageMediaPresets`) y el
+panel de la tarjeta desplegándose con su chevron— y el **contrato de la puerta** medido sobre las tres tarjetas
+del lienzo. Tres mutaciones del andamiaje (una nueva y dos actualizadas a la estructura nueva) **muerden** y el
+catálogo publicado sube a **100 declaraciones**.
+
+---
+
+## 27. El tramo de los paneles que se redimensionan y el botón del nodo que avisa (compilación 7080 → 7096)
+
+Este tramo cierra el encargo con el que se abrió: **los botones de los nodos que parecían no hacer nada** y los
+**dos paneles laterales que no se podían redimensionar**. Lo primero no era un botón roto: era el botón de una
+ventana que **sólo existe en el programa de escritorio**, y aquí se quedaba en un silencio absoluto. Lo segundo era
+un ancho fijo, el que el escritorio tiene desde siempre ajustable a mano.
+
+### Lo que ahora puedes ver
+
+- **Los paneles laterales se redimensionan arrastrando su borde.** El cajón de nodos (izquierda) y la ficha del
+  inspector (derecha) traen un asa: al pasar el puntero por encima cambia la flecha y al arrastrar el panel sigue a
+  tu mano. Las cotas son las del escritorio —el cajón entre **180 y 480**, la ficha entre **220 y 750**— y el
+  lienzo **nunca** se queda por debajo de su ancho mínimo: el arrastre se frena antes de comerse el grafo.
+- **La ficha recuerda su ancho al cerrarla y volverla a abrir**, y **su asa desaparece con ella**: sin panel que
+  gobernar, un mando a la vista sería un mando que no manda.
+- **El botón del nodo que abre una ventana del escritorio ahora avisa.** Al pulsar «💻 Editor de Scripts...» —o la
+  puerta del gestor de contraseñas— aparece un aviso **con el nombre de la ventana** («Estudio de Scripts») en vez
+  de no pasar absolutamente nada. Las superficies que esta aplicación **sí** sirve —el gestor de presets de
+  medios, el diseñador de datasets— se abren con normalidad: lo que faltaba no era la puerta, era el recado.
+
+### Lo que sigue viéndose así (declarado)
+
+- **Las siete ventanas del programa de escritorio siguen sin existir aquí**: lo que cambia es que su botón lo dice
+  en voz alta. Abrirlas es del escritorio.
+- **Los anchos no se guardan entre sesiones**: el reparto arranca en su sitio (cajón 280, ficha 300) y lo que
+  ajustes vive lo que viva la ventana.
+- **El asa se comprueba por su cuenta, no con el ratón del sistema**: las comprobaciones automáticas ejercitan el
+  mismo camino (la cuenta del ancho y su aplicación al panel) y el arrastre con puntero real queda para la sesión
+  manual, junto al resto de gestos.
+- **El empaquetado y la entrega siguen pendientes**: el programa no se reparte instalado; lo ejecuta quien lo
+  compila.
+
+### Cómo se comprobó
+
+La suite completa queda en **1963 pruebas superadas** (1 omitida, 0 errores) sobre un total de **1964**, frente a
+las **1959** del tramo anterior: los tres casos nuevos vigilan el camino entero del botón —que el aviso llegue al
+servicio de diálogos del host, que una puerta nueva no pueda volver a construirse sin él, y que el texto del aviso
+siga nombrando la ventana que falta—. Las comprobaciones automáticas con la aplicación real arrancada quedan
+verdes: **85 comprobaciones de la sonda general** y **51 de la de los paneles de nodo** (eran 48), con tres
+medidas nuevas —la ficha pintando la acción del nodo que abre una ventana del escritorio, ese botón **avisando
+por su nombre** y el aviso retirándose como cualquier otro modal—. Una mutación nueva del andamiaje **muere** (el
+botón vuelve a quedarse mudo si se le quita el servicio de diálogos a su contexto; 34,5 s) y el catálogo
+publicado sube a **101 declaraciones**.
+
+---
+
+## 28. Cómo verificarlo
 
 # Compilar y ejecutar la aplicación
 .\run.ps1
@@ -1529,7 +1672,10 @@ medido sólo «en el dibujo», nunca con un gesto encima.
 El host multiplataforma (Uno Platform) tiene sus propios comandos:
 
 ```powershell
-# Compilar (MSBuild de Visual Studio: los targets de WinAppSDK no corren con dotnet build) y lanzar
+# Su solución (FileFlow.Uno.slnx), la que se abre en Visual Studio: compila con dotnet build y sin Avalonia
+dotnet build FileFlow.Uno.slnx
+
+# Compilar y lanzar
 .\run-uno.ps1
 
 # Lanzar sin compilar

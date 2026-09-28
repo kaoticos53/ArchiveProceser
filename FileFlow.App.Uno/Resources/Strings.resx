@@ -54,6 +54,7 @@
   <data name="Uno_InspectorTabInputs" xml:space="preserve"><value>Inputs</value></data>
   <data name="Uno_InspectorTabOutputs" xml:space="preserve"><value>Outputs</value></data>
   <data name="Uno_InspectorTabDiff" xml:space="preserve"><value>Diff</value></data>
+  <data name="Uno_InspectorActions" xml:space="preserve"><value>Actions</value></data>
   <data name="Uno_InspectorParams" xml:space="preserve"><value>Parameters</value></data>
   <data name="Uno_InspectorTelemetry" xml:space="preserve"><value>Telemetry</value></data>
   <data name="Uno_InspectorResetMetrics" xml:space="preserve"><value>Clear metrics</value></data>
@@ -64,6 +65,10 @@
   <data name="Uno_InspectorAvgLatency" xml:space="preserve"><value>Average latency</value></data>
   <data name="Uno_InspectorTotalTime" xml:space="preserve"><value>Total time</value></data>
   <data name="Uno_InspectorPeakRam" xml:space="preserve"><value>Peak memory</value></data>
+
+  <!-- Las ASAS del marco del editor (hito 270): el nombre que lee un lector de pantalla y el canal externo -->
+  <data name="Uno_SplitterToolbox" xml:space="preserve"><value>Resize the node drawer</value></data>
+  <data name="Uno_SplitterInspector" xml:space="preserve"><value>Resize the inspector panel</value></data>
 
   <!-- ═══ Settings surface (the same four tabs of the desktop's WorkflowSettingsWindow) ═══ -->
 
@@ -197,7 +202,7 @@
   <data name="VarPicker_SelectVariableHint" xml:space="preserve"><value>Select a variable from the list to view its description and preview</value></data>
   <data name="VarPicker_UpstreamCountBadge" xml:space="preserve"><value>🔗 {0} upstream node(s)</value></data>
   <data name="VarPicker_SystemBadge" xml:space="preserve"><value>🌐 Global</value></data>
-  <data name="ToggleParametersToolTip" xml:space="preserve"><value>Show/Hide Parameters</value></data>
+  <data name="ToggleParametersToolTip" xml:space="preserve"><value>Show/Hide node actions</value></data>
   <data name="Common_Accept" xml:space="preserve"><value>Accept</value></data>
   <data name="Common_Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Common_Close" xml:space="preserve"><value>Close</value></data>

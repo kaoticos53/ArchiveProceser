@@ -61,8 +61,12 @@ $waitForExit = $SelfCheck -or $SelfCheckSettings -or $SelfCheckControlBar -or $S
 Write-Host "`n[OK] Iniciando el host Uno ($Configuration)..." -ForegroundColor Green
 
 if ($waitForExit) {
-    & $exePath @AppArgs
-    exit $LASTEXITCODE
+    # CON Start-Process -Wait -PassThru y NO con `& $exePath`: el host es una aplicacion de GUI y
+    # PowerShell no espera a las aplicaciones de GUI, asi que `&` volvia enseguida con un
+    # $LASTEXITCODE viejo (medido en el hito 270: «exit 0» con el sondeo aun corriendo y el informe a
+    # medio escribir).
+    $sondeo = Start-Process -FilePath $exePath -ArgumentList $AppArgs -WorkingDirectory $binDir -Wait -PassThru
+    exit $sondeo.ExitCode
 }
 
 if ($AppArgs -and $AppArgs.Count -gt 0) {

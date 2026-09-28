@@ -60,4 +60,6 @@
   <data name="ScriptStudio_Tip" xml:space="preserve"><value>Tip: use Item, Context, Log(...) and EmitAsync(...) inside your script.</value></data>
   <data name="ScriptStudio_Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="ScriptStudio_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Desktop host window</value></data>
+  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» opens in the desktop host: this host does not have the toolkit that mounts it. Open it from the desktop application.</value></data>
 </root>

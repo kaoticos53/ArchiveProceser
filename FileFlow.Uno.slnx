@@ -1,0 +1,33 @@
+<Solution>
+  <!--
+    La solución del HOST UNO (WinUI 3) —hito 268—.
+
+    Es la hermana de FileFlow.slnx (el host de ESCRITORIO, con Avalonia) y existe por dos razones:
+
+      1. Visual Studio trabaja sobre una solución: para depurar el host Uno se abre ÉSTA, sin arrastrar el
+         host de escritorio ni sus pruebas.
+      2. El sabor de UI depende de SU nombre (ver Directory.Build.props): con esta solución los plugins
+         compilan sin el toolkit del escritorio, así que la salida del host Uno no lleva una sola DLL de
+         Avalonia. Compila igual con Visual Studio y con `dotnet build FileFlow.Uno.slnx`.
+
+    Lo que NO entra aquí, con su razón: FileFlow.App (el host de escritorio con Avalonia) y FileFlow.Tests
+    (sus pruebas montan ventanas de Avalonia: son del sabor de escritorio). Se compilan y se ejecutan desde
+    FileFlow.slnx.
+  -->
+  <Project Path="FileFlow.App.Uno/FileFlow.App.Uno.csproj" />
+  <Project Path="FileFlow.App.Core/FileFlow.App.Core.csproj" />
+  <Project Path="FileFlow.Core/FileFlow.Core.csproj" />
+  <Project Path="FileFlow.Sdk/FileFlow.Sdk.csproj" />
+  <Project Path="FileFlow.Plugin.AI/FileFlow.Plugin.AI.csproj" />
+  <Project Path="FileFlow.Plugin.Archives/FileFlow.Plugin.Archives.csproj" />
+  <Project Path="FileFlow.Plugin.Data/FileFlow.Plugin.Data.csproj" />
+  <Project Path="FileFlow.Plugin.Documents/FileFlow.Plugin.Documents.csproj" />
+  <Project Path="FileFlow.Plugin.FileSystem/FileFlow.Plugin.FileSystem.csproj" />
+  <Project Path="FileFlow.Plugin.Hashing/FileFlow.Plugin.Hashing.csproj" />
+  <Project Path="FileFlow.Plugin.Images/FileFlow.Plugin.Images.csproj" />
+  <Project Path="FileFlow.Plugin.Integrations/FileFlow.Plugin.Integrations.csproj" />
+  <Project Path="FileFlow.Plugin.Logic/FileFlow.Plugin.Logic.csproj" />
+  <Project Path="FileFlow.Plugin.Network/FileFlow.Plugin.Network.csproj" />
+  <Project Path="FileFlow.Plugin.Scripting/FileFlow.Plugin.Scripting.csproj" />
+  <Project Path="FileFlow.Plugin.Subflows/FileFlow.Plugin.Subflows.csproj" />
+</Solution>

@@ -483,7 +483,17 @@ public partial class NodeViewModel : ObservableObject, IDisposable
 
         if (_nodeInstance is INodeCustomActionProvider provider)
         {
-            provider.ExecuteCustomAction(actionId, new NodeCustomActionContext(FileFlow.App.Core.HostUi.MainWindowOwner, () => SyncParametersFromNodeInstance()));
+            // Los DIÁLOGOS del host van en el contexto, y no es un adorno: hay acciones que NO abren nada en un
+            // host sin el toolkit del escritorio —su ventana es del escritorio— y lo que hacen es DECLARARLO
+            // (<c>DesktopOnlySurface.Declare</c>, hito 268) por los diálogos de quien las abrió. Sin el servicio
+            // aquí, esa costura cae al nulo declarado del Sdk: el nodo sigue declarando la frontera, la traza
+            // queda en consola y el usuario pulsa un botón que **no hace nada y no avisa**. Se resuelve por el
+            // contenedor del host, que es el mismo camino que usa la superficie declarada veinte líneas más
+            // abajo: los dos botones del nodo tienen que avisar igual.
+            provider.ExecuteCustomAction(actionId, new NodeCustomActionContext(
+                FileFlow.App.Core.HostUi.MainWindowOwner,
+                () => SyncParametersFromNodeInstance(),
+                FileFlow.App.Core.CoreDialogHost.ResolveDialogService()));
             SyncParametersFromNodeInstance();
             return;
         }

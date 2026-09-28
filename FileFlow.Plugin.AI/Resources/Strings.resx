@@ -203,4 +203,6 @@
   <data name="VlmConfig_SampleSuccess" xml:space="preserve"><value>✨ Sample inference completed in {0} ms ({1} tokens). {2} variables detected.</value></data>
   <data name="VlmConfig_SampleError" xml:space="preserve"><value>❌ Sample inference error: {0}</value></data>
   <data name="VlmConfig_VariablesApplied" xml:space="preserve"><value>✅ {0} variables imported into node successfully.</value></data>
+  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Desktop host window</value></data>
+  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» opens in the desktop host: this host does not have the toolkit that mounts it. Open it from the desktop application.</value></data>
 </root>

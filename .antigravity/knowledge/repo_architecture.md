@@ -9,7 +9,9 @@
 
 ```
 ArchiveProceser/
-├── FileFlow.slnx                     # Solución XML de .NET 10 LTS
+├── FileFlow.slnx                     # Solución XML de .NET 10 LTS (el host de ESCRITORIO, con Avalonia)
+├── FileFlow.Uno.slnx                 # Solución del host UNO (WinUI 3): su grafo sin Avalonia (hito 268)
+├── Directory.Build.props             # Sabor de UI: FileFlowUnoHost sale del nombre de la SOLUCIÓN
 ├── LICENSE                           # Licencia GNU General Public License v3.0 (GNU GPLv3)
 ├── GEMINI.md                         # Directivas de contexto y persistencia
 ├── AGENTS.md                         # Protocolo de arranque y estándares de agentes
@@ -44,6 +46,7 @@ ArchiveProceser/
 - **`FileFlow.Core`**: Depende de `FileFlow.Sdk`. Orquesta canales asíncronos (`System.Threading.Channels`), grafos DAG, `WorkflowWorkspaceManager`, `ExecutionJournalService`, `SqliteLogStore` y `AdaptiveConcurrencyManager`.
 - **`FileFlow.Plugin.*`**: Dependen exclusivamente de `FileFlow.Sdk` y librerías de dominio específicas.
 - **`FileFlow.App`**: Depende de `FileFlow.Core` y `FileFlow.Sdk`. Consume plugins dinámicamente mediante `PluginLoader`, Nodify, `CommunityToolkit.Mvvm` y `Microsoft.Extensions.DependencyInjection`.
+- **`FileFlow.App.Uno`**: El host WinUI 3, hermano de `FileFlow.App` sobre la MISMA capa portable (`FileFlow.App.Core`). Se compila con `dotnet build FileFlow.Uno.slnx`: esa solución deja fuera el host de Avalonia y define el **sabor de UI** (`FileFlowDesktopToolkit=false`, constante `FILEFLOW_NO_DESKTOP_TOOLKIT`), con el que los plugins **no compilan** sus ventanas del toolkit del escritorio —por eso su binario no lleva una sola DLL de Avalonia—.
 - **`FileFlow.Tests`**: Batería de pruebas que valida el 100% de los componentes con `xUnit`, `FluentAssertions` y `Moq`.
 
 ---
@@ -68,6 +71,7 @@ ArchiveProceser/
 - [`IUiDispatcher`](file:///FileFlow.Sdk/Services/IUiDispatcher.cs) & [`IClipboardService`](file:///FileFlow.Sdk/Services/IClipboardService.cs): Abstracciones de infraestructura de UI desacopladas del framework de presentación.
 - [`IStorageService`](file:///FileFlow.Sdk/Storage/IStorageService.cs): Operaciones de sistema de archivos físico y virtual con resolución de colisiones.
 - [`IOsPlatformService`](file:///FileFlow.Sdk/Platform/IOsPlatformService.cs): Servicios de SO (shells, argumentos, papelera de reciclaje y memoria).
+- [`DesktopOnlySurface`](file:///FileFlow.Sdk/Services/DesktopOnlySurface.cs): La costura de las superficies que sólo el host de ESCRITORIO puede montar (hito 268). Un nodo compilado sin el toolkit del escritorio **declara** ahí que su ventana pertenece al escritorio —aviso por los diálogos de quien lo abrió y traza en el canal de errores— en vez de construir a ciegas una ventana de otro framework. El texto del aviso lo pone cada plugin; aquí vive el mecanismo.
 - [`JsonDefaults`](file:///FileFlow.Sdk/Serialization/JsonDefaults.cs): Serialización y deserialización relajada UTF-8 y formateo seguro de logs JSON.
 - [`VariableTemplateResolver`](file:///FileFlow.Sdk/TemplateEngine/VariableTemplateResolver.cs): Motor de resolución de tokens `{Archive:...}`, `{Exif:...}`, `{Hash:...}`, `{Date:...}`, etc.
 

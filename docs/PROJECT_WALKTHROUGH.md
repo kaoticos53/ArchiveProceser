@@ -1,4 +1,150 @@
-﻿## [2026-09-28] - Hito 267: La Sonda del Escritorio (el Trazo, el Pan y el Zoom con Puntero Inyectado)
+﻿## [2026-09-28] - Hito 270: El Botón del Nodo que Abre una Ventana del Escritorio Avisa, y los Paneles Laterales se Redimensionan
+
+### 🎯 Objetivos y Alcance
+El encargo, en una frase del usuario: «los botones en los nodos no parecen funcionar y los paneles laterales de inspector y catálogo de nodos no se pueden redimensionar. arréglalo». Dos mitades: (1) averiguar **qué** botón del nodo no hacía nada y por qué, y (2) hacer **redimensionables** el cajón de nodos y la ficha del inspector del host Uno, que tenían ancho fijo (la columna de 280 y el `Width="300"` de la ficha), como el escritorio los tiene (sus dos `GridSplitter` y el reparto 180–480 / 220–750).
+
+### 🔬 Lo que encontró la medida (con puntero REAL, no programático)
+1. **Los botones de la tarjeta SÍ respondían**. Con el puntero inyectado del instrumento de `docs/qa/qa_manual.py` (SetCursorPos + mouse_event, el que la sesión del 260 midió como «el contenido no reacciona»), hoy el host responde en todas las puertas del nodo, medido píxel a píxel: el LED del breakpoint se enciende en rojo, el del log se apaga, el conmutador despliega el panel, el «➕ Caso» de la tarjeta añade su puerto y el botón de la ficha abre el gestor de presets. La hipótesis de trabajo (el arrastre del lienzo robaba el puntero al pulsar un botón) **se descartó midiendo**: la traza del lienzo no recibe ni un `press` sobre un botón de la tarjeta —`ButtonBase` marca el gesto como manejado y el handler del editor no llega—.
+2. **El botón que no hacía nada era el de la ventana del ESCRITORIO**. Sobre el nodo de script, pulsar «💻 Editor de Scripts...» con puntero real no abría nada, no avisaba y no dejaba más rastro que una línea en la consola del proceso («`[DesktopOnlySurface] «Estudio de Scripts» no se puede montar en este host…`»). La causa: `NodeViewModel.ExecuteCustomAction` construía el `NodeCustomActionContext` **sin el servicio de diálogos**, así que la costura del hito 268 —que declara la frontera por los diálogos de quien la abrió— caía al `NullDialogService` del Sdk. Los siete nodos con ventana del toolkit hacían su mitad (`(context as NodeCustomActionContext)?.Dialogs`) y **el teléfono no estaba puesto en la otra**: la frontera era cierta en el código y falsa de cara al usuario. El mismo hueco estaba en la puerta del **gestor de contraseñas** (`NodeParameterViewModel.OpenPasswordManager`).
+3. **La frontera del 268 decía la verdad y no se había ejercido**, tal y como su propio apartado de fronteras declaraba: lo medido era la costura con un doble puesto a mano, y la guardia del 268 no mira quién construye el contexto. Un defecto así no lo caza ningún lint de texto (el nodo sigue declarando, la traza sigue escribiéndose y el sabor sigue siendo hermético).
+4. **El aviso tampoco era visible para nadie más**. `UnoDialogService.ShowCoreAsync` mostraba su `ContentDialog` **fuera** del estado `UnoWindowService.ActiveDialog`, que es el que el propio host consulta antes de abrir otro modal (WinUI admite uno) y el que leen las sondas: el aviso se veía, pero el host no sabía que estaba ahí y una sonda no podía distinguir «se avisó» de «no pasó nada». Ahora se publica por `RunOwnedAsync`.
+5. **El lanzador no esperaba a la aplicación**. `run-uno.ps1` / `run-uno-fast.ps1` lanzaban el host con `& $exePath` y PowerShell **no espera a las aplicaciones de GUI**: el script devolvía «exit 0» con el sondeo todavía corriendo y el informe a medio escribir —o el de la corrida anterior—. Se midió al leer un veredicto que no era de la corrida que se acababa de lanzar; ahora los dos lanzadores usan `Start-Process -Wait -PassThru` y heredan el código de salida de verdad.
+6. **La sonda nueva tenía su propia trampa**: `WaitUntil` ya envuelve su condición en `Probe`, así que anidar un `Probe` dentro de él deja al hilo de UI esperándose a sí mismo y devuelve un «no» falso (medido en esta misma sonda: el texto del aviso aparecía en el informe como si se hubiera leído). La espera y la lectura quedan separadas.
+7. **WinUI 3 no trae `GridSplitter` y `Border` está sellado**: el asa se escribe sobre `Grid` (lo que necesita del árbol es un `Background` opaco al puntero), con el reparto del escritorio y una cota más —el arrastre no puede dejar al lienzo por debajo de su mínimo—, porque el área de clic de las tarjetas se mide del árbol visual.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.App.Core/ViewModels/NodeViewModel.cs` | El contexto del botón del nodo lleva el **servicio de diálogos del host** (`CoreDialogHost.ResolveDialogService()`, el mismo camino que la superficie declarada veinte líneas más abajo): la frontera del 268 llega al usuario. |
+| `FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs` | La puerta del **gestor de contraseñas** del mismo hueco: su `_dialogService`, que ya tenía en la mano. |
+| `FileFlow.App.Uno/Platform/UnoDialogService.cs` + `UnoWindowService.cs` | El aviso se muestra **publicándose** como el modal abierto (`RunOwnedAsync`): el segundo `ContentDialog` se detecta de verdad y la sonda ve el aviso. |
+| `FileFlow.App.Uno/Controls/PanelSplitter.cs` (nuevo) | El **asa** del marco: 5 px, puntero capturado durante el arrastre, cursor de redimensionado y la cuenta en UN sitio (`Resolve(startWidth, delta, min, max, room)`), con el tope del lienzo como segunda cota. |
+| `FileFlow.App.Uno/MainWindow.xaml` / `.xaml.cs` | Las **cinco columnas** del editor (cajón · asa · lienzo · asa · ficha) con las cotas del escritorio, las dos asas atadas a sus columnas y la ficha que **conserva su ancho** al plegarse y volver (`ApplyInspectorVisibility`, con el asa siguiendo la visibilidad del panel). |
+| `FileFlow.App.Uno/RuntimeSelfCheck.cs` | Tres medidas nuevas en `--selfcheck-dialogs`: el nodo con ventana del escritorio declara y la ficha la pinta, su botón **AVISA nombrando la ventana** (el nombre se lee del diccionario del plugin, no de un literal), y el aviso se retira limpio. |
+| `run-uno.ps1` / `run-uno-fast.ps1` | Los sondeos **esperan** al proceso y heredan su código de salida. |
+| `FileFlow.Tests/Unit/App/NodeActionFrontierWiringTests.cs` (nuevo) | Tres casos: el aviso **llega** al servicio de diálogos del host por el camino entero del botón; el contexto lleva SIEMPRE un servicio (el nulo declarado sin host, nunca `null`); y el **censo** de las construcciones del contexto en el núcleo portable (una puerta nueva sin diálogos vuelve a ser un botón mudo). |
+| `mutations/boton-del-nodo-que-no-avisa.json` (nuevo) | El defecto declarado: quitar el tercer argumento del contexto deja el botón mudo sin que ningún lint de texto lo vea. |
+
+### 🛡️ Guardias, pruebas y mutaciones
+- **+3 casos** en `NodeActionFrontierWiringTests` (la suite pasa de 1961 a **1964**).
+- **1 mutación nueva** `boton-del-nodo-que-no-avisa` → **MUERDE** (34,5 s; testigo `TheNodeActionButton_ShouldShowTheDesktopOnlyWarning_InTheHostDialogs` rojo, control `DeclaringTheFrontier_ShouldShowItInTheHostDialogs` verde — que es justo lo que separa «el botón no lleva sus diálogos» de «la costura dejó de avisar», con su propia mutación desde el 268).
+- La sonda del host es la que **cierra la frontera del 268** («empujar esos botones con la aplicación abierta sigue siendo materia de una sesión manual»): ahora se empuja desde el propio sondeo y el aviso se lee en el informe.
+- **Dos defectos los cazó la suite al cerrar el tramo** (arreglados antes de darlo por bueno): (1) las dos claves de las asas (`Uno_SplitterToolbox` / `Uno_SplitterInspector`) se citaban **sin estar en ninguno de los dos diccionarios**, así que el nombre del asa se habría resuelto por el fallback incrustado en el código y **no habría cambiado de idioma** —el defecto que la superficie de ajustes mide, cazado por `EveryCitedUnoKey_ShouldExistInBothDictionaries`—; (2) el sobre del modal que este tramo añadió escribía **una tercera** llamada a `TearDownInlineQuestion(false)`, y la guardia del 263 cuenta **dos** vías de abandono: en vez de aflojar la guardia, la ventana del catálogo y el aviso comparten ahora `ShowOwnedModalAsync` y la cuenta sigue siendo **dos**.
+
+### ✅ Validación
+| Pieza | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **0 errores** |
+| Sonda del host (`-SelfCheck`) | **EXIT 0 · 85 `[OK]` · 0 `[FALLO]` · VERIFICADO** con el marco nuevo (el área de clic sigue coincidiendo con las tarjetas dibujadas: el lienzo pasa a (285,0) y se **mide**, no se supone) |
+| Sonda de los paneles de nodo (`-SelfCheckDialogs`) | **EXIT 0 · 51 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 48: las tres medidas de la frontera) |
+| La suite completa | **1963 superadas + 1 omitida de 1964, 0 errores** (2 m 33 s; el total pasa de 1961 a 1964) |
+| Mutaciones | **1 nueva, MUERDE** (34,5 s) |
+
+### 🟠 Fronteras declaradas
+- **Las siete ventanas del toolkit siguen sin poder montarse en este host**: lo que cambia es que su botón **avisa** nombrando la ventana (y su traza queda en consola). Abrirlas es del escritorio.
+- **El asa se mide por su cuerpo, no por el ratón del sistema**: lo ejercitado en el selfcheck es el mismo camino (la cuenta y la aplicación del ancho) y el arrastre con puntero real del asa queda para la sesión manual, junto al resto de gestos.
+- **Los anchos no se persisten entre sesiones**: el reparto del escritorio se recupera al arrancar (cajón 280, ficha 300) y lo que el usuario ajuste vive lo que viva la ventana.
+- **El asa de la ficha se retira con el panel**: sin columna que gobernar, un mando visible sería un mando que no manda.
+- **El censo del contexto cubre el núcleo portable**, no las construcciones que un plugin haga por su cuenta (hoy no hay ninguna).
+
+---
+
+## [2026-09-28] - Hito 269: La Tarjeta Enseña lo que Hace, y las Acciones del Nodo Llegan a la Ficha
+
+### 🎯 Objetivos y Alcance
+El encargo, en dos frases del usuario: «en los nodos, al desplegarlos se ve el listado de parámetros pero no se puede hacer nada con ellos: mejor quítalos y déjalos que solo se puedan editar en el inspector» y «en estos a veces aparecen botones que abrirían diálogos de configuración que no están en el inspector: añádelos». Es decir: el panel plegable de la tarjeta del host Uno tenía una **lista muerta** (nombres sin editor) y, al mismo tiempo, la ficha del inspector **no tenía** las acciones del nodo, que son la puerta a sus superficies.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.App.Uno/Controls/NodeCardView.xaml` | El panel plegable se queda **con lo que hace algo**: fuera el `ItemsControl` de `Node.Parameters` (nombres, sin editor y sin gesto), dentro las **acciones del nodo**. El conmutador de la cabecera pasa a dibujarse **sólo si el nodo declara acciones** (un chevron que despliega un panel vacío es el botón-que-no-hace-nada que este tramo quita). Los `x:Name` (`ParametersToggle`, `ParametersPanel`, `ParametersIcon`) y el `AutomationId` `NodeCardExpandToggle` se conservan: son anclas estables de las sondas y de la guardia, y el comentario del XAML dice por qué el nombre ya no describe lo que despliegan. |
+| `FileFlow.App.Uno/Controls/NodeCardViewModel.cs` | La condición en UNA propiedad: `ActionsPanelVisible => HasCustomActions && _node.IsExpanded`. El estado desplegado sigue siendo del **núcleo** (`Node.IsExpanded`, con su refresco agregado) y el rótulo del conmutador pasa a decir lo que hace **este** host («Mostrar/Ocultar las acciones del nodo») conservando la clave del escritorio, que es la que audita la guardia de textos compartidos. |
+| `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | El **bloque de ACCIONES** de la ficha (pestaña de Parámetros, en el orden del escritorio: descripción → acciones → parámetros): un botón por acción declarada, con su `ToolTip`, su ancla `InspectorAction_<ActionId>` y el comando del view model **portable** (`NodeActionViewModel.ExecuteCommand` → `NodeViewModel.ExecuteCustomAction`, la MISMA orden que el botón de la tarjeta). El encabezado se localiza en caliente (`Uno_InspectorActions`) y el bloque entero se colapsa sin acciones. Superficie para la sonda: `ActionButtonCount` y `ActionControl(actionId)`. |
+| `FileFlow.App.Uno/Resources/Strings{,.es}.resx` | La clave nueva del encabezado y el texto del conmutador, en los dos idiomas (el diccionario del host es el que este host carga; el del plugin no). |
+| `FileFlow.Tests/Unit/App/UnoNodeDialogsGuardTests.cs` | El caso de la puerta de la tarjeta se reescribe al contrato nuevo: el panel cuelga de `ActionsPanelVisible`, el conmutador de `HasCustomActions`, y el listado de parámetros de la tarjeta **no puede volver** (aserción negativa sobre el XAML). |
+| `FileFlow.Tests/Unit/App/UnoInspectorPanelGuardTests.cs` | Caso nuevo `InspectorPanel_ShouldPaintTheNodeActions_SoTheirSurfacesAreReachableWithoutTheCard` (colección del núcleo, comando portable, ancla por `ActionId`, encabezado localizado, bloque que se colapsa y la medición en runtime) + fila en la tabla de paridad del inspector. |
+| `mutations/acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta.json` (nuevo) | La mutación del bloque nuevo: quitar el bucle de acciones de la ficha deja la superficie del nodo inalcanzable para quien no despliegue una tarjeta. |
+
+### 🔬 Lo que encontró la medida
+1. **La lista muerta se veía verde por todas partes.** El panel de la tarjeta existía, se desplegaba, tenía su conmutador probado y su acción «🎬 Presets...» cableada; lo que no había era **nada que hacer** con la mitad de su contenido. Ninguna pieza mentía por separado: el defecto estaba en la composición (una lista que invita a interactuar y no responde).
+2. **La puerta existía en un solo sitio.** Las acciones del nodo se pintaban **sólo** en el panel de la tarjeta del lienzo; el escritorio las pinta también en su ficha, y este host no. La medición lo cazó en cuanto la sonda preguntó por ellas: `acciones del nodo en la ficha: 0 de 0` en el flujo de ejemplo y, en el modo de los paneles, `la ficha del inspector pinta las acciones del nodo (1 botón, ancla 'InspectorAction_ManageMediaPresets')` tras el arreglo.
+3. **La sonda dijo la verdad incómoda.** El primer intento de la sonda buscaba en el lienzo una tarjeta **con acciones** —y el flujo de ejemplo no tiene ninguna, porque el único nodo con acciones lo añade el modo de los paneles. En vez de dar la medida por buena, el sondeo mide ahora el **contrato** en todas las tarjetas (lo que enseña la vista == lo que dice el adaptador) y deja el ejercicio completo —desplegar, ver el panel con su chevron y pulsar la acción— donde el nodo existe de verdad.
+4. **El andamiaje cazó dos mutaciones propias obsoletas.** `MutationDeclarationGuardTests.EveryDeclaredMutation_ShouldStillFitTheProductAndTheSuite` se puso rojo nombrando los fragmentos que el código ya no contiene (`conmutador-de-parametros-que-no-refresca`, que cita la línea de refresco que este tramo reescribió) y `mutate.ps1` rechazó la mutación nueva por una palabra de menos en el fragmento declarado («el del view model» vs «del view model»). Las dos se corrigieron **antes** de dar el tramo por bueno: la declaración de una mutación es código, no prosa.
+5. **Un rótulo que mentía.** El conmutador de la tarjeta se llamaba «Mostrar/Ocultar parámetros» y ya no despliega parámetros: el texto de este host dice ahora lo que hace, con la clave intacta para no romper el censo de textos compartidos.
+
+### 🛡️ Guardias, pruebas y mutaciones
+- **+1 caso** en `UnoInspectorPanelGuardTests` y el caso de la tarjeta reescrito: la suite pasa de **1960** a **1961** (1959 superadas + 1 omitida en la corrida completa, con el flake de CPU conocido en `EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven`, que pasa en aislamiento).
+- **1 mutación nueva** `acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta` → **MUERDE** (28,4 s; testigo `InspectorPanel_ShouldPaintTheNodeActions_SoTheirSurfacesAreReachableWithoutTheCard` rojo, control `TheNodeCard_ShouldBeAbleToShowThePanelWhereTheQuickActionsLive` verde). Las **dos** mutaciones que citan lo que este tramo reescribió se actualizaron y vuelven a morder: `tarjeta-sin-la-puerta-de-sus-parametros` (**MUERDE**, 28,9 s) y `conmutador-de-parametros-que-no-refresca` (**MUERDE**, 28,6 s).
+- `COVERAGE.md` regenerado por su guardia: **100 declaradas** (antes 99).
+
+### ✅ Validación
+| Pieza | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **Compilación correcta · 0 errores** (los avisos son los preexistentes del host y el `PRI257` de WinAppSDK) |
+| Sonda del host (`.\run-uno-fast.ps1 -SelfCheck`) | **EXIT 0 · 85 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 88: el ejercicio del panel se mudó a donde hay una tarjeta con acciones y la puerta se mide ahora como contrato sobre las 3 tarjetas del lienzo) |
+| Sonda de los paneles de nodo (`-SelfCheckDialogs`) | **EXIT 0 · 48 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 46; incluye las dos medidas nuevas: la acción del nodo en la ficha y el despliegue del panel de la tarjeta con su chevron) |
+| Sondas de barra de control y de ajustes | `-SelfCheckControlBar` y `-SelfCheckSettings` → **exit 0** (sin cambios en esas superficies) |
+| Suite completa | **1959 superadas + 1 omitida de 1961** (2 m 39 s) |
+| Mutaciones | **1 nueva + 2 actualizadas, las tres MUERDEN** · **100 declaradas** |
+
+### 🟠 Fronteras declaradas
+- **El cambio es del host Uno.** El host de escritorio (Avalonia) conserva sus parámetros **en línea en la tarjeta**, que allí **sí** se editan (toggle, deslizador, desplegable, ruta con explorar, editor y catálogo de variables): la queja —«no se puede hacer nada con ellos»— es de la tarjeta del host Uno, donde el listado era un `TextBlock` sin editor. Igualar los dos hosts aquí sería quitarle al escritorio una capacidad que funciona.
+- **Las acciones del nodo viven ahora en DOS sitios del host Uno** (el panel de la tarjeta y el bloque de la ficha): es la paridad con el escritorio y una decisión deliberada — el atajo del lienzo no se toca, y la ficha garantiza que la superficie no dependa de saber desplegar una tarjeta.
+- **Un nodo sin acciones no despliega nada**: sin conmutador no hay panel, y el estado `IsExpanded` del núcleo se conserva (los grafos guardados no cambian de forma).
+- **El botón de la ficha ejecuta la MISMA orden** que el de la tarjeta, así que en este host hereda su frontera: las superficies que el catálogo sirve (gestor de presets, diseñador de datasets) se abren; las que son ventanas del toolkit (configuración del VLM, estudio de scripts, gestión de contraseñas) **avisan** nombrando la ventana. La ficha no finge una capacidad que el host no tiene.
+
+---
+
+## [2026-09-28] - Hito 268: La Solución del Host Uno que Compila con `dotnet` y sin Avalonia (el Sabor de UI)
+
+### 🎯 Objetivos y Alcance
+El encargo: el host Uno se compilaba con **MSBuild de Visual Studio** (la nota de `AGENTS.md` decía que los targets de WinAppSDK **no corren** con `dotnet build`) y su binario arrastraba **las 16 DLL de Avalonia** que entran por los cinco plugins que traen ventanas del toolkit del escritorio. Objetivo: **una solución para Visual Studio** del host Uno, que **compile también con `dotnet`** y que compile ese host **sin nada de Avalonia**.
+
+### 🔍 La premisa caducada (lo primero que se midió)
+`dotnet build FileFlow.App.Uno/FileFlow.App.Uno.csproj` **ya compilaba** —**0 errores, 37 s**, con su `.exe`—: el proyecto declara `WindowsPackageType=None` + `WindowsAppSDKSelfContained=true`, que es justo lo que hace correr los targets de WinAppSDK sin MSBuild de VS. La frontera de `AGENTS.md` **había dejado de ser cierta sin que nadie volviera a medirla**, y el camino caro (seguir invocando MSBuild de fuera) tapaba además el problema de verdad: **Avalonia viajaba al host**. De los cinco plugins con ventanas (`AI`, `Archives`, `FileSystem`, `Integrations`, `Scripting`) salen **7 ventanas `.axaml`**, 12 ficheros `.cs` con `using Avalonia` y, en el binario del host, **16 DLL** (`Avalonia.*`, `AvaloniaEdit`, `Material.Icons.Avalonia`).
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.Uno.slnx` (nuevo) | La solución del host Uno: su proyecto y **todo su grafo**, sin `FileFlow.App` (el host Avalonia) ni `FileFlow.Tests`. Se abre en Visual Studio **y** compila con `dotnet build`. |
+| `Directory.Build.props` | El **SABOR DE UI**: `FileFlowUnoHost` sale del **NOMBRE de la solución** (`$(SolutionFileName) == 'FileFlow.Uno.slnx'`), `FileFlowDesktopToolkit` es su inverso y de ahí sale la constante `FILEFLOW_NO_DESKTOP_TOOLKIT` que leen los nodos. El defecto es **escritorio**: compilar un proyecto suelto (o la solución del escritorio) no cambia de producto por sorpresa, y el script pasa `-p:FileFlowUnoHost=true` explícito para no depender del nombre. |
+| 5 `FileFlow.Plugin.*/…csproj` | Los paquetes de Avalonia (`Avalonia`, `Avalonia.Themes.Fluent`, `Avalonia.Controls.DataGrid`, `Avalonia.AvaloniaEdit`, `Material.Icons.Avalonia`) pasan a estar **condicionados** al toolkit, y el sabor Uno declara qué ficheros **no compila** (las 7 ventanas, sus convertidores, los dos view models que sólo existen para ellas) y añade `Material.Icons` —el paquete puro— porque el árbol del diseñador sí elige su icono. |
+| `FileFlow.Sdk/Services/DesktopOnlySurface.cs` (nuevo) | La **costura de la frontera**: el nodo que se compila sin el toolkit **no** construye su ventana y **declara** que pertenece al escritorio por los diálogos de quien lo abrió (`ShowWarning`) más una traza en el canal de errores. El **texto** no vive aquí: lo pone cada plugin (mecanismo en el SDK, palabras en quien las dice). |
+| Los **7 nodos** | `SmartUnpackNode`, `ArchiveFanOutNode`, `MultimodalVisionLlmNode`, `AdvancedRenamerNode`, `SyntheticDataSourceNode`, `MediaTranscoderNode` y `CustomScriptNode`: su bloque del toolkit (construir la ventana, resolver el propietario, `ShowDialog` y leer el resultado) queda dentro de su región condicional, con `DesktopOnlySurface.Declare` en la mitad sin toolkit. Los dos que **además declaran su superficie** al SDK (diseñador de datasets y gestor de presets) llevan ahí su **defensa declarada**: en el host Uno se sirven por el catálogo del host y por este camino no se llega (el núcleo abre la superficie declarada antes de tocar la acción). |
+| `UI/Services/DesktopFilePicker.cs` (nuevo, plugin FileSystem) | La costura del **selector de archivos** del Diseñador de Datasets: su view model es PORTABLE —lo pintan los dos hosts— y hasta ahora llamaba a la API de almacenamiento de Avalonia, así que arrastraba el toolkit entero *y* hacía del importar/exportar del host Uno un **no-op silencioso**. Una implementación por sabor (la de escritorio monta el selector real; la del host declara la frontera y devuelve «no hay fichero»). |
+| `run-uno.ps1` | Compila con **`dotnet build FileFlow.Uno.slnx`** (adiós al parámetro `-MsBuildPath` y a MSBuild de VS) y sigue esperando el proceso y heredando el código de salida en los sondeos. |
+| `FileFlow.Tests/Unit/App/UnoHermeticBuildGuardTests.cs` (nuevo) | La guardia del sabor: 7 casos que atan la solución (y que todo lo que el host referencia esté en ella), el sabor y su constante, la condición del toolkit en los cinco plugins, la **medición del hermetismo** (ningún fichero que el sabor Uno compila menciona Avalonia **fuera de una región condicional**, con la profundidad de preprocesador como criterio y el censo de >100 ficheros como anti-vacuidad), la frontera de los 7 nodos, sus textos en los DOS idiomas (y las claves de los nombres que citan) y el lanzador. |
+| `FileFlow.Tests/Unit/App/DesktopOnlySurfaceTests.cs` (nuevo) | La medición **por comportamiento** de la costura: con un doble de diálogos que se acuerda, la frontera se dice **una vez** y con el nombre de la superficie; sin diálogos no revienta. |
+
+### 🔬 Lo que encontró la medida (y lo que cazó la guardia mientras se escribía)
+1. **La premisa escrita y nunca re-medida.** `AGENTS.md` afirmaba que el host Uno **no** compilaba con `dotnet build`. Era **falso desde que el proyecto declaró `WindowsPackageType=None`**: la nota sobrevivió al cambio que la invalidaba. Lección del tramo: una frontera declarada sin fecha de caducidad se vuelve una excusa para no probar el camino corto.
+2. **El compilador fue el mapa del acoplamiento.** Enumerar «qué menciona Avalonia» a mano dejaba fuera cosas: el primer `dotnet build FileFlow.Uno.slnx` falló por **7 errores concretos** —dos usings de namespaces que dejan de existir sin el toolkit, el view model del VLM que sólo existía para su ventana y `MaterialIconKind` en el árbol del diseñador— y cada uno fue una pieza de arquitectura que estaba escondida detrás de un `using`.
+3. **La guardia cazó su propio criterio, dos veces.** La primera, al confundir **prosa con código**: el `DesktopFilePicker` explicaba en su documentación que el toolkit es de Avalonia y el barrido lo contaba como mención (ahora lee el código **sin comentarios**). La segunda, al censar por prefijo: `FileFlow.App.Core` —la capa PORTABLE que los dos hosts comparten— empieza igual que el host de escritorio, así que el censo se mira **por directorio** y no por nombre.
+4. **Las DLL de Avalonia sobrevivían al cambio de fuente** en el `bin` del host (un build incremental no borra lo que ya estaba): el «cero Avalonia» se midió **limpiando la salida** y volviendo a compilar, no confiando en el build incremental.
+
+### 🛡️ Guardias, pruebas y mutaciones
+7 casos en `UnoHermeticBuildGuardTests` + 2 en `DesktopOnlySurfaceTests` (**+9**, la suite pasa de 1951 a **1960**). Una mutación nueva **`frontera-de-escritorio-que-no-avisa` → MUERDE** (30,5 s; testigo `DeclaringTheFrontier_ShouldShowItInTheHostDialogs` rojo, control `NoPluginThatDrawsAWindow_ShouldReferenceTheToolkit_OutsideItsCondition` verde). `COVERAGE.md` regenerado por su guardia: **99 declaradas · 15 de 17 subsistemas · 17 de 46 guardias** con una mutación que las muerde (antes **98 · 17 de 45**).
+
+### ✅ Validación
+| Pieza | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **Compilación correcta · 0 errores** (los 51 avisos son los preexistentes del host) |
+| Salida del host Uno | **0 DLL de Avalonia** (antes **16**: `Avalonia.*`, `AvaloniaEdit`, `Material.Icons.Avalonia`), medida tras limpiar `bin/` y `obj/`; queda `Material.Icons.dll`, que es el paquete puro del icono |
+| Sonda del host Uno (`.\run-uno.ps1 -SelfCheck`) | **EXIT 0 · 88 `[OK]` · 0 `[FALLO]` · VERIFICADO**, el mismo recuento que antes del cambio: la hermesis del build no tocó el comportamiento del host |
+| Suite completa | **1959 superadas + 1 omitida de 1960, 0 errores** (2 m 58 s; antes **1950 + 1**: los siete casos del sabor y los dos de la costura) |
+| Mutaciones | **1 nueva, MUERDE** · **99 declaradas** · **17 de 46 guardias** con mutación que las muerde |
+| Solución del escritorio | `FileFlow.slnx` **intacta** (la guardia exige que siga compilando la app con Avalonia) |
+
+### 🟠 Fronteras declaradas
+- **Lo que el host Uno pierde, y se dice al decirlo**: las siete ventanas del toolkit (Gestor de Contraseñas, configuración del VLM, Estudio de Renombrado, Diseñador de Datasets por la acción personalizada, Gestor de Presets por la acción personalizada, Estudio de Scripts) y el **selector de archivos** del diseñador. Dos de ellas se sirven por su **superficie declarada** (el catálogo del host las cumple); las otras cinco **avisan con el nombre de la ventana** y su motivo por los diálogos del host, en vez de no hacer nada. Antes de este tramo, empujar esos botones construía una ventana de **otro framework** dentro del proceso WinUI.
+- **El sabor es una propiedad del GRAFO, no del código**: los plugins siguen siendo **los mismos** y el escritorio no cambia una línea de su comportamiento; lo que cambia es qué mitad de cada plugin se compila. Las dos soluciones **se pisan los `bin`** de los plugins (el último build manda), así que compilar un host recompila los plugins para ese host.
+- **`FileFlow.Tests` no entra en la solución del host Uno**: sus pruebas montan ventanas de Avalonia (siguen siendo del sabor de escritorio) y entran por `FileFlow.slnx`.
+- **El host Uno sigue sin empaquetado**: se compila y se ejecuta, no se reparte instalado (la frontera de entrega sigue abierta).
+- **La frontera NO se ha ejercido con el host Uno abierto**: lo que está medido es (a) que el sabor Uno compila y su salida no lleva Avalonia —build tras limpiar, guardia del censo y sonda del host en verde—, (b) que la costura **avisa de verdad** (prueba de comportamiento con un doble de diálogos) y (c) que **cada nodo la declara** con el nombre de su ventana y sus textos en los dos idiomas. **Empujar esos botones con la aplicación abierta y leer el aviso** —y su canal externo— sigue siendo materia de una sesión manual, como el resto de las fronteras declaradas.
+
+---
+
+## [2026-09-28] - Hito 267: La Sonda del Escritorio (el Trazo, el Pan y el Zoom con Puntero Inyectado)
 
 ### 🎯 Objetivos y Alcance
 Cerrar la segunda mitad de la frontera que el **266 declaró**: «el escritorio **no tiene sonda propia** (las `--selfcheck*` son del host Uno) y el trazo **con un dedo** queda para una sesión del escritorio». Objetivo: dar al host de escritorio su **propia sonda de autorrevisión** —arranca la **aplicación real** y la mide desde dentro, con **veredicto por código de salida** e informe junto al ejecutable, como las del host Uno— y **usarla para medir el lienzo con puntero inyectado**: el trazo del cable, el pan y el zoom, cada uno con su gesto y con la medida repetida después.

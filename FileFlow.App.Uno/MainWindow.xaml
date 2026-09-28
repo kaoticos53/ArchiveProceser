@@ -16,21 +16,38 @@
          punto de entrada a los ajustes conserva el AutomationId «SettingsButton» del hito 255. -->
     <controls:ControlBar x:Name="Bar" Grid.Row="0" />
 
-    <!-- Las tres zonas del editor de escritorio: cajón de herramientas | lienzo | inspector -->
-    <Grid Grid.Row="1">
+    <!-- Las cinco zonas del editor de escritorio: cajón | asa | lienzo | asa | inspector.
+
+         El escritorio declara esta misma topología en su `MainWindow.axaml` (260 · GridSplitter · lienzo ·
+         GridSplitter · ficha) y reparte los anchos con sus cotas: cajón 180–480 y ficha 220–750. Aquí las
+         asas son `PanelSplitter` —WinUI 3 no trae `GridSplitter` y este host no referencia el paquete de la
+         comunidad—, con el reparto del escritorio y una cota más: el arrastre no puede dejar al lienzo por
+         debajo de su mínimo, porque el área de clic de las tarjetas se mide del árbol visual. Hito 270. -->
+    <Grid x:Name="Workspace">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="280" />
-        <ColumnDefinition Width="*" />
+        <ColumnDefinition x:Name="ToolboxColumn" Width="280" MinWidth="180" MaxWidth="480" />
         <ColumnDefinition Width="Auto" />
+        <ColumnDefinition x:Name="CanvasColumn" Width="*" MinWidth="320" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition x:Name="InspectorColumn" Width="300" MinWidth="220" MaxWidth="750" />
       </Grid.ColumnDefinitions>
 
       <controls:NodeToolboxPanel x:Name="Toolbox" Grid.Column="0"
                                  Background="{StaticResource CanvasSurfaceBrush}" />
 
-      <controls:EditorCanvasControl x:Name="Canvas" Grid.Column="1" />
+      <!-- El asa del CAJÓN: su columna está a la izquierda, así que crece al arrastrar hacia la derecha. -->
+      <controls:PanelSplitter x:Name="ToolboxSplitter" Grid.Column="1"
+                              AutomationProperties.AutomationId="ToolboxSplitter" />
 
-      <controls:NodeInspectorPanel x:Name="Inspector" Grid.Column="2" Width="300"
-                                   VerticalAlignment="Stretch" />
+      <controls:EditorCanvasControl x:Name="Canvas" Grid.Column="2" />
+
+      <!-- El asa de la FICHA: su columna está a la derecha, así que crece al arrastrar hacia la izquierda.
+           Su visibilidad sigue a la del panel: una asa sin columna que gobierne es un mando que no manda. -->
+      <controls:PanelSplitter x:Name="InspectorSplitter" Grid.Column="3"
+                              AutomationProperties.AutomationId="InspectorSplitter" />
+
+      <controls:NodeInspectorPanel x:Name="Inspector" Grid.Column="4"
+                                   VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
     </Grid>
 
     <Border Grid.Row="2" Background="#161B22" Padding="16,8">

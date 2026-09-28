@@ -12,10 +12,26 @@
     <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!--
+    SABOR DE UI (hito 268): el Gestor de Presets tiene DOS superficies: la ventana del escritorio (aquí, con
+    el toolkit del plugin) y el cuerpo del host Uno, que pinta su propia vista sobre el MISMO view model
+    portable. Sin el toolkit del escritorio se compila sólo la segunda —más el servicio del almacén, que es
+    del dominio—.
+  -->
+  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' == 'true'">
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
     <PackageReference Include="Material.Icons.Avalonia" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' != 'true'">
+    <Compile Remove="UI\Views\**\*.cs" />
+    <Compile Remove="UI\Converters\**\*.cs" />
+    <AvaloniaXaml Remove="UI\Views\**" />
+    <AvaloniaResource Remove="UI\Views\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Los view models PORTABLES del plugin (el gestor de presets): el mismo toolkit que usan los del plugin
          de sistema de archivos, para que las dos vistas —la ventana del escritorio y la del host Uno— enlacen
          las mismas órdenes y las mismas propiedades. -->

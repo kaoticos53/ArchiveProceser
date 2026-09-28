@@ -1,0 +1,26 @@
+{
+  "id": "acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta",
+  "hito": 269,
+  "claim": "La ficha del inspector del host pinta las ACCIONES del nodo (una por acción declarada, con su ancla InspectorAction_ y el comando del view model portable): son la puerta a sus superficies y no pueden depender de que el usuario sepa desplegar la tarjeta del lienzo.",
+  "why": "El defecto ya se midió una vez un paso antes: una acción declarada y sin puerta vale lo mismo que no tenerla. Aquí la puerta existía SÓLO en el panel plegable de la tarjeta, así que la superficie del nodo —el gestor de presets, la configuración del VLM, el estudio de scripts— era inalcanzable para quien no supiera desplegar una tarjeta, y el escritorio (que sí pinta el bloque en su ficha) se comportaba distinto con el mismo nodo. El mutante deja la ficha sin ese bloque: la acción sigue declarada, el comando sigue existiendo y nadie los cita.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "        foreach (var action in _inspected.CustomActions)\n        {\n            var button = new Button\n            {\n                Content = action.Title,\n                Padding = new Thickness(8, 3, 8, 3),\n                FontSize = 11,\n                HorizontalAlignment = HorizontalAlignment.Left\n            };\n            AnchorAction(\"InspectorAction_\" + action.ActionId, button);\n\n            // La orden se resuelve al pulsar (el botón guarda su acción, no un identificador suelto): el\n            // comando es el del view model portable y su ejecución acaba en ExecuteCustomAction del nodo.\n            button.Click += (_, _) => action.ExecuteCommand.Execute(null);\n\n            ToolTipService.SetToolTip(button, action.Tooltip ?? action.Title);\n            _actionsHost.Children.Add(button);\n        }\n",
+          "new": "        // mutante: la ficha del inspector deja de pintar las acciones del nodo\n        _ = _inspected;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~InspectorPanel_ShouldPaintTheNodeActions_SoTheirSurfacesAreReachableWithoutTheCard",
+    "why": "El caso exige el bucle sobre las acciones del nodo, el comando del view model portable, el ancla por ActionId y la medición en runtime de la sonda. Con el mutante las cuatro piezas desaparecen y el caso cae nombrando el bloque que falta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheNodeCard_ShouldBeAbleToShowThePanelWhereTheQuickActionsLive",
+    "why": "El caso hermano vigila la OTRA puerta (la tarjeta del lienzo: su panel, su conmutador y el estado del núcleo), que el mutante no toca: quita el bloque de la ficha, no la puerta del lienzo. Si cayera, el mutante estaría rompiendo la tarjeta y no la ficha."
+  }
+}

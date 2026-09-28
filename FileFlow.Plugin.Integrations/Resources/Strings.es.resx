@@ -53,4 +53,6 @@
   <data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>¿Deseas restablecer todos los presets a los valores por defecto del sistema?</value></data>
   <data name="PresetManager_NewPresetName" xml:space="preserve"><value>Nuevo Preset Personalizado</value></data>
   <data name="PresetManager_NewPresetDescription" xml:space="preserve"><value>Descripción del nuevo preset...</value></data>
+  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Ventana del host de escritorio</value></data>
+  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.</value></data>
 </root>

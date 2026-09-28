@@ -228,4 +228,7 @@
   <data name="Param_LogMetadata" xml:space="preserve"><value>Include Metadata</value></data>
   <data name="Param_LogExecutionHistory" xml:space="preserve"><value>Include History</value></data>
   <data name="Param_CompactFormat" xml:space="preserve"><value>Compact Format</value></data>
+  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Desktop host window</value></data>
+  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» opens in the desktop host: this host does not have the toolkit that mounts it. Open it from the desktop application.</value></data>
+  <data name="Plugin_FilePicker_Name" xml:space="preserve"><value>File picker</value></data>
 </root>

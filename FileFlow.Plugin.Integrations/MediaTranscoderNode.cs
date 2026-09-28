@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+#if !FILEFLOW_NO_DESKTOP_TOOLKIT
 using FileFlow.Plugin.Integrations.UI.Views;
+#endif
 using FileFlow.Sdk;
 using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
@@ -80,6 +82,19 @@ public sealed class MediaTranscoderNode : FlowNodeBase, INodeCustomActionProvide
     {
         if (actionId.Equals("ManageMediaPresets", StringComparison.OrdinalIgnoreCase))
         {
+#if FILEFLOW_NO_DESKTOP_TOOLKIT
+            // Defensa declarada (hito 268): este host no puede montar la ventana del toolkit, pero la
+            // superficie que el nodo DECLARA es la puerta que sí cumple —el núcleo la abre por el catálogo del
+            // host y no llega hasta aquí—. Si algún camino llegara, se DICE en vez de caer en silencio.
+            DesktopOnlySurface.Declare(
+                (context as NodeCustomActionContext)?.Dialogs,
+                LocalizationManager.Instance.GetString("PresetManager_WindowTitle", "Gestor de Presets de Media (FFmpeg)"),
+                LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                LocalizationManager.Instance.GetFormattedString(
+                    "Plugin_DesktopOnly_Message",
+                    "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                    LocalizationManager.Instance.GetString("PresetManager_WindowTitle", "Gestor de Presets de Media (FFmpeg)")));
+#else
             // El camino del host con el toolkit del escritorio: la ventana la monta el plugin. Los hosts que
             // no pueden montarla llegan por la superficie DECLARADA (arriba), con el mismo view model portable.
             var window = new MediaPresetManagerWindow();
@@ -113,6 +128,7 @@ public sealed class MediaTranscoderNode : FlowNodeBase, INodeCustomActionProvide
             {
                 window.Show();
             }
+#endif
         }
     }
 

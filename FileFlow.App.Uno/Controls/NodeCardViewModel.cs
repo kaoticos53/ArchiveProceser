@@ -100,14 +100,30 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
             _node.IsExpanded ? MaterialIconKind.ChevronUp : MaterialIconKind.ChevronDown);
 
     /// <summary>
-    /// El rótulo del conmutador de parámetros, con la MISMA clave del escritorio (la tarjeta es mobiliario
-    /// del host, no del plugin: su texto vive en el diccionario del host, en los dos idiomas).
+    /// El rótulo del conmutador de la tarjeta. La CLAVE es la del escritorio —su panel sí son parámetros— y el
+    /// TEXTO es el de este host: aquí lo que se despliega son las ACCIONES del nodo, y el diccionario del host
+    /// lo dice así en los dos idiomas. La clave se conserva porque es la que audita la guardia de textos
+    /// compartidos entre los dos hosts, y el rótulo dice lo que hace ESTE host.
     /// </summary>
     public string ParametersToggleToolTip
-        => LocalizationManager.Instance.GetString("ToggleParametersToolTip", "Mostrar/Ocultar parámetros");
+        => LocalizationManager.Instance.GetString("ToggleParametersToolTip", "Mostrar/Ocultar las acciones del nodo");
 
-    /// <summary>La visibilidad de las acciones rápidas (el Count>0 de Avalonia).</summary>
+    /// <summary>
+    /// La visibilidad de las acciones rápidas del nodo (su <c>Count&gt;0</c>): es también la del
+    /// conmutador de la cabecera.
+    /// </summary>
     public bool HasCustomActions => _node.CustomActions?.Count > 0;
+
+    /// <summary>
+    /// La visibilidad del panel plegable de la tarjeta: desplegado Y con algo dentro.
+    ///
+    /// <para><b>Qué se despliega</b>: las ACCIONES del nodo, no sus parámetros. El listado de parámetros
+    /// que había aquí era una lista muerta —nombres sin editor— y su sitio es la ficha del inspector;
+    /// dejar el panel abierto y vacío en un nodo sin acciones sería justo el defecto que se quitó: una
+    /// superficie que se abre y no ofrece nada. De ahí la conjunción, que el conmutador comparte por
+    /// <see cref="HasCustomActions"/>.</para>
+    /// </summary>
+    public bool ActionsPanelVisible => HasCustomActions && _node.IsExpanded;
 
     /// <summary>La visibilidad del panel de telemetría: visible cuando hay algo que contar.</summary>
     public bool FooterVisible => _node.HasTelemetry || _node.IsGpuAccelerated;
@@ -156,8 +172,10 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
             // El renombrado (fase 3.2): sin estos dos, F2 cambia el estado en el núcleo y la caja de
             // edición NUNCA aparece en el árbol (el refresco agregado de la tarjeta no se entera).
             or nameof(NodeViewModel.IsEditingTitle) or nameof(NodeViewModel.EditingTitleText)
-            // El panel de parámetros y sus acciones rápidas cuelgan de IsExpanded: sin esto, conmutar
-            // cambia el estado en el núcleo y la tarjeta sigue pintando el chevron de antes.
+            // El panel de acciones y su conmutador cuelgan de IsExpanded: sin esto, conmutar cambia el
+            // estado en el núcleo y la tarjeta sigue pintando el chevron de antes. La lista de parámetros ya
+            // no se pinta aquí —se editan en el inspector—, pero el estado desplegado sigue siendo del
+            // núcleo y el refresco tiene que seguirla.
             or nameof(NodeViewModel.IsExpanded))
         {
             // string.Empty refresca todos los bindings de la tarjeta: los estados viajan juntos.

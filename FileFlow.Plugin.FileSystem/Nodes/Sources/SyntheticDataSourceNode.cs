@@ -2,7 +2,9 @@ using System.IO;
 using System.Text.Json;
 using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Plugin.FileSystem.UI.Services;
+#if !FILEFLOW_NO_DESKTOP_TOOLKIT
 using FileFlow.Plugin.FileSystem.UI.Views;
+#endif
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
@@ -80,6 +82,19 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
     {
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
+#if FILEFLOW_NO_DESKTOP_TOOLKIT
+            // Defensa declarada (hito 268): este host no puede montar la ventana del toolkit, pero la
+            // superficie que el nodo DECLARA es la puerta que sí cumple —el núcleo la abre por el catálogo del
+            // host y no llega hasta aquí—. Si algún camino llegara, se DICE en vez de caer en silencio.
+            DesktopOnlySurface.Declare(
+                (context as NodeCustomActionContext)?.Dialogs,
+                LocalizationManager.Instance.GetString("DataSetDesigner_WindowTitle", "Diseñador de Conjuntos de Datos Sintéticos"),
+                LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                LocalizationManager.Instance.GetFormattedString(
+                    "Plugin_DesktopOnly_Message",
+                    "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                    LocalizationManager.Instance.GetString("DataSetDesigner_WindowTitle", "Diseñador de Conjuntos de Datos Sintéticos")));
+#else
             Action? onCompleted = null;
             object? parentWindow = context;
             IDialogService? dialogs = null;
@@ -118,6 +133,7 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
             {
                 window.Show();
             }
+#endif
         }
     }
 

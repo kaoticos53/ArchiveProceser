@@ -460,7 +460,14 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         {
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                provider.ExecuteCustomAction("ManagePasswords", new NodeCustomActionContext(_windows.MainWindowOwner, () => NodeOwner?.SyncParametersFromNodeInstance()));
+                // El gestor de contraseñas es una VENTANA DEL ESCRITORIO: en un host sin su toolkit el nodo no la
+                // monta y lo DECLARA por los diálogos de quien lo abrió (hito 268). El contexto tiene que llevar
+                // el servicio del host —el mismo `_dialogService` de esta fila— o la declaración cae al nulo
+                // declarado: el botón «🔑» no abre nada y no avisa (el defecto del hito 270).
+                provider.ExecuteCustomAction("ManagePasswords", new NodeCustomActionContext(
+                    _windows.MainWindowOwner,
+                    () => NodeOwner?.SyncParametersFromNodeInstance(),
+                    _dialogService));
                 if (NodeOwner.NodeInstance.Parameters.TryGetValue(Key, out var updatedVal))
                 {
                     Value = updatedVal;

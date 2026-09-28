@@ -41,6 +41,7 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 | [`.agents/prompts/agent_prompts.md`](file:///.agents/prompts/agent_prompts.md) | Guías y secuencias de prompts especializadas para auditoría, refactorización y extensión. | **Lectura:** Para guiar auditorías por fases o tareas complejas. |
 | [`docs/architecture.md`](file:///docs/architecture.md) y [`docs/ARCHITECTURE_DEEP_DIVE.md`](file:///docs/ARCHITECTURE_DEEP_DIVE.md) | Documentación técnica profunda del diseño del sistema y flujo de datos. | **Lectura:** En tareas que involucren rediseño o extensiones mayores. |
 | [`docs/api_reference.md`](file:///docs/api_reference.md) | Referencia de interfaces públicas del SDK y Core. | **Lectura:** Al consultar contratos de interfaces (`IFlowNode`, `IFlowExecutionContext`, etc.). |
+| [`FileFlow.Uno.slnx`](file:///FileFlow.Uno.slnx) | Solución del **host Uno** (WinUI 3): su grafo sin la app de escritorio ni las pruebas, y el sabor de UI sin Avalonia. Compila con Visual Studio y con `dotnet build`. | **Lectura:** al compilar o depurar el host Uno.<br>**Escritura:** al añadir o quitar proyectos del host Uno. |
 | [`docs/notas_de_version.md`](file:///docs/notas_de_version.md) | Notas de versión para quien **usa** el producto: lo que ve, separado de lo que sostiene que eso no se rompa, más lo que sigue viéndose así. | **Lectura:** Al cerrar un tramo visible o al preparar una entrega.<br>**Escritura:** Al cerrar el tramo siguiente (apartado nuevo o notas nuevas si cambia la versión). Las cifras salen del walkthrough, no de la memoria. |
 
 ---
@@ -118,9 +119,11 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 .\run-fast.ps1 -SelfCheck
 
 # ─── Host Uno Platform (WinUI 3) ───
-# Compilar (SOLO MSBuild de Visual Studio: los targets de WinAppSDK no corren con dotnet build)
-# y lanzar el host Uno
-.\run-uno.ps1
+# El host Uno tiene SU solución (FileFlow.Uno.slnx) —la que se abre en Visual Studio— y compila con
+# `dotnet build`: esa solución deja fuera la app de escritorio, así que su binario no lleva una sola
+# DLL de Avalonia (hito 268). El sabor de UI lo elige el NOMBRE de la solución (ver Directory.Build.props).
+dotnet build FileFlow.Uno.slnx        # sabor Uno: el grafo sin el toolkit del escritorio
+.\run-uno.ps1                          # compila (dotnet build sobre esa solución) y lanza el host Uno
 
 # Lanzar el host Uno directamente sin compilar
 .\run-uno-fast.ps1

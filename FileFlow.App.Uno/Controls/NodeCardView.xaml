@@ -123,13 +123,19 @@
                 </Border>
               </Button>
 
-              <!-- Conmutador del panel de parámetros (el chevron del escritorio). Sin él la tarjeta no
+              <!-- Conmutador del panel de ACCIONES (el chevron del escritorio). Sin él la tarjeta no
                    tiene forma de desplegarse, y el panel es el que trae las acciones rápidas del nodo
                    —entre ellas el «🎬 Presets...» del nodo de transcodificación—: la puerta de la
                    tarjeta quedaría dibujada y sin puerta. El estado es del NÚCLEO (la misma IsExpanded
-                   que el escritorio conmuta), así que aquí sólo se pinta y se conmuta. -->
+                   que el escritorio conmuta), así que aquí sólo se pinta y se conmuta.
+
+                   El conmutador SÓLO se dibuja si el nodo declara acciones: sin ellas el panel no
+                   tendría nada que enseñar y el chevron sería un botón que no hace nada al pulsarlo.
+                   El x:Name sigue siendo «ParametersToggle» porque es un ancla estable de las sondas
+                   en runtime y de las guardias; lo que se despliega ya no son parámetros. -->
               <ToggleButton x:Name="ParametersToggle" Grid.Column="4"
                             IsChecked="{Binding Node.IsExpanded, Mode=TwoWay}"
+                            Visibility="{Binding HasCustomActions, Converter={StaticResource BoolToVis}}"
                             AutomationProperties.AutomationId="NodeCardExpandToggle"
                             AutomationProperties.Name="{Binding ParametersToggleToolTip}"
                             ToolTipService.ToolTip="{Binding ParametersToggleToolTip}"
@@ -261,24 +267,23 @@
             </ItemsControl>
           </Grid>
 
-          <!-- Panel de parámetros plegable (Blender inset): aparece con IsExpanded -->
+          <!-- Panel de ACCIONES plegable (Blender inset): aparece desplegado Y sólo si el nodo declara
+               acciones rápidas.
+
+               Aquí vivía el LISTADO de parámetros del nodo: nombres sin editor —nada que pulsar, nada
+               que teclear— porque los editores son de la ficha del inspector (la tarjeta es mobiliario
+               del lienzo y su ancho no da para un editor por parámetro). Una lista que invita a
+               interactuar y no responde es peor que no tenerla: los parámetros se editan en el
+               inspector y punto. Lo que queda es lo que SÍ hace algo al pulsarlo: las acciones del
+               nodo, que son también la puerta a sus superficies («🎬 Presets...», configurar el VLM,
+               el estudio de scripts...). -->
           <Border x:Name="ParametersPanel" Margin="8,5,8,3" Background="{StaticResource CanvasSurfaceBrush}"
                   BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
                   CornerRadius="6" Padding="8,6"
-                  Visibility="{Binding Node.IsExpanded, Converter={StaticResource BoolToVis}}">
+                  Visibility="{Binding ActionsPanelVisible, Converter={StaticResource BoolToVis}}">
             <StackPanel Spacing="8">
-              <ItemsControl ItemsSource="{Binding Node.Parameters}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding DisplayName}" FontSize="{StaticResource CanvasFontMicro}"
-                               Foreground="{StaticResource CanvasSecondaryBrush}" />
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-
-              <!-- Acciones rápidas (p. ej. añadir variable / caso de switch) -->
-              <ItemsControl ItemsSource="{Binding Node.CustomActions}"
-                            Visibility="{Binding Node.HasCustomActions, Converter={StaticResource BoolToVis}}">
+              <!-- Acciones rápidas (p. ej. añadir variable / caso de switch, o abrir una superficie del nodo) -->
+              <ItemsControl ItemsSource="{Binding Node.CustomActions}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <StackPanel Orientation="Horizontal" Spacing="4" />

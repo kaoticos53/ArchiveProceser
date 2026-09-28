@@ -535,8 +535,31 @@ public sealed class UnoWindowService : IWindowService
     /// </summary>
     private static async Task<ContentDialogResult> RunAsync(ContentDialog dialog, string dialogKey)
     {
-        ActiveDialog = dialog;
         ActiveWindowKey = dialogKey;
+        return await ShowOwnedModalAsync(dialog);
+    }
+
+    /// <summary>
+    /// Muestra y PUBLICA un aviso del host que no es una ventana del catálogo (el aviso de la frontera del
+    /// escritorio, hito 270): deja el mismo estado de «hay un modal abierto» que <see cref="RunAsync"/>, y sin
+    /// él el host no veía el aviso. Dos consecuencias medidas, las dos mudas: un segundo
+    /// <see cref="ContentDialog"/> (WinUI admite uno) quedaba detectado contra un estado que nadie escribía
+    /// —<c>UnoDialogService.ShowCoreAsync</c> consulta <see cref="ActiveDialog"/> antes de abrir— y una sonda
+    /// no podía distinguir «el aviso se mostró» de «no pasó nada», que es exactamente el defecto que este
+    /// tramo cierra. La clave del catálogo queda nula: un aviso no es una ventana servida.
+    /// </summary>
+    internal static Task<ContentDialogResult> RunOwnedAsync(ContentDialog dialog)
+        => ShowOwnedModalAsync(dialog);
+
+    /// <summary>
+    /// El sobre de TODO modal del host —una ventana del catálogo (<see cref="RunAsync"/>) y un aviso que no lo
+    /// es (<see cref="RunOwnedAsync"/>), para que publicar y retirar no se escriba dos veces—: publica CUÁL
+    /// está abierto mientras lo está y lo retira al irse, con la pregunta que pudiera quedarle dentro
+    /// contestada «no».
+    /// </summary>
+    private static async Task<ContentDialogResult> ShowOwnedModalAsync(ContentDialog dialog)
+    {
+        ActiveDialog = dialog;
         try
         {
             return await dialog.ShowAsync();

@@ -554,32 +554,43 @@ public class UnoNodeDialogsGuardTests
 
     /// <summary>
     /// La PUERTA DE LA TARJETA, que es una de las dos mitades de la superficie. El «🎬 Presets...» del nodo vive
-    /// entre sus acciones rápidas, y ese bloque —como el panel de parámetros que lo contiene— sólo se pinta con
-    /// la tarjeta desplegada (<c>Node.IsExpanded</c>). El escritorio lo conmuta con su <c>ToggleButton</c>; este
-    /// host no tenía ninguno, así que el panel era <b>inalcanzable</b>: la acción estaba dibujada y sin puerta.
+    /// entre sus acciones rápidas, y ese bloque sólo se pinta con la tarjeta desplegada (<c>Node.IsExpanded</c>).
+    /// El escritorio lo conmuta con su <c>ToggleButton</c>; este host no tenía ninguno, así que el panel era
+    /// <b>inalcanzable</b>: la acción estaba dibujada y sin puerta.
     ///
     /// <para>La guardia ata las tres piezas —el conmutador de la cabecera, el estado del NÚCLEO que conmuta y el
     /// bloque que cuelga de él— porque el defecto no se veía en ninguna por separado: el view model tenía el
     /// estado, la vista tenía el bloque, y faltaba justo lo que los une.</para>
+    ///
+    /// <para><b>Qué cambió en el hito 269 y por qué la guardia lo fija</b>: el panel ya no enseña el listado de
+    /// parámetros del nodo —nombres sin editor, que se pulsaban y no hacían nada; los editores son de la ficha
+    /// del inspector—, así que el desplegable se quedó con las acciones y su puerta sólo se dibuja donde hay
+    /// algo que desplegar. Las dos condiciones son el mismo contrato, y por eso se atan juntas.</para>
     /// </summary>
     [Fact]
     public void TheNodeCard_ShouldBeAbleToShowThePanelWhereTheQuickActionsLive()
     {
         string xaml = Read(CardViewXaml);
 
-        // El panel (parámetros + acciones rápidas) y la condición que lo enseña.
+        // El panel de ACCIONES y la condición que lo enseña: desplegado Y con algo dentro.
         xaml.Should().Contain("ItemsSource=\"{Binding Node.CustomActions}\"",
             "las acciones rápidas del nodo —entre ellas «🎬 Presets...»— son el contenido del panel");
-        xaml.Should().Contain("Visibility=\"{Binding Node.IsExpanded, Converter={StaticResource BoolToVis}}\"",
-            "y el panel entero cuelga del estado desplegado del nodo");
+        xaml.Should().Contain("Visibility=\"{Binding ActionsPanelVisible, Converter={StaticResource BoolToVis}}\"",
+            "y el panel cuelga del estado desplegado del nodo Y de que haya acciones que enseñar");
+        xaml.Should().NotContain("ItemsSource=\"{Binding Node.Parameters}\"",
+            "el listado de parámetros de la tarjeta era una lista muerta (sólo nombres, sin editor): los "
+            + "parámetros se editan en la ficha del inspector, no en el lienzo");
 
         // La puerta: sin conmutador, ese estado no se puede cambiar desde el ratón (el escritorio sí lo tiene).
         xaml.Should().Contain("AutomationProperties.AutomationId=\"NodeCardExpandToggle\"",
-            "la cabecera de la tarjeta necesita su conmutador de parámetros, como la del escritorio");
+            "la cabecera de la tarjeta necesita su conmutador de acciones, como la del escritorio");
         xaml.Should().Contain("IsChecked=\"{Binding Node.IsExpanded, Mode=TwoWay}\"",
             "y tiene que conmutar el estado del NÚCLEO, no uno propio de la vista");
+        xaml.Should().Contain("Visibility=\"{Binding HasCustomActions, Converter={StaticResource BoolToVis}}\"",
+            "el conmutador no se dibuja en un nodo sin acciones: desplegaría un panel vacío");
 
-        // Y las dos piezas del adaptador que hacen que el conmutador se vea y se lea en el idioma activo.
+        // Y las tres piezas del adaptador: el chevron que cuenta el estado, el refresco que lo sigue y la
+        // conjunción que decide si hay algo que enseñar.
         string viewModel = Read(CardViewModelCode);
         viewModel.Should().Contain("MaterialIconKind.ChevronUp",
             "el chevron tiene que contar el estado: uno fijo mentiría en la mitad de los casos");
@@ -587,6 +598,9 @@ public class UnoNodeDialogsGuardTests
             "sin el refresco, conmutar cambia el estado en el núcleo y la tarjeta sigue pintando el chevron de antes");
         viewModel.Should().Contain("ToggleParametersToolTip",
             "el rótulo del conmutador es una cadena del diccionario del host, en los dos idiomas");
+        viewModel.Should().Contain("public bool ActionsPanelVisible => HasCustomActions && _node.IsExpanded;",
+            "y la visibilidad del panel es UNA sola condición: sin acciones no hay nada que desplegar, "
+            + "y plegado tampoco se enseña");
     }
 
     /// <summary>

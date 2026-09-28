@@ -1,0 +1,26 @@
+{
+  "id": "frontera-de-escritorio-que-no-avisa",
+  "hito": 268,
+  "claim": "El nodo compilado sin el toolkit del escritorio declara que su ventana pertenece al host de escritorio y lo AVISA por los dialogos de quien lo abrio.",
+  "why": "Es la mitad del defecto que el hito 268 cierra: el boton de una ventana del toolkit no puede quedarse mudo en el host que no la tiene. La costura sigue existiendo, el nodo sigue declarando la frontera, la traza de consola sigue escribiendose y el build sigue siendo hermetico —lo unico que cambia es que el aviso deja de llegar al usuario—, asi que ningun lint de texto lo ve: solo se mide ejercitando la costura con un doble de dialogos que se acuerde.",
+  "edits": [
+    {
+      "file": "FileFlow.Sdk/Services/DesktopOnlySurface.cs",
+      "replacements": [
+        {
+          "old": "        (dialogs ?? NullDialogService.Instance).ShowWarning(message, title);",
+          "new": "        _ = dialogs;",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~DeclaringTheFrontier_ShouldShowItInTheHostDialogs",
+    "why": "Ese caso llama a la costura con un IDialogService que se acuerda de lo que se le mostro y exige un aviso con el nombre de la superficie. Con el mutante no queda ningun aviso: el caso cae diciendo que la frontera se declaro en silencio."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~NoPluginThatDrawsAWindow_ShouldReferenceTheToolkit_OutsideItsCondition",
+    "why": "El censo del sabor no depende de que la costura avise: con el mutante sigue verde, y eso separa «la frontera dejo de avisar» de «el sabor Uno dejo de compilarse sin Avalonia», que es un defecto mucho mas grande y con su propia guardia."
+  }
+}

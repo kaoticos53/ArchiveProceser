@@ -113,6 +113,60 @@ public class UnoInspectorPanelGuardTests
             "hilo llamador y funciona TAMBIÉN desde el hilo de UI (donde el síncrono aborta con null)");
     }
 
+    /// <summary>
+    /// Las ACCIONES del nodo en la ficha (hito 269): son la puerta a las superficies que declara el nodo —el
+    /// gestor de presets, la configuración del VLM, el estudio de scripts, el diseñador de datasets— y hasta
+    /// aquí vivían SÓLO en el panel plegable de la tarjeta del lienzo. La acción existía, el comando existía y
+    /// quien no supiera desplegar la tarjeta no la encontraba: es el mismo defecto de la puerta que faltaba, un
+    /// paso más allá.
+    ///
+    /// <para><b>Qué se vigila</b>: que el bloque salga de la colección del NÚCLEO (las mismas acciones que
+    /// pinta la tarjeta), que el botón ejecute el comando del view model portable y no una vía propia del host,
+    /// que cada botón cante su ancla para la observación externa, que el encabezado esté localizado y que el
+    /// bloque entero se colapse cuando el nodo no declara nada.</para>
+    /// </summary>
+    [Fact]
+    public void InspectorPanel_ShouldPaintTheNodeActions_SoTheirSurfacesAreReachableWithoutTheCard()
+    {
+        string code = PanelCode();
+
+        code.Should().Contain(
+            "foreach (var action in _inspected.CustomActions)",
+            "las acciones salen de la colección del NodeViewModel (las mismas que pinta la tarjeta y el " +
+            "escritorio): una lista propia del host se quedaría corta en cuanto un nodo declarara la suya");
+
+        code.Should().Contain(
+            "action.ExecuteCommand.Execute(null)",
+            "el botón ejecuta el comando del view model PORTABLE —la MISMA orden del núcleo que el botón de " +
+            "la tarjeta (ExecuteCustomAction)—: una vía propia del host duplicaría la puerta a la superficie");
+
+        code.Should().Contain(
+            "AnchorAction(\"InspectorAction_\" + action.ActionId",
+            "cada botón canta su ancla estable (InspectorAction_<ActionId>) para la observación UIA externa");
+
+        code.Should().Contain(
+            "loc.GetString(\"Uno_InspectorActions\", \"Acciones\")",
+            "el encabezado del bloque está localizado por el mecanismo del host, como el resto de la ficha");
+
+        code.Should().Contain(
+            "_actionsHost.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed",
+            "el bloque se colapsa entero sin acciones: un encabezado sobre una lista vacía promete algo que no hay");
+
+        // Y la medición en runtime: la sonda cuenta los botones contra las acciones del nodo inspeccionado y
+        // localiza el primero por su ancla, que es lo que distingue «pintado» de «pintado y alcanzable».
+        string selfcheck = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
+
+        selfcheck.Should().Contain(
+            "insp.ActionButtonCount",
+            "el selfcheck compara los botones de acción materializados con las acciones del nodo: sin esa " +
+            "medida, una ficha que no pintara ninguna acción pasaría desapercibida");
+
+        selfcheck.Should().Contain(
+            "inspector.ActionControl(\"ManageMediaPresets\")",
+            "y comprueba, sobre el nodo que SÍ declara acciones, que el botón existe por su ancla " +
+            "(la puerta, no sólo el rótulo)");
+    }
+
     [Fact]
     public void InspectorPanel_ShouldShowTelemetryFromTheNodeViewModel()
     {
@@ -266,6 +320,9 @@ public class UnoInspectorPanelGuardTests
         ("El «Probar» ejecuta la prueba aislada con fichero",
             "TestNodeWithCustomFileAsync_ShouldPickThroughTheAsyncDialogVariant",
             "selfcheck: el botón existe, con su AutomationId, atado al comando canónico del núcleo"),
+        ("Las acciones del nodo se pueden pulsar desde la ficha (sus superficies no dependen de la tarjeta)",
+            "NodeViewModel_ShouldPopulateCustomActions_FromNodeDefinition",
+            "selfcheck: botones de acción materializados == acciones del nodo, con el ancla del primero"),
         ("Las pestañas de snapshots y diff pintan los datos del nodo y del VM",
             "InspectNode_ShouldHandleEmptySnapshots_WithoutThrowing",
             "selfcheck: tarjetas materializadas (1 = entradas+salidas), diff 2 filas, Pivot conmuta"),

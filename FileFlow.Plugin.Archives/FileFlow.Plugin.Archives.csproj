@@ -11,10 +11,25 @@
     <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
   </ItemGroup>
 
+  <!-- El DOMINIO del plugin (descompresión) va siempre; el TOOLKIT de la ventana sólo en el host que la monta. -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
     <Using Include="System.IO" />
+  </ItemGroup>
+
+  <!--
+    SABOR DE UI (hito 268): el Gestor de Contraseñas es una ventana del ESCRITORIO. En el host Uno no se
+    compila —ni el XAML ni su código de detrás— para que el ensamblado no arrastre Avalonia; el nodo, que ya
+    no la tiene, declara la frontera por los diálogos de quien lo abrió (ver SmartUnpackNode).
+  -->
+  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' == 'true'">
+    <PackageReference Include="Avalonia" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' != 'true'">
+    <Compile Remove="UI\Views\**\*.cs" />
+    <AvaloniaXaml Remove="UI\Views\**" />
+    <AvaloniaResource Remove="UI\Views\**" />
   </ItemGroup>
 </Project>

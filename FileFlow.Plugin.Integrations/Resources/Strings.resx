@@ -53,4 +53,6 @@
   <data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>Do you want to reset all presets to system default values?</value></data>
   <data name="PresetManager_NewPresetName" xml:space="preserve"><value>New Custom Preset</value></data>
   <data name="PresetManager_NewPresetDescription" xml:space="preserve"><value>Description of the new preset...</value></data>
+  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Desktop host window</value></data>
+  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» opens in the desktop host: this host does not have the toolkit that mounts it. Open it from the desktop application.</value></data>
 </root>

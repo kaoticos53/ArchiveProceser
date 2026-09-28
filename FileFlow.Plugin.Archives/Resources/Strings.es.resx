@@ -61,4 +61,6 @@
   <data name="PasswordManager_MsgImportError" xml:space="preserve"><value>Error al importar archivo: {0}</value></data>
   <data name="PasswordManager_MsgExportSuccess" xml:space="preserve"><value>Contraseñas exportadas con éxito a:\n{0}</value></data>
   <data name="PasswordManager_MsgExportError" xml:space="preserve"><value>Error al exportar archivo: {0}</value></data>
+  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Ventana del host de escritorio</value></data>
+  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.</value></data>
 </root>

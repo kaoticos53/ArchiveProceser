@@ -1,8 +1,11 @@
 using System.Text.Json;
 using FileFlow.Plugin.Scripting.Engines;
+#if !FILEFLOW_NO_DESKTOP_TOOLKIT
 using FileFlow.Plugin.Scripting.UI.Views;
+#endif
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 
 namespace FileFlow.Plugin.Scripting;
 
@@ -134,6 +137,19 @@ await EmitAsync(""Out"");";
         {
             if (actionId.Equals("OpenScriptStudio", StringComparison.OrdinalIgnoreCase))
             {
+#if FILEFLOW_NO_DESKTOP_TOOLKIT
+                // El Estudio de Scripts es UNA VENTANA DEL ESCRITORIO y este host no tiene el toolkit que la
+                // monta (hito 268): la frontera se DECLARA por los diálogos de quien lo abrió —el usuario se
+                // entera y queda la traza— en vez de construir a ciegas una ventana de otro framework.
+                DesktopOnlySurface.Declare(
+                    (context as NodeCustomActionContext)?.Dialogs,
+                    LocalizationManager.Instance.GetString("ScriptStudio_Title", "Editor de Scripts Personalizado"),
+                    LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                    LocalizationManager.Instance.GetFormattedString(
+                        "Plugin_DesktopOnly_Message",
+                        "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                        LocalizationManager.Instance.GetString("ScriptStudio_Title", "Editor de Scripts Personalizado")));
+#else
                 Action? onCompleted = null;
                 object? parentWindow = context;
 
@@ -179,6 +195,7 @@ await EmitAsync(""Out"");";
                     SyncPortsFromParameters();
                     onCompleted?.Invoke();
                 }
+#endif
             }
         }
         catch (Exception ex)

@@ -1,9 +1,12 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+#if !FILEFLOW_NO_DESKTOP_TOOLKIT
 using FileFlow.Plugin.FileSystem.UI.Views;
+#endif
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Renaming;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Storage;
 using FileFlow.Sdk.TemplateEngine;
 
@@ -83,6 +86,19 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
     {
         if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
         {
+#if FILEFLOW_NO_DESKTOP_TOOLKIT
+            // El Estudio de Renombrado Avanzado es UNA VENTANA DEL ESCRITORIO y este host no tiene el toolkit
+            // que la monta (hito 268): la frontera se DECLARA por los diálogos de quien lo abrió —el usuario se
+            // entera y queda la traza— en vez de construir a ciegas una ventana de otro framework.
+            DesktopOnlySurface.Declare(
+                (context as NodeCustomActionContext)?.Dialogs,
+                LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)"),
+                LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                LocalizationManager.Instance.GetFormattedString(
+                    "Plugin_DesktopOnly_Message",
+                    "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                    LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)")));
+#else
             var window = new AdvancedRenamerEditorWindow(this);
             Action? onCompleted = null;
             object? parentWindow = context;
@@ -114,6 +130,7 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
             {
                 window.Show();
             }
+#endif
         }
     }
 

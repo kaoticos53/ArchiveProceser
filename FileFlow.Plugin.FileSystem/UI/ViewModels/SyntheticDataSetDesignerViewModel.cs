@@ -4,6 +4,7 @@ using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.FileSystem.Services;
+using FileFlow.Plugin.FileSystem.UI.Services;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
 using FileFlow.Sdk.SyntheticData;
@@ -797,77 +798,59 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
 
         SyncItemsFromTree();
 
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-        {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel != null)
-            {
-                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-                {
-                    Title = LocalizationManager.Instance.GetString("Title_ExportDataSet", "Exportar Dataset Sintético"),
-                    SuggestedFileName = $"{SelectedDataSet.Name.Replace(" ", "_")}.json",
-                    DefaultExtension = "json",
-                    FileTypeChoices =
-                    [
-                        new Avalonia.Platform.Storage.FilePickerFileType("Archivos JSON (*.json)") { Patterns = ["*.json"] },
-                        new Avalonia.Platform.Storage.FilePickerFileType("Todos los archivos (*.*)") { Patterns = ["*.*"] }
-                    ]
-                });
+        // El selector lo pone la COSTURA del plugin (UI/Services/DesktopFilePicker): a este view model lo pintan
+        // los dos hosts y sólo uno de ellos tiene toolkit con el que abrir un diálogo de ficheros.
+        PickedFile? picked = await DesktopFilePicker.PickSaveAsync(
+            LocalizationManager.Instance.GetString("Title_ExportDataSet", "Exportar Dataset Sintético"),
+            DataSetFileFilters,
+            $"{SelectedDataSet.Name.Replace(" ", "_")}.json",
+            "json",
+            _dialogService);
 
-                if (file != null)
-                {
-                    var target = SelectedDataSet.Clone(DataSetName);
-                    target.Category = DataSetCategory;
-                    target.Description = DataSetDescription;
-                    target.Items = EditableItems.Select(i => i.Clone()).ToList();
+        if (picked == null) return;
 
-                    string json = _storageService.ExportDataSetToJson(target);
-                    await using var stream = await file.OpenWriteAsync();
-                    await using var writer = new StreamWriter(stream);
-                    await writer.WriteAsync(json);
-                    StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetExported", "Dataset exportado a '{0}'.", Path.GetFileName(file.Path.LocalPath));
-                }
-            }
-        }
+        var target = SelectedDataSet.Clone(DataSetName);
+        target.Category = DataSetCategory;
+        target.Description = DataSetDescription;
+        target.Items = EditableItems.Select(i => i.Clone()).ToList();
+
+        string json = _storageService.ExportDataSetToJson(target);
+        await using var stream = picked.Stream;
+        await using var writer = new StreamWriter(stream);
+        await writer.WriteAsync(json);
+        StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetExported", "Dataset exportado a '{0}'.", Path.GetFileName(picked.Path));
     }
+
+    /// <summary>El desplegable de tipos del selector: los mismos rótulos que el escritorio ofrecía.</summary>
+    private static readonly FileTypeFilter[] DataSetFileFilters =
+    [
+        new("Archivos JSON (*.json)", ["*.json"]),
+        new("Todos los archivos (*.*)", ["*.*"]),
+    ];
 
     [RelayCommand]
     private async Task ImportAsync()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-        {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel != null)
-            {
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                {
-                    Title = LocalizationManager.Instance.GetString("Title_ImportDataSet", "Importar Dataset Sintético"),
-                    AllowMultiple = false,
-                    FileTypeFilter =
-                    [
-                        new Avalonia.Platform.Storage.FilePickerFileType("Archivos JSON (*.json)") { Patterns = ["*.json"] },
-                        new Avalonia.Platform.Storage.FilePickerFileType("Todos los archivos (*.*)") { Patterns = ["*.*"] }
-                    ]
-                });
+        PickedFile? picked = await DesktopFilePicker.PickOpenAsync(
+            LocalizationManager.Instance.GetString("Title_ImportDataSet", "Importar Dataset Sintético"),
+            DataSetFileFilters,
+            _dialogService);
 
-                if (files.Count > 0)
-                {
-                    try
-                    {
-                        await using var stream = await files[0].OpenReadAsync();
-                        using var reader = new StreamReader(stream);
-                        string json = await reader.ReadToEndAsync();
-                        var imported = _storageService.ImportDataSetFromJson(json, autoSave: true);
-                        RefreshDataSetsList();
-                        SelectedDataSet = FilteredDataSets.FirstOrDefault(d => d.Id == imported.Id);
-                        StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetImported", "Dataset '{0}' importado y guardado.", imported.Name);
-                    }
-                    catch (Exception ex)
-                    {
-                        StatusMessage = $"Error al importar: {ex.Message}";
-                    }
-                }
-            }
+        if (picked == null) return;
+
+        try
+        {
+            await using var stream = picked.Stream;
+            using var reader = new StreamReader(stream);
+            string json = await reader.ReadToEndAsync();
+            var imported = _storageService.ImportDataSetFromJson(json, autoSave: true);
+            RefreshDataSetsList();
+            SelectedDataSet = FilteredDataSets.FirstOrDefault(d => d.Id == imported.Id);
+            StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetImported", "Dataset '{0}' importado y guardado.", imported.Name);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error al importar: {ex.Message}";
         }
     }
 

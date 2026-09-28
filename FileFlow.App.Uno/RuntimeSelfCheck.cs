@@ -1911,6 +1911,16 @@ public static class RuntimeSelfCheck
                 Check(presetAnchor,
                     "la fila del preset expone su botón «🎬» con su ancla (ParamPreset_" + (presetParam?.Key ?? "—") + ")");
 
+                // La ACCIÓN del nodo en la ficha (hito 269): la misma puerta que el botón de la tarjeta, ahora
+                // también en el inspector. Se mide sobre un nodo que SÍ declara acciones y por su ancla: la
+                // superficie del nodo no puede depender de que el usuario sepa desplegar una tarjeta del lienzo.
+                bool actionPainted = Step(() => transcoder is not null
+                    && inspector!.ActionButtonCount == transcoder.CustomActions.Count
+                    && inspector.ActionControl("ManageMediaPresets") is not null);
+                Check(actionPainted,
+                    "la ficha del inspector pinta las acciones del nodo ("
+                    + (transcoder?.CustomActions.Count ?? 0) + " botón(es), ancla 'InspectorAction_ManageMediaPresets')");
+
                 bool presetPressed = Step(() =>
                 {
                     Control? button = inspector!.ParameterControl("ParamPreset_" + (presetParam?.Key ?? string.Empty));
@@ -2115,6 +2125,30 @@ public static class RuntimeSelfCheck
 
                     return false;
                 });
+                bool cardExpandedState = cardExpandedForAction && Step(() =>
+                {
+                    NodeCardView? card = FindAll<NodeCardView>(window.Content)
+                        .FirstOrDefault(c => ReferenceEquals((c.DataContext as NodeCardViewModel)?.Node, transcoder));
+                    if (card?.DataContext is not NodeCardViewModel doorVm)
+                    {
+                        return false;
+                    }
+
+                    var panel = card.FindName("ParametersPanel") as Border;
+                    var chevron = card.FindName("ParametersIcon") as Microsoft.UI.Xaml.Shapes.Path;
+
+                    // La puerta de un nodo CON acciones: el conmutador escribe el estado en el NÚCLEO y el panel
+                    // se materializa con él, con su chevron resuelto (la misma medida del 263, sobre la única
+                    // tarjeta que despliega algo). La tarjeta se queda DESPLEGADA a propósito: la medida que
+                    // sigue pulsa el botón que vive dentro de ese panel.
+                    return doorVm.Node.IsExpanded
+                        && panel?.Visibility == Visibility.Visible
+                        && chevron?.Data is not null && chevron.Data.Bounds.Width > 0;
+                });
+                Check(cardExpandedState,
+                    "el conmutador escribe el estado en el núcleo y despliega el panel de la tarjeta con su chevron "
+                    + "(la geometría resuelta), que es donde vive el botón de la acción");
+
                 bool cardActionPressed = cardExpandedForAction && Step(() =>
                 {
                     NodeCardView? card = FindAll<NodeCardView>(window.Content)
@@ -2220,6 +2254,57 @@ public static class RuntimeSelfCheck
                     "el censo de diálogos cubre las " + allKeys + " claves de DialogKeys ("
                     + UnoWindowService.ImplementedDialogs.Length + " servidas + "
                     + UnoWindowService.DeclaredPendingDialogs.Length + " declaradas)");
+
+                // ── 4b. La frontera del ESCRITORIO en el botón de un nodo (hito 270) ──
+                // Un nodo con ventana del toolkit no puede montarla aquí: la DECLARA (hito 268) por los diálogos
+                // de quien lo abrió. Lo que se mide es que el aviso LLEGUE de verdad —el contexto del botón iba
+                // sin el servicio, así que la frontera se quedaba en una traza de consola y el usuario pulsaba un
+                // botón que no hacía nada y no avisaba— y que la escena quede limpia al retirarlo.
+                const string desktopOnlyType = "CustomScriptNode";
+                const string desktopOnlyAction = "OpenScriptStudio";
+                NodeViewModel? desktopOnlyNode = null;
+                bool desktopOnlyAdded = Step(() =>
+                {
+                    desktopOnlyNode = canvas!.Editor!.AddNode(desktopOnlyType, new Point(120, 260));
+                    return desktopOnlyNode is not null;
+                });
+                bool desktopOnlyAnchored = desktopOnlyAdded && Step(() =>
+                {
+                    inspector!.InspectForProbe(desktopOnlyNode!);
+                    return inspector.ActionControl(desktopOnlyAction) is not null;
+                });
+                Check(desktopOnlyAnchored,
+                    "el nodo con ventana del ESCRITORIO declara su acción y la ficha la pinta (ancla '"
+                    + "InspectorAction_" + desktopOnlyAction + "')");
+
+                // El nombre de la ventana que el aviso tiene que nombrar lo pone el diccionario del plugin (el
+                // host no escribe las palabras): la sonda lo lee en vez de fijar un literal de un idioma.
+                string surfaceName = Probe(() => FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString(
+                    "ScriptStudio_Title", "Estudio de Scripts"));
+                bool desktopOnlyPressed = desktopOnlyAnchored && Step(() =>
+                    UnoWindowService.Press(inspector!.ActionControl(desktopOnlyAction)!));
+
+                // La espera y la lectura van SEPARADAS a propósito: `WaitUntil` ya envuelve la condición en
+                // `Probe`, así que anidar un `Probe` dentro de él deja al hilo de UI esperándose a sí mismo
+                // (la lectura interior sólo corre cuando la exterior suelta el hilo, o sea tarde) y devuelve
+                // un «no» falso —medido al escribir esta misma sonda—.
+                bool warned = desktopOnlyPressed
+                    && WaitUntil(() => UnoWindowService.ActiveDialog?.Content is string, 9000);
+                string warningText = Probe(() => UnoWindowService.ActiveDialog?.Content as string) ?? string.Empty;
+                Check(warned && warningText.Contains(surfaceName, StringComparison.Ordinal),
+                    "su botón AVISA en la superficie de este host, nombrando la ventana que falta ('"
+                    + Truncate(warningText) + "')");
+
+                bool warningDismissed = warned && Step(() =>
+                {
+                    UnoWindowService.ActiveDialog?.Hide();
+                    return true;
+                });
+                bool warningGone = warningDismissed && WaitUntil(() =>
+                    UnoWindowService.ActiveDialog is null && UnoWindowService.ActiveWindowKey is null, 8000);
+                Check(warningGone,
+                    "y el aviso se retira como cualquier modal del host (no queda un diálogo abierto tapando la "
+                    + "escena que sigue)");
 
                 // ── 5. La escena vuelve a como estaba ──
                 bool graphRestored = Step(() =>
@@ -2609,37 +2694,46 @@ public static class RuntimeSelfCheck
                 $"elementos de socket dibujados: {boxes}+{triangles} para {expectedPorts} puertos (borde+triangulo)");
         }
 
-        // El conmutador de parámetros de la tarjeta (hito 263): el panel de parámetros —y con él las acciones
-        // rápidas del nodo, donde vive el «🎬 Presets...» del transcodificador— cuelga de IsExpanded, y este
-        // host no tenía forma de desplegarlo: la acción estaba dibujada y sin puerta. Se mide el control REAL
-        // (la caja en el árbol, el estado que escribe en el NÚCLEO y el panel que se materializa con él) y se
-        // deja la tarjeta como estaba: la sonda mide, no configura.
-        if (cards.FirstOrDefault() is { } firstCard
-            && firstCard.DataContext is NodeCardViewModel cardVm)
+        // La PUERTA de acciones de la tarjeta (hito 263, reencuadrado en el 269): el panel —y con él las acciones
+        // rápidas del nodo, donde vive el «🎬 Presets...» del transcodificador— cuelga de IsExpanded y sólo se
+        // dibuja si el nodo declara acciones. El listado de parámetros que lo acompañaba era una lista muerta
+        // —nombres sin editor, que se pulsaban y no hacían nada— y se quitó: los parámetros se editan en la ficha
+        // del inspector.
+        //
+        // Se mide el CONTRATO en todas las tarjetas del lienzo: lo que la vista enseña tiene que ser lo que dice
+        // el adaptador (el estado desplegado es del núcleo, no de la vista). El ejercicio completo —desplegar la
+        // tarjeta y abrir la acción— se mide sobre la del transcodificador, que es la que declara acciones:
+        // aquí, que la puerta esté donde dice, y en el flujo de los paneles, que al abrirla se materialice.
+        var doorMismatch = new List<string>();
+        int cardsShowingDoor = 0;
+        foreach (var card in cards)
         {
-            var toggle = firstCard.FindName("ParametersToggle") as Microsoft.UI.Xaml.Controls.Primitives.ToggleButton;
-            var panel = firstCard.FindName("ParametersPanel") as Border;
-            Check(toggle is not null && panel is not null,
-                "la tarjeta del lienzo trae su conmutador de parámetros y el panel que despliega");
-
-            if (toggle is not null && panel is not null)
+            if (card.DataContext is not NodeCardViewModel doorVm)
             {
-                bool wasExpanded = cardVm.Node.IsExpanded;
-                var chevron = firstCard.FindName("ParametersIcon") as Microsoft.UI.Xaml.Shapes.Path;
+                continue;
+            }
 
-                toggle.IsChecked = true;
-                Check(cardVm.Node.IsExpanded,
-                    "el conmutador escribe el estado en el núcleo (dos vías sobre Node.IsExpanded)");
-                Check(panel.Visibility == Visibility.Visible && chevron?.Data is not null,
-                    "y despliega el panel de la tarjeta con su chevron: es donde viven las acciones rápidas del nodo");
-                Check(chevron?.Data is not null && chevron.Data.Bounds.Width > 0,
-                    $"el chevron del conmutador resuelve su geometría ({chevron!.Data.Bounds.Width:F0}x{chevron.Data.Bounds.Height:F0})");
+            var doorToggle = card.FindName("ParametersToggle") as Microsoft.UI.Xaml.Controls.Primitives.ToggleButton;
+            var doorPanel = card.FindName("ParametersPanel") as Border;
+            bool toggleOk = doorToggle is not null
+                && doorToggle.Visibility == (doorVm.HasCustomActions ? Visibility.Visible : Visibility.Collapsed);
+            bool panelOk = doorPanel is not null
+                && doorPanel.Visibility == (doorVm.ActionsPanelVisible ? Visibility.Visible : Visibility.Collapsed);
+            if (doorVm.HasCustomActions)
+            {
+                cardsShowingDoor++;
+            }
 
-                toggle.IsChecked = wasExpanded;
-                Check(cardVm.Node.IsExpanded == wasExpanded,
-                    "plegarlo devuelve la tarjeta a como estaba (el estado del núcleo, restaurado)");
+            if (!toggleOk || !panelOk)
+            {
+                doorMismatch.Add(doorVm.Title);
             }
         }
+
+        Check(doorMismatch.Count == 0,
+            $"la puerta de acciones coincide con el adaptador en las {cards.Count} tarjetas "
+            + $"({cardsShowingDoor} con acciones declaradas; las demás sin conmutador ni panel: nada que desplegar)"
+            + (doorMismatch.Count == 0 ? string.Empty : " — descuadran: " + string.Join(", ", doorMismatch)));
 
         // Cables: las Bézier del núcleo materializadas como Paths en la capa de cables.
         int wirePaths = CountWirePaths(canvas);
@@ -2810,6 +2904,16 @@ public static class RuntimeSelfCheck
                     int paramEditors = insp.ParameterEditorCount;
                     Check(paramEditors == firstNode.Parameters.Count,
                         $"editores de parámetros materializados: {paramEditors} de {firstNode.Parameters.Count} parámetros");
+
+                    // Hito 269: las ACCIONES del nodo en la ficha. Son la puerta a sus superficies (el gestor de
+                    // presets, la configuración del VLM, el estudio de scripts...) y hasta aquí vivían SÓLO en el
+                    // panel plegable de la tarjeta: quien no supiera desplegarla no llegaba a la superficie. La
+                    // cuenta tiene que ser la de las acciones del nodo inspeccionado, ni una más ni una menos; el
+                    // caso CON acciones —el botón y su ancla— se mide sobre el transcodificador, más abajo, donde
+                    // el flujo de los paneles lo añade al lienzo.
+                    Check(insp.ActionButtonCount == firstNode.CustomActions.Count,
+                        $"acciones del nodo en la ficha: {insp.ActionButtonCount} de "
+                        + $"{firstNode.CustomActions.Count} declaradas por el nodo inspeccionado");
 
                     // Write-through: el mismo camino que la edición del usuario (p.Value = ...), una
                     // pareja parámetro/instancia con la MISMA clave.

@@ -37,8 +37,15 @@ public sealed class NodeInspectorPanel : UserControl
     private readonly TextBlock _emptyText;
     private readonly TextBlock _descriptionText;
     private readonly TextBlock _paramsHeader;
+    private readonly TextBlock _actionsHeader;
     private readonly TextBlock _telemetryHeader;
     private readonly StackPanel _paramsHost = new() { Spacing = 4 };
+
+    /// <summary>
+    /// La pila de las ACCIONES del nodo (el bloque de acciones rápidas del escritorio): un botón por acción
+    /// declarada, que ejecuta la misma orden del núcleo que el botón de la tarjeta del lienzo.
+    /// </summary>
+    private readonly StackPanel _actionsHost = new() { Spacing = 4 };
 
     /// <summary>
     /// Los controles de las filas de parámetros por su AutomationId. Es la tabla que hace observable
@@ -46,6 +53,13 @@ public sealed class NodeInspectorPanel : UserControl
     /// y las acciones de su fila por un ancla estable, sin descifrar el árbol.
     /// </summary>
     private readonly Dictionary<string, Control> _paramControls = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Los botones de las acciones del nodo por su AutomationId (<c>InspectorAction_&lt;ActionId&gt;</c>),
+    /// en su propia tabla: el censo de las filas de parámetro se vacía al reconstruirlas y llevarle estas
+    /// anclas las borraría del registro mientras los botones siguen en el árbol.
+    /// </summary>
+    private readonly Dictionary<string, Control> _actionControls = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Las suscripciones vivo-parametro → caja de las filas materializadas. Se sueltan en cada reconstrucción
@@ -155,6 +169,16 @@ public sealed class NodeInspectorPanel : UserControl
             Foreground = Brush("CanvasTextBrush")
         };
 
+        // El encabezado del bloque de ACCIONES del nodo (el que la ficha del escritorio pinta sobre su lista
+        // de acciones): se colapsa entero cuando el nodo no declara ninguna.
+        _actionsHeader = new TextBlock
+        {
+            FontSize = 11,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(0, 10, 0, 2),
+            Foreground = Brush("CanvasTextBrush")
+        };
+
         _telemetryHeader = new TextBlock
         {
             FontSize = 11,
@@ -182,12 +206,20 @@ public sealed class NodeInspectorPanel : UserControl
         // Las tres pestañas del escritorio (hito 242): Parámetros, Snapshots (los snapshots del
         // nodo con su vista) y Diff (el diff de metadatos que el VM del núcleo computa al
         // seleccionar un snapshot). Los AIDs dan anclas a la observación UIA externa.
+        // La ficha en el orden del escritorio: descripción, ACCIONES del nodo (la puerta a sus superficies —
+        // el gestor de presets, la configuración del VLM, el estudio de scripts...) y, debajo, los editores de
+        // sus parámetros. Las acciones vivían sólo en la tarjeta del lienzo: sin este bloque, el usuario que
+        // no supiera desplegar la tarjeta no tenía forma de llegar a la superficie del nodo.
         var paramsGrid = new Grid { RowSpacing = 0 };
+        paramsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        paramsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         paramsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         paramsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         paramsGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         Grid.SetRow(_descriptionText, 0);
-        Grid.SetRow(_paramsHeader, 1);
+        Grid.SetRow(_actionsHeader, 1);
+        Grid.SetRow(_actionsHost, 2);
+        Grid.SetRow(_paramsHeader, 3);
         var paramsScroll = new ScrollViewer
         {
             Name = "InspectorParamsScroll",
@@ -195,8 +227,10 @@ public sealed class NodeInspectorPanel : UserControl
             Content = _paramsHost
         };
         _scrollPanes.Add(paramsScroll);
-        Grid.SetRow(paramsScroll, 2);
+        Grid.SetRow(paramsScroll, 4);
         paramsGrid.Children.Add(_descriptionText);
+        paramsGrid.Children.Add(_actionsHeader);
+        paramsGrid.Children.Add(_actionsHost);
         paramsGrid.Children.Add(_paramsHeader);
         paramsGrid.Children.Add(paramsScroll);
 
@@ -315,6 +349,7 @@ public sealed class NodeInspectorPanel : UserControl
     {
         var loc = LocalizationManager.Instance;
         _paramsHeader.Text = loc.GetString("Uno_InspectorParams", "Parámetros");
+        _actionsHeader.Text = loc.GetString("Uno_InspectorActions", "Acciones");
         _telemetryHeader.Text = loc.GetString("Uno_InspectorTelemetry", "Telemetría");
         _resetMetricsButton.Content = loc.GetString("Uno_InspectorResetMetrics", "Vaciar métricas");
         _testButton.Content = loc.GetString("Uno_InspectorTest", "Probar");
@@ -417,6 +452,9 @@ public sealed class NodeInspectorPanel : UserControl
         if (_inspected is null)
         {
             _paramsHost.Children.Clear();
+            _actionsHost.Children.Clear();
+            _actionControls.Clear();
+            _actionsHeader.Visibility = Visibility.Collapsed;
             _telemetryRows.Children.Clear();
             _snapshotsHost.Children.Clear();
             _inputsHost.Children.Clear();
@@ -456,6 +494,7 @@ public sealed class NodeInspectorPanel : UserControl
         _inspected.PropertyChanged += _nodePropsSub;
 
         RebuildParameters();
+        RebuildActions();
         RebuildAllSnapshotViews();
         RebuildTelemetry();
         RefreshHeaderTexts();
@@ -821,6 +860,52 @@ public sealed class NodeInspectorPanel : UserControl
         // fila SIEMPRE se construye (encabezado + editor), sin excepciones ocultas.
     }
 
+    /// <summary>
+    /// Las ACCIONES del nodo en la ficha: un botón por acción declarada, con su rótulo y su descripción, que
+    /// ejecuta <c>ExecuteCommand</c> del <see cref="NodeActionViewModel"/> —la MISMA orden del núcleo que el
+    /// botón de la tarjeta del lienzo (<c>NodeViewModel.ExecuteCustomAction</c>)—. El host no reimplementa
+    /// ninguna superficie: sirve la que el nodo declara, con su catálogo de diálogos.
+    ///
+    /// <para><b>Por qué la ficha las lleva</b>. Hasta aquí estas acciones vivían SÓLO en el panel plegable de
+    /// la tarjeta del lienzo, y son la única puerta a las superficies del nodo (el gestor de presets, la
+    /// configuración del VLM, el estudio de scripts, el diseñador de datasets...). El inspector es donde el
+    /// escritorio las pinta y donde el usuario las busca: sin este bloque, la acción existía, el comando
+    /// existía y no había dónde pulsarlo desde la ficha.</para>
+    /// </summary>
+    private void RebuildActions()
+    {
+        _actionsHost.Children.Clear();
+        _actionControls.Clear();
+
+        if (_inspected is null)
+        {
+            _actionsHeader.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        foreach (var action in _inspected.CustomActions)
+        {
+            var button = new Button
+            {
+                Content = action.Title,
+                Padding = new Thickness(8, 3, 8, 3),
+                FontSize = 11,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            AnchorAction("InspectorAction_" + action.ActionId, button);
+
+            // La orden se resuelve al pulsar (el botón guarda su acción, no un identificador suelto): el
+            // comando es el del view model portable y su ejecución acaba en ExecuteCustomAction del nodo.
+            button.Click += (_, _) => action.ExecuteCommand.Execute(null);
+
+            ToolTipService.SetToolTip(button, action.Tooltip ?? action.Title);
+            _actionsHost.Children.Add(button);
+        }
+
+        // El bloque entero se colapsa sin acciones: un encabezado sobre una lista vacía promete algo que no hay.
+        _actionsHeader.Visibility = _actionsHost.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private UIElement? BuildParameterRow(NodeParameterViewModel p)
     {
         var root = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 2) };
@@ -1114,6 +1199,19 @@ public sealed class NodeInspectorPanel : UserControl
     internal Control? ParameterControl(string automationId) =>
         _paramControls.TryGetValue(automationId, out Control? control) ? control : null;
 
+    /// <summary>
+    /// Ancla un botón de acción del nodo (su propia tabla: el censo de las filas se vacía al reconstruirlas).
+    /// </summary>
+    private void AnchorAction(string automationId, Control control)
+    {
+        AutomationProperties.SetAutomationId(control, automationId);
+        _actionControls[automationId] = control;
+    }
+
+    /// <summary>El botón de una acción del nodo por su ActionId (null si el nodo no la declara).</summary>
+    internal Control? ActionControl(string actionId) =>
+        _actionControls.TryGetValue("InspectorAction_" + actionId, out Control? control) ? control : null;
+
     /// <summary>Los AutomationId de las filas materializadas AHORA, en orden (el censo que lee la sonda).</summary>
     internal IReadOnlyList<string> ParameterControlIds =>
         [.. _paramControls.Keys.OrderBy(id => id, StringComparer.Ordinal)];
@@ -1217,6 +1315,16 @@ public sealed class NodeInspectorPanel : UserControl
 
     /// <summary>Los editores de parámetros materializados (uno por parámetro con editor).</summary>
     internal int ParameterEditorCount => _paramsHost.Children.Count;
+
+    /// <summary>
+    /// Los botones de ACCIÓN materializados en la ficha: la cuenta que la sonda compara con las acciones del
+    /// nodo inspeccionado (una acción declarada y no dibujada es una puerta que falta).
+    /// </summary>
+    internal int ActionButtonCount => _actionsHost.Children.Count;
+
+    /// <summary>Los AutomationId de los botones de acción materializados, en orden (el censo de la sonda).</summary>
+    internal IReadOnlyList<string> ActionControlIds =>
+        [.. _actionControls.Keys.OrderBy(id => id, StringComparer.Ordinal)];
 
     /// <summary>Abre el panel sobre un nodo, como haría la selección del lienzo (mismo método del VM).</summary>
     internal void InspectForProbe(NodeViewModel node)

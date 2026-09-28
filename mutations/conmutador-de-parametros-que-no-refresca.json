@@ -1,14 +1,13 @@
 {
   "id": "conmutador-de-parametros-que-no-refresca",
   "hito": 263,
-  "claim": "El adaptador de la tarjeta vuelve a publicar sus enlaces cuando el estado desplegado del nodo cambia (IsExpanded en la lista de refresco agregado): conmutar redibuja el panel Y el chevron.",
-  "why": "El refresco agregado de la tarjeta sólo re-publica los enlaces de las propiedades que declara. Sin IsExpanded en esa lista, pulsar el conmutador cambia el estado en el NÚCLEO y la tarjeta sigue pintando lo de antes: el chevron miente y el panel de parámetros —con la acción «🎬 Presets...» dentro— no se materializa. El fallo es de los que no se ven: cada pieza funciona, pero el usuario pulsa y no pasa nada.",
+  "claim": "El adaptador de la tarjeta vuelve a publicar sus enlaces cuando el estado desplegado del nodo cambia (IsExpanded en la lista de refresco agregado): conmutar redibuja el panel de acciones Y el chevron.",    "why": "El refresco agregado de la tarjeta sólo re-publica los enlaces de las propiedades que declara. Sin IsExpanded en esa lista, pulsar el conmutador cambia el estado en el NÚCLEO y la tarjeta sigue pintando lo de antes: el chevron miente y el panel de acciones —con la acción «🎬 Presets...» dentro— no se materializa. El fallo es de los que no se ven: cada pieza funciona, pero el usuario pulsa y no pasa nada.",
   "edits": [
     {
       "file": "FileFlow.App.Uno/Controls/NodeCardViewModel.cs",
       "replacements": [
         {
-          "old": "\n            // El panel de parámetros y sus acciones rápidas cuelgan de IsExpanded: sin esto, conmutar\n            // cambia el estado en el núcleo y la tarjeta sigue pintando el chevron de antes.\n            or nameof(NodeViewModel.IsExpanded))",
+          "old": "\n            // El panel de acciones y su conmutador cuelgan de IsExpanded: sin esto, conmutar cambia el\n            // estado en el núcleo y la tarjeta sigue pintando el chevron de antes. La lista de parámetros ya\n            // no se pinta aquí —se editan en el inspector—, pero el estado desplegado sigue siendo del\n            // núcleo y el refresco tiene que seguirla.\n            or nameof(NodeViewModel.IsExpanded))",
           "new": ")",
           "count": 1
         }
