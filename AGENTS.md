@@ -111,6 +111,12 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 # Ejecutar la aplicación WPF directamente sin compilar
 .\run-fast.ps1   # o .\run.ps1 -NoBuild
 
+# Sonda de autorrevisión del host de ESCRITORIO (arranca la app real sobre la plataforma headless con Skia
+# real, mide el lienzo con puntero inyectado por el pipeline de entrada y espera el veredicto: 0 = verificado;
+# el informe queda en FileFlow.App\bin\<config>\net10.0\selfcheck-report.txt)
+.\run.ps1 -SelfCheck
+.\run-fast.ps1 -SelfCheck
+
 # ─── Host Uno Platform (WinUI 3) ───
 # Compilar (SOLO MSBuild de Visual Studio: los targets de WinAppSDK no corren con dotnet build)
 # y lanzar el host Uno

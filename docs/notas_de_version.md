@@ -1,6 +1,6 @@
 # Notas de versión — FileFlow Studio
 
-**Versión 1.0.0 · compilación 7005 · 28 de septiembre de 2026**
+**Versión 1.0.0 · compilación 7039 · 28 de septiembre de 2026**
 
 Estas notas recogen **veinte tramos**:
 
@@ -1470,7 +1470,49 @@ geometría— sigue verde en su sondeo: **88 comprobaciones, ninguna falla**, co
 
 ---
 
-## 24. Cómo verificarlo
+## 24. El tramo de la sonda del escritorio (compilación 7005 → 7039)
+
+Esta entrega **no cambia nada de lo que ves** al usar la aplicación: el lienzo, los cables, el paneo y el zoom
+funcionan igual que en el tramo anterior. Lo que cambia es **lo que la aplicación de escritorio puede demostrar de
+sí misma**: hasta ahora la única que traía sonda propia era la multiplataforma, y el cable del escritorio estaba
+medido sólo «en el dibujo», nunca con un gesto encima.
+
+### Lo que ahora puedes hacer
+
+- **Comprobar la aplicación de escritorio sin usarla a mano**: `\.\run.ps1 -SelfCheck` (o `\.\run-fast.ps1
+  -SelfCheck`, sin compilar) arranca **la aplicación de verdad**, mide su lienzo con un **puntero inyectado** y
+  termina **diciendo si pasó**: el código de salida es el veredicto (**0 = verificado**) y el detalle queda en
+  `selfcheck-report.txt`, junto al ejecutable. La aplicación corre **sin ventana** mientras dura la medida
+  (plataforma sin escritorio, pero con dibujo real) y **no toca nada tuyo**: ni preferencias, ni contadores de
+  uso, ni tus flujos.
+- **Y qué mide** —**41 comprobaciones, todas en verde en esta entrega**—: que cada cable esté dibujado con la
+  curva del producto y que **entre y salga por donde se ve el socket** (hueco medido: **0,00 px**), que
+  **arrastrar el fondo con el botón derecho** mueva el plano exactamente lo que se arrastró (y el cable siga a la
+  mano), que **la rueda** acerque, aleje y se detenga en su tope (2,5×) sin despegar el cable de sus sockets, y
+  que **el botón izquierdo sobre el fondo NO mueva el plano**.
+- **La misma medida, dentro de la suite**: los cuatro gestos se comprueban también en las pruebas automáticas, con
+  el punto del gesto elegido por hit-testing y con el cable medido **en píxeles de la ventana**, que es lo que
+  distingue «el enlace tiene valor» de «el trazo cae sobre el socket».
+
+### Lo que sigue viéndose así (declarado)
+
+- **El puntero de esta comprobación no es tu ratón**: entra por el camino de entrada del propio framework, sobre la
+  aplicación montada, no por el sistema operativo. Dice mucho —los gestos de verdad: selección, arrastre, rueda,
+  captura de puntero— pero **no sustituye** a una sesión con la ventana abierta, y el propio informe lo dice en su
+  cabecera para que nadie lea sus verdes como un ratón.
+- **La comprobación prepara su propia escena**: la aplicación arranca con el lienzo vacío, así que la sonda carga
+  **un ejemplo del catálogo en memoria** (como hace la multiplataforma en su arranque) y sale sin guardar nada.
+- **El arrastre de una tarjeta no lo mide la sonda**, sino la suite: con la ventana abierta, pulsar una tarjeta la
+  **trae al frente** y arrastrarla cerca del borde **desplaza el plano solo** —dos cosas del producto que no son el
+  reparto de botones—, así que la sonda comprueba el reparto (el izquierdo sobre el fondo no mueve el plano) y el
+  arrastre de la tarjeta se mide donde la escena está bajo control.
+- **Sin comparación de píxeles entre las dos aplicaciones**: lo medido es la **geometría dibujada**, proyectada al
+  espacio de la ventana; que el cable de escritorio y el de la multiplataforma coincidan **píxel a píxel** sigue sin
+  medirse.
+
+---
+
+## 25. Cómo verificarlo
 
 ```powershell
 # La suite completa (pruebas unitarias, de integración y de aspecto)
@@ -1478,6 +1520,10 @@ geometría— sigue verde en su sondeo: **88 comprobaciones, ninguna falla**, co
 
 # Compilar y ejecutar la aplicación
 .\run.ps1
+
+# La sonda de autorrevisión del escritorio (el script espera y hereda el exit code: 0 = verificado)
+.\run.ps1 -SelfCheck                # mide el trazo, el pan y el zoom con puntero inyectado
+.\run-fast.ps1 -SelfCheck           # ídem sin compilar
 ```
 
 El host multiplataforma (Uno Platform) tiene sus propios comandos:
