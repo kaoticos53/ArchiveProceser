@@ -16,6 +16,10 @@
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
     <PackageReference Include="Material.Icons.Avalonia" Version="3.0.2" />
+    <!-- Los view models PORTABLES del plugin (el gestor de presets): el mismo toolkit que usan los del plugin
+         de sistema de archivos, para que las dos vistas —la ventana del escritorio y la del host Uno— enlacen
+         las mismas órdenes y las mismas propiedades. -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <Using Include="System.IO" />
   </ItemGroup>
 

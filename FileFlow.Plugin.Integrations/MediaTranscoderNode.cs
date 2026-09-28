@@ -6,13 +6,14 @@ using FileFlow.Sdk;
 using FileFlow.Sdk.Common;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Platform;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Storage;
 
 namespace FileFlow.Plugin.Integrations;
 
 [NodeDefinition("MediaTranscoderNode_Name", "AudioVoice", "MediaTranscoderNode_Desc", PipelineRole.Transform,
     "ffmpeg", "video", "audio", "mp4", "mp3", "transcodificar", "convertir", "h264", "h265", "webm", "media")]
-public sealed class MediaTranscoderNode : FlowNodeBase, INodeCustomActionProvider
+public sealed class MediaTranscoderNode : FlowNodeBase, INodeCustomActionProvider, INodeDialogSurfaceProvider
 {
     public override string Name => LocalizationManager.Instance.GetString("MediaTranscoderNode_Name", "Transcodificar Media");
     public override string Category => "AudioVoice";
@@ -54,10 +55,33 @@ public sealed class MediaTranscoderNode : FlowNodeBase, INodeCustomActionProvide
         new("ManageMediaPresets", "🎬 Presets...", "🎬", "Gestionar y personalizar presets de transcodificación FFmpeg")
     ];
 
+    /// <summary>
+    /// El GESTOR DE PRESETS, declarado al SDK para que lo sirva <b>cualquier</b> host.
+    ///
+    /// <para>El nodo conoce su almacén de presets —el que lee este mismo nodo al transcodificar—, pero no el
+    /// toolkit: declara <b>qué</b> diálogo quiere (<see cref="DialogKeys.MediaPresetManager"/>) y <b>qué
+    /// contiene</b> —el view model portable
+    /// <see cref="UI.ViewModels.MediaPresetManagerViewModel"/>, sin un solo tipo de UI—. El host con el toolkit
+    /// del escritorio monta la ventana del plugin; un host sin él pinta su propia vista sobre el MISMO view
+    /// model, que escribe en el mismo almacén. Sin esta declaración, la entrada sólo funcionaba en un host.</para>
+    /// </summary>
+    public string DialogKey => FileFlow.Sdk.Services.DialogKeys.MediaPresetManager;
+
+    /// <summary>La acción personalizada que esta superficie sustituye: el mismo «🎬» de la tarjeta del nodo.</summary>
+    public string? ReplacesCustomActionId => "ManageMediaPresets";
+
+    /// <inheritdoc />
+    public object? CreateDialogPayload(object? context = null) =>
+        new UI.ViewModels.MediaPresetManagerViewModel(
+            UI.Services.MediaPresetManagerService.Instance,
+            (context as NodeCustomActionContext)?.Dialogs);
+
     public void ExecuteCustomAction(string actionId, object? context = null)
     {
         if (actionId.Equals("ManageMediaPresets", StringComparison.OrdinalIgnoreCase))
         {
+            // El camino del host con el toolkit del escritorio: la ventana la monta el plugin. Los hosts que
+            // no pueden montarla llegan por la superficie DECLARADA (arriba), con el mismo view model portable.
             var window = new MediaPresetManagerWindow();
             Action? onCompleted = null;
             object? parentWindow = context;

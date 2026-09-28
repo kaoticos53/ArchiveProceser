@@ -15,7 +15,7 @@ public class MediaPreset
     public bool IsSystemDefault { get; set; } = false;
 }
 
-public class MediaPresetManagerService
+public class MediaPresetManagerService : IMediaPresetStore
 {
     private static readonly Lazy<MediaPresetManagerService> _instance = new(() => new MediaPresetManagerService());
     public static MediaPresetManagerService Instance => _instance.Value;
@@ -34,6 +34,7 @@ public class MediaPresetManagerService
         LoadPresets();
     }
 
+    /// <inheritdoc />
     public IReadOnlyList<MediaPreset> GetPresets()
     {
         lock (_lock)
@@ -42,6 +43,7 @@ public class MediaPresetManagerService
         }
     }
 
+    /// <inheritdoc />
     public List<string> GetPresetNames()
     {
         lock (_lock)
@@ -50,6 +52,7 @@ public class MediaPresetManagerService
         }
     }
 
+    /// <inheritdoc />
     public MediaPreset? GetPresetByName(string name)
     {
         lock (_lock)
@@ -58,6 +61,7 @@ public class MediaPresetManagerService
         }
     }
 
+    /// <inheritdoc />
     public void SavePreset(MediaPreset preset)
     {
         lock (_lock)
@@ -76,6 +80,7 @@ public class MediaPresetManagerService
         PresetsChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <inheritdoc />
     public bool DeletePreset(string presetId)
     {
         lock (_lock)
@@ -92,6 +97,7 @@ public class MediaPresetManagerService
         return false;
     }
 
+    /// <inheritdoc />
     public void ResetToDefaults()
     {
         lock (_lock)

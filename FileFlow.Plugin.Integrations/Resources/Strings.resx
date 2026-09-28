@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
@@ -51,4 +51,6 @@
   <data name="PresetManager_MsgDefaultCannotDelete" xml:space="preserve"><value>Default system presets cannot be deleted.</value></data>
   <data name="PresetManager_MsgDeleteConfirm" xml:space="preserve"><value>Are you sure you want to delete preset '{0}'?</value></data>
   <data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>Do you want to reset all presets to system default values?</value></data>
+  <data name="PresetManager_NewPresetName" xml:space="preserve"><value>New Custom Preset</value></data>
+  <data name="PresetManager_NewPresetDescription" xml:space="preserve"><value>Description of the new preset...</value></data>
 </root>

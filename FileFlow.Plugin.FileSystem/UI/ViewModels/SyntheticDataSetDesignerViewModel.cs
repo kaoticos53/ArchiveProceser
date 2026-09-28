@@ -441,12 +441,19 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetDuplicated", "Copia creada: '{0}'.", clone.Name);
     }
 
+    /// <summary>
+    /// Borra un dataset propio, previa confirmación.
+    ///
+    /// <para>La pregunta va por <see cref="IDialogService.ConfirmAsync"/>: el borrado es permanente y la orden
+    /// depende de la respuesta REAL del usuario (la vía síncrona contesta «no» desde el hilo de UI en un host
+    /// WinUI: el botón no borraría nada y tampoco avisaría).</para>
+    /// </summary>
     [RelayCommand]
-    private void DeleteDataSet()
+    private async Task DeleteDataSetAsync()
     {
         if (SelectedDataSet == null || SelectedDataSet.IsBuiltIn) return;
 
-        bool confirm = _dialogService.ShowConfirmation(
+        bool confirm = await _dialogService.ConfirmAsync(
             LocalizationManager.Instance.GetFormattedString("Msg_ConfirmDeleteDataSet", "¿Deseas eliminar de forma permanente el dataset '{0}'?", SelectedDataSet.Name),
             LocalizationManager.Instance.GetString("Title_ConfirmDelete", "Confirmar Eliminación"));
 

@@ -5,6 +5,7 @@ using FileFlow.Plugin.FileSystem.UI.Services;
 using FileFlow.Plugin.FileSystem.UI.Views;
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.SyntheticData;
 using FileFlow.Sdk.VirtualFileSystem;
 
@@ -12,7 +13,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("SyntheticDataSourceNode_Name", "Files", "SyntheticDataSourceNode_Desc", PipelineRole.Source,
     "testing", "pruebas", "sintetico", "mock", "dataset", "peliculas", "series", "musica", "comics", "dummy")]
-public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionProvider
+public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionProvider, INodeDialogSurfaceProvider
 {
     public override string Name => LocalizationManager.Instance.GetString("SyntheticDataSourceNode_Name", "Generador de Datos de Prueba");
     public override string Category => "Files";
@@ -53,23 +54,52 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
         new("OpenDataSetDesigner", "📊 Diseñador de Datasets...", "📊", "Abrir el Diseñador Visual de Datasets Sintéticos para crear, editar o importar conjuntos de datos ficticios")
     ];
 
+    /// <summary>
+    /// La superficie modal del nodo, declarada al SDK para que la sirva <b>cualquier</b> host.
+    ///
+    /// <para>El nodo es el dueño de la superficie (es quien conoce su almacén y su modelo de datos), pero no
+    /// del toolkit: declara <b>qué</b> diálogo quiere (<c>DialogKeys.DataSetDesigner</c>) y <b>qué contiene</b>
+    /// —el view model portable <see cref="SyntheticDataSetDesignerViewModel"/>, sin un solo tipo de UI—. El
+    /// host con el toolkit del escritorio monta la ventana del plugin; un host sin él pinta su propia vista
+    /// sobre el MISMO view model. Sin esta declaración, la entrada del menú sólo funcionaba en un host.</para>
+    /// </summary>
+    public string DialogKey => FileFlow.Sdk.Services.DialogKeys.DataSetDesigner;
+
+    /// <inheritdoc />
+    ///
+    /// <para>Los <b>diálogos del host</b> viajan en el contexto y se le pasan al contenido: el nodo vive en un
+    /// ensamblado de plugin y no puede resolverlos, y sin ellos el diseñador cae al doble nulo, que a una
+    /// confirmación contesta «sí» sin preguntar —el borrado de un dataset propio desaparecería del catálogo sin
+    /// que nadie lo autorice—. Es el mismo camino que usa el gestor de presets de medios.</para>
+    public object? CreateDialogPayload(object? context = null) =>
+        new UI.ViewModels.SyntheticDataSetDesignerViewModel(
+            null,
+            (context as NodeCustomActionContext)?.Dialogs);
+
     public void ExecuteCustomAction(string actionId, object? context = null)
     {
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
-            var window = new SyntheticDataSetDesignerWindow();
             Action? onCompleted = null;
             object? parentWindow = context;
+            IDialogService? dialogs = null;
 
             if (context is NodeCustomActionContext customCtx)
             {
                 parentWindow = customCtx.ParentWindow;
                 onCompleted = customCtx.OnCompleted;
+                dialogs = customCtx.Dialogs;
             }
             else if (context is Action callback)
             {
                 onCompleted = callback;
             }
+
+            // El host con el toolkit del escritorio monta ESTA ventana con el contenido del nodo; los hosts que
+            // no pueden montarla llegan por la superficie declarada (arriba) con el mismo view model. Los dos
+            // caminos llevan los diálogos del host, para que la confirmación del borrado sea la misma.
+            var window = new SyntheticDataSetDesignerWindow(
+                new UI.ViewModels.SyntheticDataSetDesignerViewModel(null, dialogs));
 
             if (onCompleted != null)
             {
