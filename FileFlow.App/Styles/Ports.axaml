@@ -303,7 +303,7 @@
                 <Canvas>
                     <nodifyConn:Connection Source="{TemplateBinding SourceAnchor}"
                                            Target="{TemplateBinding TargetAnchor}"
-                                           Spacing="45"
+                                           Spacing="0"
                                            Direction="{TemplateBinding Direction}"
                                            Stroke="{TemplateBinding Stroke}"
                                            StrokeThickness="{TemplateBinding StrokeThickness}"

@@ -151,7 +151,7 @@
                 <DataTemplate x:DataType="vm:ConnectionViewModel">
                     <nodifyConn:Connection Source="{Binding Source.Anchor}"
                                     Target="{Binding Target.Anchor}"
-                                    Spacing="45"
+                                    Spacing="0"
                                     StrokeThickness="3.5"
                                     StrokeDashArray="{x:Null}"
                                     Direction="Forward"
