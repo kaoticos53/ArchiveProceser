@@ -1,0 +1,72 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "FileFlow.App.Uno (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-uno",
+            "program": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": "FileFlow.App.Uno (Sin depurar)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-uno",
+            "program": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "noDebug": true
+        },
+        {
+            "name": "FileFlow.App.Uno - SelfCheck (Lienzo)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-uno",
+            "program": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe",
+            "args": ["--selfcheck"],
+            "cwd": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": "FileFlow.App.Uno - SelfCheck Dialogs (Paneles de nodo)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-uno",
+            "program": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe",
+            "args": ["--selfcheck-dialogs"],
+            "cwd": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": "FileFlow.App.Uno - SelfCheck ControlBar (Menú y barra)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-uno",
+            "program": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe",
+            "args": ["--selfcheck-controlbar"],
+            "cwd": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": "FileFlow.App.Uno - SelfCheck Settings (Ajustes)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-uno",
+            "program": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0/FileFlow.App.Uno.exe",
+            "args": ["--selfcheck-settings"],
+            "cwd": "${workspaceFolder}/FileFlow.App.Uno/bin/Debug/net10.0-windows10.0.19041.0",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        }
+    ]
+}

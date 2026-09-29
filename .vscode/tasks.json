@@ -1,0 +1,149 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-uno",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/FileFlow.Uno.slnx",
+                "-p:FileFlowUnoHost=true",
+                "--nologo"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "build-uno-release",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/FileFlow.Uno.slnx",
+                "-c",
+                "Release",
+                "-p:FileFlowUnoHost=true",
+                "--nologo"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
+        },
+        {
+            "label": "run-uno",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/run-uno.ps1"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "run-uno-fast",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/run-uno-fast.ps1"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "selfcheck-uno",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/run-uno.ps1",
+                "-SelfCheck",
+                "-NoBuild"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "selfcheck-uno-dialogs",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/run-uno.ps1",
+                "-SelfCheckDialogs",
+                "-NoBuild"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "selfcheck-uno-controlbar",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/run-uno.ps1",
+                "-SelfCheckControlBar",
+                "-NoBuild"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "selfcheck-uno-settings",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/run-uno.ps1",
+                "-SelfCheckSettings",
+                "-NoBuild"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "test-all",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "test",
+                "${workspaceFolder}/FileFlow.slnx"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "${workspaceFolder}/clean.ps1"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}

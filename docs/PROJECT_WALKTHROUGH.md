@@ -22,6 +22,45 @@
 
 ## Ventana viva
 
+## [2026-09-28] - Hito 271: Configuración Integral del IDE y Entorno de Desarrollo para Uno Platform
+
+### 🎯 El encargo
+«este proyecto usa una interfaz de usuario basada en uno platform pero parece que el entorno de desarrollo y el ide no estan bien configurados. configura todo para que funcione bien.»
+
+### 🔬 Lo que encontró la medida
+1. **El IDE carecía de configuración para Uno Platform y C#**:
+   - `.vscode/settings.json` contenía únicamente `"dotrush.roslyn.projectOrSolutionFiles": []` (un array vacío que dejaba a DotRush sin solución). No existía definición de solución por defecto (`dotnet.defaultSolution`), provocando que C# Dev Kit cargase `FileFlow.slnx` (el host Avalonia) en lugar de `FileFlow.Uno.slnx` (el host Uno Platform sin dependencias de escritorio).
+   - No existía `.vscode/launch.json` para depuración con F5 en VS Code ni `.vscode/tasks.json` para tareas de compilación, ejecución y self-check.
+   - No existía `.vscode/extensions.json` recomendando la extensión oficial de Uno Platform (`unoplatform.vscode`) ni las herramientas de C# Dev Kit.
+   - La extensión de Uno Platform para VS Code no estaba instalada en el sistema; se instaló `unoplatform.vscode` v0.26.1.
+2. **Defecto en los scripts lanzadores de PowerShell (`run-uno.ps1` y `run-uno-fast.ps1`)**:
+   - Al invocar los scripts con parámetros de sondeo (como `-SelfCheck`), la concatenación `@("--selfcheck") + $AppArgs` cuando `$AppArgs` es `$null` creaba un array con un elemento nulo (`@("--selfcheck", $null)`).
+   - PowerShell fallaba en `Start-Process` con la excepción: `Start-Process : No se puede validar el argumento del parámetro 'ArgumentList'. El argumento es null o está vacío.`
+   - Se refactorizó la recolección de argumentos usando `List[string]` y comprobación explícita de `IsNullOrWhiteSpace`, eliminando el fallo y garantizando que el paso de parámetros a `Start-Process` sea limpio tanto con argumentos como sin ellos.
+3. **Optimización de `.gitignore` y estandarización con `.editorconfig`**:
+   - Se ajustó `.gitignore` para versionar la configuración esencial del IDE (`.vscode/settings.json`, `tasks.json`, `launch.json`, `extensions.json`) ignorando temporales.
+   - Se introdujo `.editorconfig` con directivas precisas de sangrado para C# (4 espacios), XAML/XML/JSON (2 espacios), codificación UTF-8 y saltos de línea CRLF.
+
+### 🧱 Lo construido
+| Pieza | Qué es |
+| :--- | :--- |
+| `.vscode/settings.json` | Configura `FileFlow.Uno.slnx` como solución principal para C# Dev Kit, DotRush y OmniSharp, asocia archivos XAML/AXAML/SLNX a XML, anidamiento de ficheros (`*.xaml` -> `*.xaml.cs`, `*.axaml` -> `*.axaml.cs`) y exclusión de directorios `bin/` y `obj/` en búsquedas. |
+| `.vscode/launch.json` | Perfiles de depuración `coreclr` listos para F5: ejecución normal, ejecución sin depuración y modos de autorrevisión (`--selfcheck`, `--selfcheck-dialogs`, `--selfcheck-controlbar`, `--selfcheck-settings`). |
+| `.vscode/tasks.json` | Tareas de compilación (`build-uno`, `build-uno-release`), ejecución (`run-uno`, `run-uno-fast`), pruebas unitarias (`test-all`) y sondeos automatizados (`selfcheck-uno*`). |
+| `.vscode/extensions.json` | Recomendaciones de extensiones clave: `unoplatform.vscode`, `ms-dotnettools.csdevkit`, `ms-dotnettools.csharp` y `ms-dotnettools.vscode-dotnet-runtime`. |
+| `.editorconfig` | Estándar de codificación unificado para el IDE y herramientas de análisis. |
+| `run-uno.ps1` / `run-uno-fast.ps1` | Corrección del paso de argumentos en `Start-Process`, asegurando ejecución confiable de la app y sus sondeos. |
+| Extensión `unoplatform.vscode` | Instalada la extensión oficial v0.26.1 de Uno Platform en el entorno VS Code. |
+
+### 🛡️ Cómo se verificó
+1. **Compilación hermética Uno**: `dotnet build FileFlow.Uno.slnx -p:FileFlowUnoHost=true` → **0 errores**.
+2. **Sondeo en runtime del lienzo**: `.\run-uno.ps1 -SelfCheck -NoBuild` → **EXIT 0 · 85 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+3. **Sondeo de paneles de nodo y diálogos**: `.\run-uno-fast.ps1 -SelfCheckDialogs` → **EXIT 0 · 51 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+4. **Sondeo de barra de control y cajón**: `.\run-uno-fast.ps1 -SelfCheckControlBar` → **EXIT 0 · 42 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+5. **Sondeo de ajustes (tema e idioma)**: `.\run-uno-fast.ps1 -SelfCheckSettings` → **EXIT 0 · 18 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+6. **Guardias de arquitectura Uno**: `UnoHermeticBuildGuardTests` y `UnoNodeDialogsGuardTests` → **21 superadas de 21**.
+7. **Suite completa de pruebas**: `.\test.ps1` → **1963 superadas, 1 omitida, 0 fallos** en 178 s.
+
 ## [2026-09-28] - La Bitácora se Divide: el Archivo Frío y la Ventana Viva
 
 ### 🎯 El encargo

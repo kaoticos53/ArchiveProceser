@@ -1,0 +1,45 @@
+{
+    // Solución por defecto para C# Dev Kit / Roslyn / Uno Platform
+    "dotnet.defaultSolution": "FileFlow.Uno.slnx",
+
+    // Configuración para DotRush (soporte Roslyn ligero)
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "FileFlow.Uno.slnx"
+    ],
+
+    // C# Dev Kit y OmniSharp (ajuste recomendado por Uno Platform)
+    "dotnet.preferCSharpExtension": false,
+    "csharp.format.enable": true,
+    "omnisharp.defaultLaunchSolution": "FileFlow.Uno.slnx",
+    "omnisharp.enableRoslynAnalyzers": true,
+
+    // Hot Reload y soporte para Uno Platform y XAML
+    "uno.hotReload.enabled": true,
+
+    // Asociación de archivos XAML / AXAML / SLNX
+    "files.associations": {
+        "*.xaml": "xml",
+        "*.axaml": "xml",
+        "*.slnx": "xml"
+    },
+
+    // Anidamiento de archivos en el explorador para una vista limpia tipo Visual Studio
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+        "*.xaml": "$(capture).xaml.cs",
+        "*.axaml": "$(capture).axaml.cs",
+        "*.csproj": "$(capture).*.props, $(capture).*.targets",
+        "*.slnx": "Directory.Build.props, Directory.Packages.props, version.props, .build_number",
+        "*.sln": "Directory.Build.props, Directory.Packages.props, version.props, .build_number"
+    },
+
+    // Optimización de búsquedas excluyendo artefactos de compilación
+    "search.exclude": {
+        "**/bin": true,
+        "**/obj": true,
+        "**/.vs": true,
+        "**/TestResults": true,
+        "**/coverage-report": true
+    }
+}

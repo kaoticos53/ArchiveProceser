@@ -51,11 +51,19 @@ if (-not (Test-Path $exePath)) {
 
 $binDir = Split-Path -Parent $exePath
 
-if ($SelfCheck)        { $AppArgs = @("--selfcheck")          + $AppArgs }
-if ($SelfCheckSettings){ $AppArgs = @("--selfcheck-settings") + $AppArgs }
-if ($SelfCheckControlBar) { $AppArgs = @("--selfcheck-controlbar") + $AppArgs }
-if ($SelfCheckDialogs)    { $AppArgs = @("--selfcheck-dialogs") + $AppArgs }
-if ($SelfCheckUia)     { $AppArgs = @("--selfcheck-uia")      + $AppArgs }
+$argsList = [System.Collections.Generic.List[string]]::new()
+if ($SelfCheck)           { $argsList.Add("--selfcheck") }
+if ($SelfCheckSettings)   { $argsList.Add("--selfcheck-settings") }
+if ($SelfCheckControlBar) { $argsList.Add("--selfcheck-controlbar") }
+if ($SelfCheckDialogs)    { $argsList.Add("--selfcheck-dialogs") }
+if ($SelfCheckUia)        { $argsList.Add("--selfcheck-uia") }
+if ($AppArgs) {
+    foreach ($arg in $AppArgs) {
+        if (-not [string]::IsNullOrWhiteSpace($arg)) {
+            $argsList.Add($arg)
+        }
+    }
+}
 $waitForExit = $SelfCheck -or $SelfCheckSettings -or $SelfCheckControlBar -or $SelfCheckDialogs -or $SelfCheckUia
 
 Write-Host "`n[OK] Iniciando el host Uno ($Configuration)..." -ForegroundColor Green
@@ -65,12 +73,16 @@ if ($waitForExit) {
     # PowerShell no espera a las aplicaciones de GUI, asi que `&` volvia enseguida con un
     # $LASTEXITCODE viejo (medido en el hito 270: «exit 0» con el sondeo aun corriendo y el informe a
     # medio escribir).
-    $sondeo = Start-Process -FilePath $exePath -ArgumentList $AppArgs -WorkingDirectory $binDir -Wait -PassThru
+    if ($argsList.Count -gt 0) {
+        $sondeo = Start-Process -FilePath $exePath -ArgumentList $argsList.ToArray() -WorkingDirectory $binDir -Wait -PassThru
+    } else {
+        $sondeo = Start-Process -FilePath $exePath -WorkingDirectory $binDir -Wait -PassThru
+    }
     exit $sondeo.ExitCode
 }
 
-if ($AppArgs -and $AppArgs.Count -gt 0) {
-    Start-Process -FilePath $exePath -ArgumentList $AppArgs -WorkingDirectory $binDir
+if ($argsList.Count -gt 0) {
+    Start-Process -FilePath $exePath -ArgumentList $argsList.ToArray() -WorkingDirectory $binDir
 } else {
     Start-Process -FilePath $exePath -WorkingDirectory $binDir
 }

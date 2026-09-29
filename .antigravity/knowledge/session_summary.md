@@ -1,4 +1,4 @@
-﻿# Resumen Consolidado de Sesiones y Memoria de Proyecto - FileFlow Studio
+# Resumen Consolidado de Sesiones y Memoria de Proyecto - FileFlow Studio
 
 Este documento se actualiza al finalizar cada sesión de trabajo para consolidar los puntos clave, decisiones arquitectónicas, capacidades del sistema y el estado de la solución, evitando empezar desde cero en futuras conversaciones.
 
@@ -12,6 +12,29 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+
+- **271. Configuración Integral del IDE y Entorno para Uno Platform y Corrección de Lanzadores (2026-09-28)**:
+  - **El encargo (del usuario, una frase)**: «este proyecto usa una interfaz de usuario basada en uno platform pero parece que el entorno de desarrollo y el ide no estan bien configurados. configura todo para que funcione bien».
+  - **🔬 Lo que encontró la medida**:
+    1. **Entorno IDE desconfigurado**: `.vscode/settings.json` tenía únicamente `"dotrush.roslyn.projectOrSolutionFiles": []`, sin solución por defecto (`dotnet.defaultSolution`), causando que C# Dev Kit cargase `FileFlow.slnx` (Avalonia) en vez de `FileFlow.Uno.slnx` (Uno Platform). No existían perfiles de ejecución/depuración `launch.json`, tareas `tasks.json` ni recomendaciones `extensions.json`. Tampoco estaba instalada la extensión oficial de Uno Platform (`unoplatform.vscode`).
+    2. **Fallo en scripts PowerShell (`run-uno.ps1` y `run-uno-fast.ps1`)**: Cuando `$AppArgs` no se suministraba en la invocación, la concatenación `@("--selfcheck") + $AppArgs` resultaba en un array con un elemento `$null`, lo que provocaba que `Start-Process` fallase de forma catastrófica con `ParameterArgumentValidationError` al no admitir argumentos nulos.
+  - **🧱 Lo construido**:
+    - **Extensión Uno Platform**: Instalada `unoplatform.vscode` v0.26.1 en VS Code.
+    - **`.vscode/settings.json`**: Solución por defecto `FileFlow.Uno.slnx` para C# Dev Kit, DotRush y OmniSharp; modo DevKit activo (`dotnet.preferCSharpExtension: false`); Uno Hot Reload habilitado; asociación de XAML/AXAML/SLNX con XML; y reglas de anidamiento de ficheros (`*.xaml` -> `*.xaml.cs`, etc.).
+    - **`.vscode/tasks.json`**: Tareas completas de build (`build-uno`, `build-uno-release`), ejecución (`run-uno`, `run-uno-fast`), pruebas (`test-all`) y las 4 sondas de verificación en runtime (`selfcheck-uno*`).
+    - **`.vscode/launch.json`**: Configuraciones de depuración listas para F5 con `coreclr`: lanzamiento normal, lanzamiento sin depurar y ejecución directa de los 4 modos de autorrevisión.
+    - **`.vscode/extensions.json`**: Recomendaciones automáticas de extensiones requeridas para Uno Platform y C#.
+    - **`.editorconfig`**: Directivas de formato consistentes (4 espacios C#, 2 espacios XAML/XML/JSON, UTF-8, CRLF).
+    - **`run-uno.ps1` / `run-uno-fast.ps1`**: Argumentos recopilados mediante `List[string]` con filtrado de nulos antes de pasarlos a `Start-Process`.
+    - **`.gitignore`**: Actualizado para permitir versionar los archivos de configuración `.vscode/*.json`.
+  - **✅ Validación**:
+    - `dotnet build FileFlow.Uno.slnx -p:FileFlowUnoHost=true` → **0 errores**.
+    - `.\run-uno.ps1 -SelfCheck -NoBuild` → **EXIT 0 · 85 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+    - `.\run-uno-fast.ps1 -SelfCheckDialogs` → **EXIT 0 · 51 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+    - `.\run-uno-fast.ps1 -SelfCheckControlBar` → **EXIT 0 · 42 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+    - `.\run-uno-fast.ps1 -SelfCheckSettings` → **EXIT 0 · 18 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+    - Pruebas de guardias: **21 de 21 superadas**.
+    - Suite completa de pruebas (`test.ps1`): **1963 superadas, 1 omitida, 0 fallos**.
 
 - **270. El Botón del Nodo que Abre una Ventana del Escritorio Avisa, y los Paneles se Redimensionan (2026-09-28)**:
   - **El encargo (del usuario, una frase)**: «los botones en los nodos no parecen funcionar y los paneles laterales de inspector y catálogo de nodos no se pueden redimensionar. arréglalo».
