@@ -14,6 +14,9 @@
   <!-- El DOMINIO del plugin (descompresión) va siempre; el TOOLKIT de la ventana sólo en el host que la monta. -->
   <ItemGroup>
     <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <!-- El view model PORTABLE del gestor de contraseñas (el que pintan los dos hosts): sin toolkit de UI, como
+         los de los demás plugins que declaran una superficie. -->
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <Using Include="System.IO" />
   </ItemGroup>
 

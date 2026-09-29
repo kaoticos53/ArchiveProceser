@@ -350,7 +350,8 @@ public static class ModalVisualFixture
 
     /// <summary>Gestor de contraseñas con contenido sembrado (constructor de pruebas del plugin).</summary>
     private static Window BuildPasswordManager() =>
-        new PasswordManagerWindow("{\"archivos.zip\": [\"abcd-1234-ef56\"]}")
+        new PasswordManagerWindow(new FileFlow.Plugin.Archives.UI.ViewModels.PasswordManagerViewModel(
+            "{\"archivos.zip\": [\"abcd-1234-ef56\"]}"))
         {
             Width = 560,
             Height = 460

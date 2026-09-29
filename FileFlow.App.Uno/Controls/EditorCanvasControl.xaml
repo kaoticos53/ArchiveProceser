@@ -36,8 +36,10 @@
         <CompositeTransform x:Name="CanvasTransform" ScaleX="1" ScaleY="1" TranslateX="0" TranslateY="0" />
       </Canvas.RenderTransform>
 
-    <!-- Cables: debajo de las tarjetas; los calcula el code-behind con ConnectionGeometry -->
-    <Canvas x:Name="WireLayer" IsHitTestVisible="False" />
+    <!-- Cables: debajo de las tarjetas; los calcula el code-behind con ConnectionGeometry. La capa Sí es
+         alcanzable por el puntero: cada cable lleva su DIANA invisible (la misma Bézier, más gruesa) para
+         poder pulsarse y borrarse con la orden del núcleo, como el menú del cable del escritorio. -->
+    <Canvas x:Name="WireLayer" IsHitTestVisible="True" />
 
     <!-- Migas de subflujos (fase 3.4): la ruta de graphs abiertos, con navegación por clic -->
     <Border x:Name="BreadcrumbsBar" HorizontalAlignment="Left" VerticalAlignment="Top"

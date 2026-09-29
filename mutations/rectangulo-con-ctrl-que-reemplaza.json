@@ -1,0 +1,26 @@
+{
+  "id": "rectangulo-con-ctrl-que-reemplaza",
+  "hito": 286,
+  "claim": "El rectángulo de selección cumple la MISMA regla del clic: sin Ctrl REEMPLAZA —manda el área, y lo que estaba elegido se suelta— y con Ctrl (add) AÑADE, porque lo que se conserva es lo que ya estaba elegido al empezar (los nodos y los cables marcados de base, que la vista mide al pulsar).",
+  "why": "Sin la mitad aditiva, el Ctrl del rectángulo no serviría para nada: el usuario que quiere sumar una zona a lo que ya tenía elegido la perdería al trazar el lazo. El mutante quita la unión con la base (el rectángulo se queda con lo que cae dentro y suelta lo de fuera aunque se pulse Ctrl): el gesto pierde la mitad que lo hace componible.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/EditorViewModel.cs",
+      "replacements": [
+        {
+          "old": "        if (add)\n        {\n            wantedNodes.UnionWith(baseNodes);\n            wantedConnections.UnionWith(baseConnections);\n        }\n",
+          "new": "        if (add)\n        {\n            // mutante: el Ctrl no conserva lo de fuera del rectangulo\n        }\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~RectanguloConCtrl_ShouldAddToTheSelection_WithoutReleasingTheRest",
+    "why": "El caso deja un nodo elegido y un cable marcado, traza un Ctrl+rectángulo sobre OTRA zona y exige que lo de antes siga: con el mutante el nodo de fuera se suelta y el caso cae nombrando lo que el Ctrl tenía que conservar."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~Rectangulo_ShouldSelectTheNodesAndMarkTheWiresInside",
+    "why": "El rectángulo SIN Ctrl (la otra mitad del mismo método: manda el área y lo de antes se suelta) no toca la rama que el mutante vacía, así que sigue verde: si un defecto tocara las dos mitades, el veredicto sería IMPRECISA."
+  }
+}

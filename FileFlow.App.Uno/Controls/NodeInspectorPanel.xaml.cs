@@ -10,6 +10,7 @@ using FileFlow.Sdk.Localization;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media;
 
@@ -20,7 +21,8 @@ namespace FileFlow.App.Uno.Controls;
 /// núcleo portable (el mismo que el escritorio): la ficha del nodo seleccionado con su descripción,
 /// los parámetros con los MISMOS editores que el escritorio decide por los flags del
 /// <see cref="NodeParameterViewModel"/> (toggle, slider, número, desplegable, ruta con explorar,
-/// multilínea, texto) y el bloque de telemetría del nodo con su reinicio.
+/// multilínea, texto) y la sección de telemetría del nodo —montada desde el hito 275 en su propio control
+/// (<see cref="NodeInspectorTelemetrySection"/>), que sólo LEE las medidas que el motor escribe en él.
 ///
 /// <para><b>Por qué por código y no XAML</b>: el escritorio decide los editores con un Selector de
 /// estilos de Avalonia sobre los flags del VM; WinUI no tiene un equivalente directo (los DataTemplate
@@ -29,8 +31,13 @@ namespace FileFlow.App.Uno.Controls;
 /// El botón «Probar» del escritorio (prueba aislada con fichero) está ACTIVADO desde el hito 240:
 /// ejecuta TestNodeWithCustomFileAsync del núcleo, que consume la variante asíncrona del
 /// IFileDialogService — el picker se abre desde el click de UI sin bloquear el hilo de UI.</para>
+///
+/// <para><b>Este fichero construye la ficha; medirla vive al lado</b>: la superficie de observación —los
+/// accesos por ancla, los censos de lo materializado y las sondas de estado que el sondeo en runtime y las
+/// guardias de fuente necesitan— está en <c>NodeInspectorPanel.Probes.cs</c>, junto a esta. Nadie que lea el
+/// panel para cambiarlo debería tener que apartar el instrumento que lo mide.</para>
 /// </summary>
-public sealed class NodeInspectorPanel : UserControl
+public sealed partial class NodeInspectorPanel : UserControl
 {
     // ── Construcción una sola vez; el contenido se rellena por nodo inspeccionado ──
     private readonly TextBlock _titleText;
@@ -38,7 +45,6 @@ public sealed class NodeInspectorPanel : UserControl
     private readonly TextBlock _descriptionText;
     private readonly TextBlock _paramsHeader;
     private readonly TextBlock _actionsHeader;
-    private readonly TextBlock _telemetryHeader;
     private readonly StackPanel _paramsHost = new() { Spacing = 4 };
 
     /// <summary>
@@ -71,26 +77,56 @@ public sealed class NodeInspectorPanel : UserControl
     private readonly StackPanel _inputsHost = new() { Spacing = 6 };
     private readonly StackPanel _outputsHost = new() { Spacing = 6 };
     private readonly StackPanel _diffHost = new() { Spacing = 2 };
-    private readonly Pivot _tabs = new();
 
     /// <summary>
-    /// Los envoltorios DESPLAZABLES de las pestañas (hito 253), con nombre propio para que el rastro del
-    /// foco los pueda cantar: el elemento que se lleva el foco ~0,5 s después del clic NO tiene ancestros
-    /// en el árbol visual —los envoltorios de las pestañas no seleccionadas no están realizados— así que
-    /// un nombre es lo único que lo identifica. Un envoltorio de scroll no edita nada y no tiene por qué
-    /// ser dueño del teclado; su contenido (los editores) sí.
+    /// La sección de TELEMETRÍA de la ficha (hito 275): sus filas salen del <c>CurrentStats</c> del nodo
+    /// inspeccionado —el agregado que escribe el motor— y de su estado, y las pinta ella. Vive en su propio
+    /// archivo porque es una superficie con entidad propia (la pestaña de Telemetría del escritorio), no un
+    /// bloque más de este panel: el panel la monta y le dice qué nodo, nada más.
     /// </summary>
-    private readonly List<ScrollViewer> _scrollPanes = new();
+    private readonly NodeInspectorTelemetrySection _telemetrySection;
 
-    private PivotItem? _paramsTabItem;
-    private PivotItem? _snapshotsTabItem;
-    private PivotItem? _inputsTabItem;
-    private PivotItem? _outputsTabItem;
-    private PivotItem? _diffTabItem;
+    /// <summary>
+    /// El conmutador de secciones de la ficha (hito 273): la tira de rótulos —que PARTE la línea— y el
+    /// host de los cinco cuerpos, todos materializados (la conmutación es de visibilidad, no de creación).
+    ///
+    /// <para><b>Por qué no un <c>Pivot</c></b>: el Pivot reparte sus rótulos en el ancho de la ficha y no
+    /// los envuelve. Con la ficha en sus 300 lógicos de fábrica —y sus rótulos en español o inglés— medía
+    /// «Salidas» y «Diff» con <b>caja vacía</b> (rectángulo (0,0,0,0), fuera del alcance del ratón) y
+    /// «Entradas» recortada a 36 px, así que dos de las cinco secciones no se podían pulsar y no había
+    /// scroll, ni rueda, ni chevron de desbordamiento que las alcanzara. El escritorio usa un
+    /// <c>TabControl</c>, que ENVUELVE sus cabeceras; aquí se usa el mismo conmutador segmentado que la
+    /// superficie de Ajustes del propio host, sobre el <see cref="WrapPanel"/> del hito 272.</para>
+    /// </summary>
+    private readonly WrapPanel _tabStrip = new() { Spacing = 4 };
+    private readonly Grid _paneHost = new();
+    private readonly RadioButton[] _tabButtons = new RadioButton[InspectorTabs.Length];
+    private readonly UIElement[] _tabPanes = new UIElement[InspectorTabs.Length];
+    private int _selectedTab;
+
+    /// <summary>
+    /// Las seis secciones de la ficha, en orden: su clave de idioma, su rótulo de fábrica y su ancla de
+    /// automatización (las MISMAS que llevaba el Pivot, porque la observación UIA externa y las guardias
+    /// las buscan por ahí). Telemetría va al final, como en el escritorio: es la sección que CIERRA la ficha.
+    /// </summary>
+    private static readonly (string Key, string Fallback, string Aid)[] InspectorTabs =
+    {
+        ("Uno_InspectorTabParams", "Parámetros", "InspectorTabParams"),
+        ("Uno_InspectorTabSnapshots", "Snapshots", "InspectorTabSnapshots"),
+        ("Uno_InspectorTabInputs", "Entradas", "InspectorTabInputs"),
+        ("Uno_InspectorTabOutputs", "Salidas", "InspectorTabOutputs"),
+        ("Uno_InspectorTabDiff", "Diff", "InspectorTabDiff"),
+        ("Uno_InspectorTelemetry", "Telemetría", "InspectorTabTelemetry")
+    };
+
+    private Grid? _paramsPane;
+    private ScrollViewer? _snapshotsPane;
+    private ScrollViewer? _inputsPane;
+    private ScrollViewer? _outputsPane;
+    private ScrollViewer? _diffPane;
+    private ScrollViewer? _telemetryPane;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _inputsSub;
     private System.Collections.Specialized.NotifyCollectionChangedEventHandler? _outputsSub;
-    private readonly StackPanel _telemetryRows = new() { Spacing = 2 };
-    private readonly Button _resetMetricsButton;
     private readonly Button _testButton;
     private readonly FrameworkElement _body;
     private readonly Grid _root = new();
@@ -98,8 +134,6 @@ public sealed class NodeInspectorPanel : UserControl
     private NodeInspectorViewModel? _vm;
     private NodeViewModel? _inspected;
     private NotifyCollectionChangedEventHandler? _paramsSub;
-    private PropertyChangedEventHandler? _nodePropsSub;
-    private bool _buildingTelemetry;
 
     public NodeInspectorPanel()
     {
@@ -179,29 +213,10 @@ public sealed class NodeInspectorPanel : UserControl
             Foreground = Brush("CanvasTextBrush")
         };
 
-        _telemetryHeader = new TextBlock
-        {
-            FontSize = 11,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, 12, 0, 4),
-            Foreground = Brush("CanvasTextBrush")
-        };
-
-        _resetMetricsButton = new Button
-        {
-            FontSize = 11,
-            Padding = new Thickness(8, 2, 8, 2),
-            Margin = new Thickness(0, 6, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        _resetMetricsButton.Click += (_, _) =>
-        {
-            if (_inspected is not null)
-            {
-                // La misma orden que el botón del escritorio: vaciar las métricas del nodo.
-                _inspected.UpdateTelemetryStats(FileFlow.Sdk.Telemetry.NodeTelemetryStats.Empty(_inspected.Id));
-            }
-        };
+        // La sección de TELEMETRÍA del nodo (hito 275): el panel la MONTA como una sección más. La fuente de las
+        // medidas ya existe —la escribe el motor en el CurrentStats del nodo— y la sección sólo la lee; hasta
+        // aquí el panel construía sus filas y no las montaba en ninguna parte: se rellenaban para nadie.
+        _telemetrySection = new NodeInspectorTelemetrySection();
 
         // Las tres pestañas del escritorio (hito 242): Parámetros, Snapshots (los snapshots del
         // nodo con su vista) y Diff (el diff de metadatos que el VM del núcleo computa al
@@ -226,7 +241,6 @@ public sealed class NodeInspectorPanel : UserControl
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             Content = _paramsHost
         };
-        _scrollPanes.Add(paramsScroll);
         Grid.SetRow(paramsScroll, 4);
         paramsGrid.Children.Add(_descriptionText);
         paramsGrid.Children.Add(_actionsHeader);
@@ -234,59 +248,56 @@ public sealed class NodeInspectorPanel : UserControl
         paramsGrid.Children.Add(_paramsHeader);
         paramsGrid.Children.Add(paramsScroll);
 
-        var paramsTab = new PivotItem
-        {
-            Header = loc.GetString("Uno_InspectorTabParams", "Parámetros"),
-            Content = paramsGrid
-        };
-        AutomationProperties.SetAutomationId(paramsTab, "InspectorTabParams");
+        // Los seis cuerpos, todos materializados en el host de paneles: la conmutación es de
+        // visibilidad, no de creación (el Pivot creaba y des-realizaba sus envoltorios).
+        UIElement[] panes =
+        [
+            paramsGrid,
+            NamedPane("InspectorSnapshotsScroll", _snapshotsHost),
+            NamedPane("InspectorInputsScroll", _inputsHost),
+            NamedPane("InspectorOutputsScroll", _outputsHost),
+            NamedPane("InspectorDiffScroll", _diffHost),
+            NamedPane("InspectorTelemetryScroll", _telemetrySection)
+        ];
 
-        var snapshotsTab = new PivotItem
-        {
-            Header = loc.GetString("Uno_InspectorTabSnapshots", "Snapshots"),
-            Content = NamedPane("InspectorSnapshotsScroll", _snapshotsHost)
-        };
-        AutomationProperties.SetAutomationId(snapshotsTab, "InspectorTabSnapshots");
+        _paramsPane = paramsGrid;
+        _snapshotsPane = panes[1] as ScrollViewer;
+        _inputsPane = panes[2] as ScrollViewer;
+        _outputsPane = panes[3] as ScrollViewer;
+        _diffPane = panes[4] as ScrollViewer;
+        _telemetryPane = panes[5] as ScrollViewer;
 
-        // Entradas y Salidas como pestañas separadas (hito 244): la MISMA tarjeta de snapshot
-        // del 241, cada una alimentada por su propia colección del nodo.
-        var inputsTab = new PivotItem
+        for (int i = 0; i < InspectorTabs.Length; i++)
         {
-            Header = loc.GetString("Uno_InspectorTabInputs", "Entradas"),
-            Content = NamedPane("InspectorInputsScroll", _inputsHost)
-        };
-        AutomationProperties.SetAutomationId(inputsTab, "InspectorTabInputs");
+            var (key, fallback, aid) = InspectorTabs[i];
+            int index = i;
+            var button = new RadioButton
+            {
+                GroupName = "InspectorSections",
+                FontSize = 12,
+                Padding = new Thickness(10, 4, 10, 4),
+                Content = loc.GetString(key, fallback),
+                IsChecked = i == 0
+            };
+            AutomationProperties.SetAutomationId(button, aid);
+            button.Click += (_, _) => ShowTab(index);
+            _tabButtons[i] = button;
+            _tabStrip.Children.Add(button);
 
-        var outputsTab = new PivotItem
-        {
-            Header = loc.GetString("Uno_InspectorTabOutputs", "Salidas"),
-            Content = NamedPane("InspectorOutputsScroll", _outputsHost)
-        };
-        AutomationProperties.SetAutomationId(outputsTab, "InspectorTabOutputs");
+            var pane = panes[i];
+            pane.Visibility = i == 0 ? Visibility.Visible : Visibility.Collapsed;
+            _tabPanes[i] = pane;
+            _paneHost.Children.Add(pane);
+        }
 
-        var diffTab = new PivotItem
-        {
-            Header = loc.GetString("Uno_InspectorTabDiff", "Diff"),
-            Content = NamedPane("InspectorDiffScroll", _diffHost)
-        };
-        AutomationProperties.SetAutomationId(diffTab, "InspectorTabDiff");
-
-        _paramsTabItem = paramsTab;
-        _snapshotsTabItem = snapshotsTab;
-        _inputsTabItem = inputsTab;
-        _outputsTabItem = outputsTab;
-        _diffTabItem = diffTab;
-        _tabs.Items.Add(paramsTab);
-        _tabs.Items.Add(snapshotsTab);
-        _tabs.Items.Add(inputsTab);
-        _tabs.Items.Add(outputsTab);
-        _tabs.Items.Add(diffTab);
-        _tabs.SelectionChanged += (_, _) => RebuildDiff();
-
-        _body = new Border
-        {
-            Child = _tabs
-        };
+        var bodyGrid = new Grid();
+        bodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        bodyGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(_tabStrip, 0);
+        Grid.SetRow(_paneHost, 1);
+        bodyGrid.Children.Add(_tabStrip);
+        bodyGrid.Children.Add(_paneHost);
+        _body = bodyGrid;
 
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -308,6 +319,12 @@ public sealed class NodeInspectorPanel : UserControl
         Padding = new Thickness(12, 10, 10, 10);
 
         ApplyLocalization();
+
+        // La ficha arranca en un estado DECIDIDO, no en el de por defecto: sin VM nada está abierto, así que ni el
+        // cuerpo, ni el texto de «sin selección», ni el «Probar» se ofrecen. Sin esta llamada, entre la construcción
+        // y la llegada del VM el panel enseñaba a la vez los dos estados (cuerpo y vacío) con el botón de la cabecera
+        // ya dibujado, que es el estado que el hito 274 corrige.
+        UpdateVisibility();
         LocalizationManager.Instance.LanguageChanged += OnLanguageChanged;
     }
 
@@ -350,35 +367,44 @@ public sealed class NodeInspectorPanel : UserControl
         var loc = LocalizationManager.Instance;
         _paramsHeader.Text = loc.GetString("Uno_InspectorParams", "Parámetros");
         _actionsHeader.Text = loc.GetString("Uno_InspectorActions", "Acciones");
-        _telemetryHeader.Text = loc.GetString("Uno_InspectorTelemetry", "Telemetría");
-        _resetMetricsButton.Content = loc.GetString("Uno_InspectorResetMetrics", "Vaciar métricas");
         _testButton.Content = loc.GetString("Uno_InspectorTest", "Probar");
-        if (_paramsTabItem is not null)
+        for (int i = 0; i < _tabButtons.Length; i++)
         {
-            _paramsTabItem.Header = loc.GetString("Uno_InspectorTabParams", "Parámetros");
+            if (_tabButtons[i] is not null)
+            {
+                _tabButtons[i].Content = loc.GetString(InspectorTabs[i].Key, InspectorTabs[i].Fallback);
+            }
         }
 
-        if (_snapshotsTabItem is not null)
-        {
-            _snapshotsTabItem.Header = loc.GetString("Uno_InspectorTabSnapshots", "Snapshots");
-        }
-
-        if (_inputsTabItem is not null)
-        {
-            _inputsTabItem.Header = loc.GetString("Uno_InspectorTabInputs", "Entradas");
-        }
-
-        if (_outputsTabItem is not null)
-        {
-            _outputsTabItem.Header = loc.GetString("Uno_InspectorTabOutputs", "Salidas");
-        }
-
-        if (_diffTabItem is not null)
-        {
-            _diffTabItem.Header = loc.GetString("Uno_InspectorTabDiff", "Diff");
-        }
-
+        _telemetrySection.ApplyLocalization();
         RefreshHeaderTexts();
+    }
+
+    /// <summary>
+    /// Conmuta la sección visible de la ficha: el clic de la tira y la sonda entran por aquí. El cuerpo
+    /// del diff se repinta al mostrarlo (lo hacía el <c>SelectionChanged</c> del Pivot).
+    /// </summary>
+    internal void ShowTab(int index)
+    {
+        if (index < 0 || index >= _tabPanes.Length || _tabPanes[index] is null)
+        {
+            return;
+        }
+
+        _selectedTab = index;
+        for (int i = 0; i < _tabPanes.Length; i++)
+        {
+            _tabPanes[i].Visibility = i == index ? Visibility.Visible : Visibility.Collapsed;
+            if (_tabButtons[i] is not null)
+            {
+                _tabButtons[i].IsChecked = i == index;
+            }
+        }
+
+        if (ReferenceEquals(_tabPanes[index], _diffPane))
+        {
+            RebuildDiff();
+        }
     }
 
     private void OnLanguageChanged(object? sender, CultureInfo e) => ApplyLocalization();
@@ -408,7 +434,6 @@ public sealed class NodeInspectorPanel : UserControl
             Content = content
         };
 
-        _scrollPanes.Add(pane);
         return pane;
     }
 
@@ -433,18 +458,14 @@ public sealed class NodeInspectorPanel : UserControl
         // pestañas llevan NOMBRE a propósito: el que se lleva el foco no tiene ancestros en el árbol visual
         // (los de las pestañas no seleccionadas no están realizados), así que su nombre es lo único que lo
         // identifica.
-        CanvasFocusTrace.Write($"inspector: refresco de nodo (pestaña={_tabs.SelectedIndex}, "
-                             + $"pestanas={_tabs.Items.Count}) antes={DescribeInspectorFocus()}");
+        CanvasFocusTrace.Write($"inspector: refresco de nodo (pestaña={_selectedTab}, "
+                             + $"pestanas={InspectorTabs.Length}) antes={DescribeInspectorFocus()}");
 
-        // El nodo anterior deja de notificar: el panel sólo vive del nodo inspeccionado.
-        if (_inspected is not null)
+        // El nodo anterior deja de notificar: el panel sólo vive del nodo inspeccionado. (La TELEMETRÍA no se
+        // suelta aquí: su sección se ata y se suelta en su propio Bind, que es quien escucha sus medidas.)
+        if (_inspected is not null && _paramsSub is not null)
         {
-            if (_paramsSub is not null)
-            {
-                _inspected.Parameters.CollectionChanged -= _paramsSub;
-            }
-
-            _inspected.PropertyChanged -= _nodePropsSub;
+            _inspected.Parameters.CollectionChanged -= _paramsSub;
         }
 
         _inspected = _vm?.InspectedNode;
@@ -455,7 +476,8 @@ public sealed class NodeInspectorPanel : UserControl
             _actionsHost.Children.Clear();
             _actionControls.Clear();
             _actionsHeader.Visibility = Visibility.Collapsed;
-            _telemetryRows.Children.Clear();
+            _paramsHeader.Visibility = Visibility.Collapsed;
+            _telemetrySection.Bind(null);
             _snapshotsHost.Children.Clear();
             _inputsHost.Children.Clear();
             _outputsHost.Children.Clear();
@@ -484,19 +506,10 @@ public sealed class NodeInspectorPanel : UserControl
         _inspected.InputSnapshots.CollectionChanged += _inputsSub;
         _inspected.OutputSnapshots.CollectionChanged += _outputsSub;
 
-        _nodePropsSub = (_, e) =>
-        {
-            if (e.PropertyName is nameof(NodeViewModel.CurrentStats) or nameof(NodeViewModel.ExecutionStatus))
-            {
-                RebuildTelemetry();
-            }
-        };
-        _inspected.PropertyChanged += _nodePropsSub;
-
         RebuildParameters();
         RebuildActions();
         RebuildAllSnapshotViews();
-        RebuildTelemetry();
+        _telemetrySection.Bind(_inspected);
         RefreshHeaderTexts();
         UpdateVisibility();
     }
@@ -780,12 +793,22 @@ public sealed class NodeInspectorPanel : UserControl
             : Visibility.Visible;
     }
 
+    /// <summary>
+    /// El estado de la ficha en UN solo sitio: si está abierta, si toca el texto de «sin selección» o el cuerpo,
+    /// y <b>qué se OFRECE en cada estado</b>. El «Probar» es el caso que este método tenía a medias (hito 274): se
+    /// dibujaba siempre —con nodo y sin él— y sin nodo no hay nada que probar, así que quedaba ofrecido, habilitado
+    /// y sin efecto. La condición vive aquí, con las demás, y no en el manejador del clic: el control no se ofrece
+    /// cuando no tiene trabajo, igual que el bloque de ACCIONES se colapsa sin acciones y el encabezado de
+    /// PARÁMETROS sin parámetros.
+    /// </summary>
     private void UpdateVisibility()
     {
         bool isOpen = _vm?.IsOpen == true;
+        bool hasNode = _inspected is not null;
         Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
-        _emptyText.Visibility = isOpen && _inspected is null ? Visibility.Visible : Visibility.Collapsed;
-        _body.Visibility = isOpen && _inspected is not null ? Visibility.Visible : Visibility.Collapsed;
+        _emptyText.Visibility = isOpen && !hasNode ? Visibility.Visible : Visibility.Collapsed;
+        _body.Visibility = isOpen && hasNode ? Visibility.Visible : Visibility.Collapsed;
+        _testButton.Visibility = isOpen && hasNode ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -857,7 +880,10 @@ public sealed class NodeInspectorPanel : UserControl
         }
 
         // El sondeo (y cualquier lector) cuenta editores con la cuenta de parámetros del nodo: la
-        // fila SIEMPRE se construye (encabezado + editor), sin excepciones ocultas.
+        // fila SIEMPRE se construye (encabezado + editor), sin excepciones ocultas. Y el encabezado se
+        // colapsa si no hay editores —la misma regla del bloque de acciones—: un encabezado sobre una
+        // lista vacía promete algo que no hay.
+        _paramsHeader.Visibility = _paramsHost.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     /// <summary>
@@ -994,7 +1020,11 @@ public sealed class NodeInspectorPanel : UserControl
                 FontSize = 12
             };
             Anchor("ParamBrowse_" + p.Key, browse);
-            browse.Click += (_, _) => p.BrowsePathCommand.Execute(null);
+            // La variante ASÍNCRONA del explorador de rutas (hito 273): este host abre sus pickers desde el
+            // clic de UI, y allí la síncrona no puede —los pickers de WinRT exigen el hilo de UI y
+            // bloquearlo interbloquearía, así que el servicio del host devuelve null—: con la síncrona el
+            // botón «…» quedaba dibujado y sin efecto (medido con el ratón).
+            browse.Click += (_, _) => p.BrowsePathAsyncCommand.Execute(null);
             var grid = new Grid { ColumnSpacing = 4 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -1077,10 +1107,11 @@ public sealed class NodeInspectorPanel : UserControl
     /// </summary>
     internal static readonly (string Command, string Anchor, string What)[] HostRowActions =
     [
-        ("BrowsePathCommand", "ParamBrowse_", "el explorador de rutas del núcleo (el botón «…» de las filas de ruta)"),
+        ("BrowsePathAsyncCommand", "ParamBrowse_", "el explorador de rutas del núcleo en su variante ASÍNCRONA (el botón «…» de las filas de ruta): el host abre sus pickers desde el clic de UI, donde la síncrona no puede —exige el hilo de UI y bloquearlo interbloquearía, así que el servicio del host devuelve null y el botón quedaba sin efecto"),
         ("OpenTextEditorCommand", "ParamEditor_", "el editor de texto y prompts expandido (el botón «✎» del valor largo)"),
         ("OpenVariableCatalogCommand", "ParamVariable_", "el catálogo de variables del núcleo: el botón «{x}» abre DIRECTO su primera entrada, el catálogo completo"),
         ("OpenMediaPresetManagerCommand", "ParamPreset_", "el gestor de presets del nodo (el botón «🎬» de la fila del preset): la orden pide la superficie que DECLARA el nodo y la sirve el catálogo de diálogos de este host sobre su view model portable"),
+        ("OpenPasswordManagerCommand", "ParamPassword_", "el gestor de contraseñas del nodo (el botón «🔑» de la fila de la lista de claves): la orden pide la superficie que DECLARA el nodo —igual que la acción «🔑 Claves...» de su tarjeta— y la sirve el catálogo de diálogos de este host sobre su view model portable"),
     ];
 
     /// <summary>
@@ -1090,7 +1121,6 @@ public sealed class NodeInspectorPanel : UserControl
     internal static readonly (string Command, string Reason)[] DeclaredPendingRowActions =
     [
         ("OpenVariablePickerCommand", "el menú emergente de variables del escritorio (el botón «{x}» despliega un menú con el catálogo agrupado): este host no tiene menú emergente y su «{x}» abre directamente el CATÁLOGO COMPLETO, que es la primera entrada de aquél"),
-        ("OpenPasswordManagerCommand", "abre el gestor de contraseñas, una ventana que este host todavía no tiene"),
     ];
 
     /// <summary>
@@ -1100,7 +1130,9 @@ public sealed class NodeInspectorPanel : UserControl
     ///
     /// <para><b>Qué acción lleva cada fila</b>, con los mismos flags del VM que usa el escritorio: el
     /// EDITOR de texto va en el valor largo (<c>IsMultiLine</c>) y el botón de VARIABLES en las filas
-    /// cuyo valor es texto —el multilínea, la ruta con explorar y el texto estándar—. El selector de
+    /// cuyo valor es texto —el multilínea, la ruta con explorar y el texto estándar—, el GESTOR DE PRESETS en la
+    /// fila del preset y el GESTOR DE CONTRASEÑAS en la de la lista de claves, que son las mismas filas que el
+    /// escritorio marca. El selector de
     /// variables del host abre el CATÁLOGO COMPLETO (el mismo diálogo al que el escritorio llega por el
     /// menú rápido del botón «{x}»): este host todavía no tiene el menú emergente, y ese paso de menos
     /// está declarado.</para>
@@ -1110,7 +1142,8 @@ public sealed class NodeInspectorPanel : UserControl
         bool wantsEditor = p.IsMultiLine;
         bool wantsVariables = p.IsMultiLine || p.HasBrowseButton || RowValueIsPlainText(p);
         bool wantsPresets = p.IsMediaPreset;
-        if (!wantsEditor && !wantsVariables && !wantsPresets)
+        bool wantsPassword = p.IsPasswordList;
+        if (!wantsEditor && !wantsVariables && !wantsPresets && !wantsPassword)
         {
             return editor;
         }
@@ -1147,6 +1180,21 @@ public sealed class NodeInspectorPanel : UserControl
                 "Node_Param_OpenPresetManager",
                 "Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)",
                 p.OpenMediaPresetManagerCommand));
+        }
+
+        // El GESTOR DE CONTRASEÑAS: la misma fila que el escritorio marca con su botón «Claves» (la de la lista
+        // de claves del nodo). La orden es la de la fila —la misma que el escritorio— y la cumple la superficie
+        // que declara el nodo: el host no reimplementa el gestor, lo sirve. Antes esta fila no tenía botón y la
+        // capacidad se declaraba pendiente en la tabla mientras la TARJETA del nodo la ofrecía: dos puertas de
+        // acuerdo es lo que esta línea cierra.
+        if (wantsPassword)
+        {
+            actions.Children.Add(RowActionButton(
+                "ParamPassword_" + p.Key,
+                "🔑",
+                "Node_Param_OpenPasswordManager",
+                "Gestionar lista de contraseñas (Importar / Exportar / Editar)",
+                p.OpenPasswordManagerCommand));
         }
 
         var grid = new Grid { ColumnSpacing = 4 };
@@ -1195,206 +1243,4 @@ public sealed class NodeInspectorPanel : UserControl
         _paramControls[automationId] = control;
     }
 
-    /// <summary>El control de una fila de parámetro por su AutomationId (null si esa fila no lo tiene).</summary>
-    internal Control? ParameterControl(string automationId) =>
-        _paramControls.TryGetValue(automationId, out Control? control) ? control : null;
-
-    /// <summary>
-    /// Ancla un botón de acción del nodo (su propia tabla: el censo de las filas se vacía al reconstruirlas).
-    /// </summary>
-    private void AnchorAction(string automationId, Control control)
-    {
-        AutomationProperties.SetAutomationId(control, automationId);
-        _actionControls[automationId] = control;
-    }
-
-    /// <summary>El botón de una acción del nodo por su ActionId (null si el nodo no la declara).</summary>
-    internal Control? ActionControl(string actionId) =>
-        _actionControls.TryGetValue("InspectorAction_" + actionId, out Control? control) ? control : null;
-
-    /// <summary>Los AutomationId de las filas materializadas AHORA, en orden (el censo que lee la sonda).</summary>
-    internal IReadOnlyList<string> ParameterControlIds =>
-        [.. _paramControls.Keys.OrderBy(id => id, StringComparer.Ordinal)];
-
-    // ── Telemetría: el bloque que el escritorio muestra en su pestaña de telemetría ──
-
-    private void RebuildTelemetry()
-    {
-        if (_buildingTelemetry)
-        {
-            return;
-        }
-
-        _buildingTelemetry = true;
-        try
-        {
-            _telemetryRows.Children.Clear();
-            if (_inspected is null)
-            {
-                return;
-            }
-
-            var loc = LocalizationManager.Instance;
-            var stats = _inspected.CurrentStats;
-            var culture = CultureInfo.CurrentCulture;
-
-            _telemetryRows.Children.Add(TelemetryRow(
-                loc.GetString("Uno_InspectorStatus", "Estado"),
-                _inspected.ExecutionStatusText));
-            _telemetryRows.Children.Add(TelemetryRow(
-                loc.GetString("Uno_InspectorProcessed", "Procesados"),
-                stats.ProcessedCount.ToString(culture)));
-            _telemetryRows.Children.Add(TelemetryRow(
-                loc.GetString("Uno_InspectorAvgLatency", "Latencia media"),
-                string.Format(culture, "{0:F1} ms", stats.AverageTimeMs)));
-            _telemetryRows.Children.Add(TelemetryRow(
-                loc.GetString("Uno_InspectorTotalTime", "Tiempo total"),
-                string.Format(culture, "{0:F1} ms", stats.TotalTimeMs)));
-            _telemetryRows.Children.Add(TelemetryRow(
-                loc.GetString("Uno_InspectorPeakRam", "Pico de memoria"),
-                FormatBytes(stats.PeakAllocatedBytes, culture)));
-        }
-        finally
-        {
-            _buildingTelemetry = false;
-        }
-    }
-
-    private static StackPanel TelemetryRow(string label, string value)
-    {
-        var labelBlock = new TextBlock
-        {
-            Text = label,
-            FontSize = 11,
-            Opacity = 0.7,
-            Foreground = Brush("CanvasSecondaryBrush")
-        };
-        var valueBlock = new TextBlock
-        {
-            Text = value,
-            FontSize = 11,
-            Foreground = Brush("CanvasTextBrush")
-        };
-        var grid = new Grid { ColumnSpacing = 8 };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(labelBlock, 0);
-        Grid.SetColumn(valueBlock, 1);
-        valueBlock.HorizontalAlignment = HorizontalAlignment.Right;
-        grid.Children.Add(labelBlock);
-        grid.Children.Add(valueBlock);
-        return new StackPanel { Children = { grid } };
-    }
-
-    private static string FormatBytes(long bytes, CultureInfo culture)
-    {
-        if (bytes <= 0)
-        {
-            return "—";
-        }
-
-        const long kb = 1024;
-        const long mb = kb * 1024;
-        return bytes >= mb
-            ? string.Format(culture, "{0:F1} MB", bytes / (double)mb)
-            : bytes >= kb
-                ? string.Format(culture, "{0:F1} KB", bytes / (double)kb)
-                : string.Format(culture, "{0} B", bytes);
-    }
-
-    /// <summary>El pincel de un token Canvas* resuelto de los recursos de la app (el patrón del lienzo).</summary>
-    private static Brush Brush(string key)
-    {
-        return (Brush)Application.Current.Resources[key];
-    }
-
-    // ── Superficie interna para el sondeo en runtime (--selfcheck) ──
-
-    /// <summary>La pila donde viven las filas de telemetría (cada una con su etiqueta y valor).</summary>
-    internal int TelemetryRowCount => _telemetryRows.Children.Count;
-
-    /// <summary>Los editores de parámetros materializados (uno por parámetro con editor).</summary>
-    internal int ParameterEditorCount => _paramsHost.Children.Count;
-
-    /// <summary>
-    /// Los botones de ACCIÓN materializados en la ficha: la cuenta que la sonda compara con las acciones del
-    /// nodo inspeccionado (una acción declarada y no dibujada es una puerta que falta).
-    /// </summary>
-    internal int ActionButtonCount => _actionsHost.Children.Count;
-
-    /// <summary>Los AutomationId de los botones de acción materializados, en orden (el censo de la sonda).</summary>
-    internal IReadOnlyList<string> ActionControlIds =>
-        [.. _actionControls.Keys.OrderBy(id => id, StringComparer.Ordinal)];
-
-    /// <summary>Abre el panel sobre un nodo, como haría la selección del lienzo (mismo método del VM).</summary>
-    internal void InspectForProbe(NodeViewModel node)
-    {
-        _vm?.InspectNode(node, autoOpen: true);
-    }
-
-    /// <summary>
-    /// La sonda del «Probar» (hito 240): el botón existe en la cabecera, canta su AutomationId para
-    /// la observación UIA externa y está atado al comando canónico del núcleo (la variante async
-    /// del diálogo vive en el VM; el host no abre pickers por su cuenta).
-    /// </summary>
-    internal bool HasWiredTestButton()
-    {
-        return _testButton is not null
-            && AutomationProperties.GetAutomationId(_testButton) == "InspectorTestButton"
-            && _vm?.TestNodeWithCustomFileCommand is not null;
-    }
-
-    /// <summary>
-    /// La sonda de las pestañas nuevas (hito 242): tarjetas de snapshots materializadas desde las
-    /// colecciones del nodo, filas de diff pintadas desde el VM (el VM computa al seleccionar un
-    /// snapshot), y la conmutación del Pivot dejando las tarjetas en el árbol.
-    /// </summary>
-    internal (int SnapshotCards, int DiffRows, bool TabSwitch) ProbeSnapshotTabs()
-    {
-        if (_vm?.InspectedNode is null || _snapshotsTabItem is null)
-        {
-            return (0, 0, false);
-        }
-
-        int cards = _snapshotsHost.Children.Count;
-        int diffRows = _diffHost.Children.Count;
-
-        // Las separadas (hito 244) se verifican por CONTENIDO y cableado, sin conmutar: los
-        // hosts se construyen fuera del pase de selección y cada PivotItem lleva el suyo — tres
-        // conmutaciones encadenadas en el mismo tick dejan el Pivot frágil (COMException, la
-        // lección de materialización del 3.6).
-        bool separatedOk = _inputsTabItem is not null && _outputsTabItem is not null
-            && _inputsHost.Children.Count == _inspected.InputSnapshots.Count
-            && _outputsHost.Children.Count == _inspected.OutputSnapshots.Count
-            && AutomationProperties.GetAutomationId(_inputsTabItem) == "InspectorTabInputs"
-            && AutomationProperties.GetAutomationId(_outputsTabItem) == "InspectorTabOutputs"
-            && _inputsTabItem.Content is ScrollViewer inScroll && ReferenceEquals(inScroll.Content, _inputsHost)
-            && _outputsTabItem.Content is ScrollViewer outScroll && ReferenceEquals(outScroll.Content, _outputsHost);
-
-        int previousIndex = _tabs.SelectedIndex;
-        try
-        {
-            // La pestaña combinada conmuta y conserva sus tarjetas (el check probado del 241).
-            _tabs.SelectedIndex = _tabs.Items.IndexOf(_snapshotsTabItem);
-            bool switchOk = _tabs.SelectedIndex == _tabs.Items.IndexOf(_snapshotsTabItem)
-                && _snapshotsHost.Children.Count == cards;
-            return (cards, diffRows, switchOk && separatedOk);
-        }
-        finally
-        {
-            _tabs.SelectedIndex = previousIndex;
-        }
-    }
-
-    /// <summary>Cierra el panel por el comando del VM (el botón de la cabecera).</summary>
-    internal bool CloseViaCommand()
-    {
-        if (_vm is null)
-        {
-            return false;
-        }
-
-        _vm.ClosePanelCommand.Execute(null);
-        return !_vm.IsOpen;
-    }
 }

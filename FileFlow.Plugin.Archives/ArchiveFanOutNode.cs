@@ -15,7 +15,7 @@ namespace FileFlow.Plugin.Archives;
 
 [NodeDefinition("ArchiveFanOutNode_Name", "Archives", "ArchiveFanOutNode_Desc", PipelineRole.Source,
     "descomprimir", "fanout", "stream", "extraer", "zip", "rar", "7z", "cbz", "cbr", "cb7", "unpack", "split", "lote")]
-public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
+public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider, INodeDialogSurfaceProvider
 {
     private readonly Lock _lock = new();
 
@@ -59,6 +59,42 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
         new("ManagePasswords", "🔑 Claves...", "🔑", "Gestionar lista de contraseñas para descompresión de archivos cifrados")
     ];
 
+    /// <summary>
+    /// El GESTOR DE CONTRASEÑAS que este nodo declara al SDK: es la puerta que CUALQUIER host puede cumplir —la
+    /// clave del catálogo (<see cref="DialogKeys.PasswordManager"/>) y el view model portable que la contiene—.
+    ///
+    /// <para><b>Por qué existe.</b> La ventana del gestor es una ventana de Avalonia y sólo la puede montar un
+    /// host con el toolkit del escritorio: sin esta declaración, la acción de la tarjeta y el botón de la fila
+    /// no tenían más salida en el host Uno que DECLARAR la frontera —el usuario leía «se abre en el host de
+    /// escritorio» en vez de gestionar sus claves—. Con ella, el host que no puede montar la ventana sirve la
+    /// MISMA superficie con su propia vista sobre este view model, que es quien escribe la lista en el parámetro
+    /// del nodo.</para>
+    /// </summary>
+    public string DialogKey => DialogKeys.PasswordManager;
+
+    /// <summary>La acción personalizada que esta superficie sustituye: el «🔑 Claves...» de la tarjeta del nodo.</summary>
+    public string? ReplacesCustomActionId => "ManagePasswords";
+
+    /// <inheritdoc />
+    public object? CreateDialogPayload(object? context = null) =>
+        new UI.ViewModels.PasswordManagerViewModel(
+            GetParameter("PasswordList", string.Empty),
+            SavePasswordList,
+            (context as NodeCustomActionContext)?.Dialogs);
+
+    /// <summary>
+    /// La vuelta del gestor: la lista que el usuario confirmó se escribe en el parámetro del nodo, que es de
+    /// quien lo posee. La usan los dos caminos —la superficie declarada y la ventana del toolkit—, así que la
+    /// regla de dónde se guarda vive en un solo sitio.
+    /// </summary>
+    private void SavePasswordList(string passwords)
+    {
+        lock (_lock)
+        {
+            Parameters["PasswordList"] = passwords;
+        }
+    }
+
     public async void ExecuteCustomAction(string actionId, object? context = null)
     {
         try
@@ -93,7 +129,10 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
                 }
 
                 string currentPasswords = GetParameter("PasswordList", string.Empty);
-                var window = new PasswordManagerWindow(currentPasswords);
+                var window = new PasswordManagerWindow(new UI.ViewModels.PasswordManagerViewModel(
+                    currentPasswords,
+                    SavePasswordList,
+                    (context as NodeCustomActionContext)?.Dialogs));
 
                 Avalonia.Controls.Window? owner = parentWindow as Avalonia.Controls.Window;
                 if (owner == null && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
@@ -113,10 +152,7 @@ public sealed class ArchiveFanOutNode : FlowNodeBase, INodeCustomActionProvider
 
                 if (result)
                 {
-                    lock (_lock)
-                    {
-                        Parameters["PasswordList"] = window.PasswordsText;
-                    }
+                    SavePasswordList(window.PasswordsText);
                     onCompleted?.Invoke();
                 }
 #endif

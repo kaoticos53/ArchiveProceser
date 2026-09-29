@@ -1,0 +1,26 @@
+{
+  "id": "cable-marcado-que-no-se-ve",
+  "hito": 281,
+  "claim": "El cable del lienzo muestra una SELECCIÓN VISIBLE: el clic izquierdo lo marca en el núcleo (EditorViewModel.SelectConnection), y el cable marcado se dibuja con el trazo del acento y más grueso, de modo que el Supr que lo borra (la tabla del núcleo) borra algo que el usuario VE elegido.",
+  "why": "La selección sin marca es un borrado a ciegas: el usuario marca un cable, no cambia nada en pantalla, y el Supr se lleva una conexión que nunca vio elegida. El mutante quita el resalte (el cable se pinta siempre con su color y su grosor normal): la marca sigue en el núcleo y deja de verse, que es el defecto reportado al revés.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.Wires.cs",
+      "replacements": [
+        {
+          "old": "            bool selected = _editor.SelectedConnections.Contains(connection);\n            var path = new Microsoft.UI.Xaml.Shapes.Path\n            {\n                Stroke = CanvasBrush(selected ? SelectedWireBrushKey : \"CanvasWireBrush\"),\n                StrokeThickness = selected ? WireSelectedThickness : WireThickness,\n",
+          "new": "            var path = new Microsoft.UI.Xaml.Shapes.Path\n            {\n                Stroke = CanvasBrush(\"CanvasWireBrush\"),\n                StrokeThickness = WireThickness,\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWire_ShouldBeSelectableToBeDeleted_ThroughTheCoreOrder",
+    "why": "El caso exige las dos mitades del resalte —el trazo del acento para el cable marcado y el grosor del marcado— además de la diana y la orden del núcleo: con el mutante la marca del núcleo sigue ahí y el cable se ve igual que los demás, así que el caso cae nombrando el trazo que había que pintar."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor",
+    "why": "La FIGURA del cable (que la Bézier nazca y muera en las anclas, y que sus trazados salgan del núcleo compartido) no comparte camino con el resalte: el mutante cambia el color y el grosor con los que se pinta la figura, no la figura. (La sonda del cable tampoco sirve de control: cuenta los trazados de la capa y el mutante deja el mismo número de dianas y cables —medido—, así que no distingue el defecto.)"
+  }
+}

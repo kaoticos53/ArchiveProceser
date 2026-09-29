@@ -1,0 +1,26 @@
+{
+  "id": "gestor-de-claves-que-el-host-no-sirve",
+  "hito": 279,
+  "claim": "El GESTOR DE CONTRASEÑAS que ofrecen los nodos de descompresión lo SIRVE este host: la clave de la superficie declarada está en la tabla de diálogos SERVIDOS y su cuerpo pinta el view model portable de quien la declara. La oferta de la tarjeta, la declaración de la fila y la capacidad del host dicen lo mismo.",
+  "why": "Es el defecto que reportó el usuario por su otro síntoma: pulsar «🔑 Claves...» contestaba con el aviso de que la ventana era del escritorio en vez de abrir el gestor, porque la capacidad se OFRECÍA por la tarjeta y no se servía. El mutante quita UNA línea —la clave sale de la tabla de servidos— y deja el mismo desacuerdo que el usuario vio: la acción se ofrece y el host no la cumple.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Platform/UnoWindowService.cs",
+      "replacements": [
+        {
+          "old": "        (DialogKeys.MediaPresetManager, nameof(MediaPresetManagerBody)),\n        (DialogKeys.PasswordManager, nameof(PasswordManagerBody)),\n",
+          "new": "        (DialogKeys.MediaPresetManager, nameof(MediaPresetManagerBody)),\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~ThePasswordManager_ShouldBeDeclaredByItsNodes_AndServedByTheHostThatOffersIt",
+    "why": "El caso exige que la clave esté entre las servidas con la vista que la sirve y que NO esté en la tabla de lo que este host declara que no puede: con el mutante esa línea desaparece del fuente y el caso cae nombrando la capacidad que el host deja de cumplir mientras la tarjeta la sigue ofreciendo."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheMediaPresetManager_ShouldBeDeclaredByTheNode_AndPaintedByBothHosts",
+    "why": "El gestor de presets es la superficie hermana —declarada por otro nodo y servida por el mismo catálogo— y no comparte camino con esta línea: el mutante quita la clave del gestor de CONTRASEÑAS y deja su caso intacto, así que este control tiene que seguir verde."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "rectangulo-que-no-ve-los-cables",
+  "hito": 286,
+  "claim": "El RECTÁNGULO de selección marca a la vez los NODOS y los CABLES que caen dentro (uno entra por su centro y un cable con sus DOS anclas dentro): es lo que lo distingue del clic, que marca una sola cosa. La decisión vive en el núcleo (EditorViewModel.ApplyRubberSelection), así que el resalte y el Supr no distinguen de dónde vino la marca.",
+  "why": "El rectángulo elegía SÓLO tarjetas: pasar el lazo por encima de dos nodos dejaba el cable que los une sin marcar, así que el Supr no se lo llevaba y había que pulsar el cable uno a uno. El mutante vacía el conjunto de cables que entran —el área sigue eligiendo nodos y el Ctrl sigue conservando lo de fuera, pero ningún cable de dentro entra—: el usuario vuelve a tener que marcar los cables a mano.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/EditorViewModel.cs",
+      "replacements": [
+        {
+          "old": "        var wantedConnections = new HashSet<ConnectionViewModel>(connectionsInside);",
+          "new": "        var wantedConnections = new HashSet<ConnectionViewModel>();",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~Rectangulo_ShouldSelectTheNodesAndMarkTheWiresInside",
+    "why": "El caso mide las dos mitades del área en el núcleo: con un rectángulo sobre A, B y el cable que los une, los dos nodos quedan elegidos Y el cable marcado (y el de fuera no). Con el mutante la marca del cable se queda vacía y el caso cae nombrando lo que el rectángulo tenía que atrapar."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~SuprSobreLosCablesMarcados_ShouldDeleteThemAll_AndOneUndoShouldBringThemBack",
+    "why": "El borrado en lote de los cables marcados (con su undo) no pasa por el rectángulo: marca por SelectConnection, que es otra puerta del mismo estado, así que el mutante la deja intacta y la mutación rompe lo que dice romper y nada más."
+  }
+}

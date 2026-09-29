@@ -12,6 +12,11 @@ namespace FileFlow.Tests.Unit.App;
 /// Guardia del redibujado de cables del lienzo Uno: el lienzo tiene que <b>escuchar</b> la colección de
 /// conexiones, no sólo la de nodos.
 ///
+/// <para><b>Las dos mitades del control</b>: el dibujo de la capa de cables vive en
+/// <c>EditorCanvasControl.Wires.cs</c> (hito 282) y el resto —pan/zoom, tarjetas y suscripciones— en
+/// <c>EditorCanvasControl.xaml.cs</c>. Los censos de <c>DrawWires</c> leen la mitad de los cables; los de
+/// las suscripciones, el fichero del control.</para>
+///
 /// <para><b>Por qué guarda la fuente y no el runtime</b>: el lienzo es WinUI (host Uno) y no se puede
 /// materializar dentro de la sesión de pruebas; el defecto del hito 225 fue de suscripción —el lienzo
 /// reconstruía cables sólo con <c>Nodes.CollectionChanged</c>, y como el importador añade todos los
@@ -26,7 +31,11 @@ public class UnoCanvasConnectionsGuardTests
 {
     private const string CanvasPath = "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs";
 
+    /// <summary>La otra mitad del mismo control: el dibujo de la capa de cables (hito 282).</summary>
+    private const string WiresPath = "FileFlow.App.Uno/Controls/EditorCanvasControl.Wires.cs";
+
     private static string CanvasCode() => SourceText.CodeWithoutComments(CanvasPath);
+    private static string WiresCode() => SourceText.CodeWithoutComments(WiresPath);
 
     [Fact]
     public void Canvas_ShouldSubscribeToConnectionsCollectionChanged()
@@ -88,7 +97,7 @@ public class UnoCanvasConnectionsGuardTests
     [Fact]
     public void DrawWires_ShouldConsumeTheWrittenBackAnchors()
     {
-        string code = CanvasCode();
+        string code = WiresCode();
 
         // El write-back de la 3.3 manda: el cable nace del SOCKET REAL (ancla calculada del árbol) en
         // los dos extremos — el mutante `cable-con-anclas-estimadas` sustituye una de las dos llamadas
@@ -107,7 +116,7 @@ public class UnoCanvasConnectionsGuardTests
     [Fact]
     public void DrawWires_ShouldKeepTheEstimationAsFallbackOnly()
     {
-        string code = CanvasCode();
+        string code = WiresCode();
 
         // El caso hermano: el respaldo con la estimación Y+40 tiene que seguir ahí (para el árbol sin
         // materializar) PERO como coalescencia (??), no como camino único. El mutante que deja la

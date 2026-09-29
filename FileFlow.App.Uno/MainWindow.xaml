@@ -23,7 +23,7 @@
          asas son `PanelSplitter` —WinUI 3 no trae `GridSplitter` y este host no referencia el paquete de la
          comunidad—, con el reparto del escritorio y una cota más: el arrastre no puede dejar al lienzo por
          debajo de su mínimo, porque el área de clic de las tarjetas se mide del árbol visual. Hito 270. -->
-    <Grid x:Name="Workspace">
+    <Grid x:Name="Workspace" Grid.Row="1">
       <Grid.ColumnDefinitions>
         <ColumnDefinition x:Name="ToolboxColumn" Width="280" MinWidth="180" MaxWidth="480" />
         <ColumnDefinition Width="Auto" />

@@ -57,7 +57,6 @@
   <data name="Uno_InspectorActions" xml:space="preserve"><value>Actions</value></data>
   <data name="Uno_InspectorParams" xml:space="preserve"><value>Parameters</value></data>
   <data name="Uno_InspectorTelemetry" xml:space="preserve"><value>Telemetry</value></data>
-  <data name="Uno_InspectorResetMetrics" xml:space="preserve"><value>Clear metrics</value></data>
   <data name="Uno_InspectorTitle" xml:space="preserve"><value>Inspector</value></data>
   <data name="Uno_InspectorEmpty" xml:space="preserve"><value>Select a node to inspect it.</value></data>
   <data name="Uno_InspectorStatus" xml:space="preserve"><value>Status</value></data>
@@ -567,25 +566,9 @@
   <data name="AiModelUrls_StatusCustom" xml:space="preserve"><value>🔧 Custom</value></data>
   <data name="AiModelUrls_StatusDefault" xml:space="preserve"><value>📦 Official / Default</value></data>
   <data name="Uno_AiModelUrls_RequiredWarning" xml:space="preserve"><value>You must specify at least one valid download URL for this model.</value></data>
-<data name="PresetManager_Category" xml:space="preserve"><value>Category</value></data>
-<data name="PresetManager_DeleteBtn" xml:space="preserve"><value>🗑 Delete</value></data>
-<data name="PresetManager_Description" xml:space="preserve"><value>Short Description</value></data>
-<data name="PresetManager_FfmpegArgs" xml:space="preserve"><value>FFmpeg CLI Arguments</value></data>
-<data name="PresetManager_FormTitle" xml:space="preserve"><value>✏️ Preset Details &amp; Configuration</value></data>
-<data name="PresetManager_HeaderSubtitle" xml:space="preserve"><value>Create, edit, customize, and manage audio and video conversion presets for the transcoding node.</value></data>
-<data name="PresetManager_HeaderTitle" xml:space="preserve"><value>🎬 Media Transcoding Preset Manager</value></data>
-<data name="PresetManager_MsgDefaultCannotDelete" xml:space="preserve"><value>Default system presets cannot be deleted.</value></data>
-<data name="PresetManager_MsgDeleteConfirm" xml:space="preserve"><value>Are you sure you want to delete preset '{0}'?</value></data>
-<data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>Do you want to reset all presets to system default values?</value></data>
-<data name="PresetManager_MsgSaveSuccess" xml:space="preserve"><value>Preset saved successfully.</value></data>
-<data name="PresetManager_NewBtn" xml:space="preserve"><value>➕ New</value></data>
-<data name="PresetManager_NewPresetDescription" xml:space="preserve"><value>Description of the new preset...</value></data>
-<data name="PresetManager_NewPresetName" xml:space="preserve"><value>New Custom Preset</value></data>
-<data name="PresetManager_OutputExt" xml:space="preserve"><value>Output Extension</value></data>
-<data name="PresetManager_PresetName" xml:space="preserve"><value>Preset Name</value></data>
-<data name="PresetManager_ResetBtn" xml:space="preserve"><value>🔄 Reset Defaults</value></data>
-<data name="PresetManager_ResetToolTip" xml:space="preserve"><value>Reset preset library to default system values</value></data>
-<data name="PresetManager_SavePreset" xml:space="preserve"><value>💾 Save Preset Changes</value></data>
-<data name="PresetManager_WindowTitle" xml:space="preserve"><value>Media Preset Manager (FFmpeg)</value></data>
 <data name="Node_Param_OpenPresetManager" xml:space="preserve"><value>Open Preset Manager (Create, Edit, Delete Presets)</value></data>
+<data name="Node_Param_OpenPasswordManager" xml:space="preserve"><value>Manage password list (Import / Export / Edit)</value></data>
+  <!-- El CABLE del lienzo: su menú, con la misma orden del núcleo que cumple el del escritorio -->
+  <data name="Uno_Connection_Delete" xml:space="preserve"><value>Delete Connection</value></data>
+
 </root>

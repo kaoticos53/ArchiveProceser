@@ -8,8 +8,8 @@
       "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
       "replacements": [
         {
-          "old": "                ((INotifyCollectionChanged)_editor.Connections).CollectionChanged += OnConnectionsChanged;\n            }",
-          "new": "                ((INotifyCollectionChanged)_editor.Connections).CollectionChanged -= OnConnectionsChanged;\n            }",
+          "old": "                ((INotifyCollectionChanged)_editor.Connections).CollectionChanged += OnConnectionsChanged;",
+          "new": "                ((INotifyCollectionChanged)_editor.Connections).CollectionChanged -= OnConnectionsChanged;",
           "count": 1
         }
       ]

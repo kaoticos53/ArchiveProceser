@@ -22,6 +22,729 @@
 
 ## Ventana viva
 
+## [2026-09-29] - Hito 287: Supr se Lleva la Selección Entera — Nodos y Cables — de Una Sola Vez
+
+### 🎯 El encargo
+«Unifica el borrado: cuando la selección del lienzo tiene nodos y cables a la vez, Supr debe llevarse las dos cosas en una sola operación de deshacer, en vez de borrar sólo los cables marcados.»
+
+### 🔬 El diagnóstico
+El `case Delete` de la tabla compartida era un `if`/`else` **excluyente**: si había un cable marcado se ejecutaba `DeleteSelectedConnections` —una transacción con una acción por cable— y **los nodos elegidos se quedaban en el grafo**; si no había cables, los nodos. Con el rectángulo del hito 286, que marca las dos cosas de una vez, eso obligaba a borrar en **dos tandas** y a deshacer otras dos, y el usuario que rodeaba dos tarjetas con su cable se quedaba mirando cómo desaparecía el cable y no los nodos.
+
+### 🧱 El arreglo
+- **`EditorViewModel.DeleteSelection(parameter)`**: los nodos elegidos y los cables marcados caen **dentro de una transacción** («Eliminar Selección»), así que **un solo Ctrl+Z** devuelve la selección entera. Los cables que caen por sus nodos **no se borran dos veces**: primero caen los nodos con todo lo que cuelga de ellos —una sola `DeleteNodesAction`— y sólo se borran a mano los marcados que **sigan** en el grafo.
+- **Una sola copia de la baja de un nodo**: la que era el cuerpo de `DeleteSelectedNodes` pasa a `DeleteNodesWithTheirConnections`, compartida por el borrado de nodos y el de la selección entera.
+- **Una sola orden para los dos hosts**: la tabla compartida apunta `Delete` a `DeleteSelectionCommand` y la `KeyBinding` del **escritorio** apunta a la misma orden (allí `SelectedConnections` está siempre vacía, así que su conducta no cambia: lo que cambia es que ya no hay una copia del criterio en cada host).
+- **Un defecto latente que salió al medir el ciclo completo**: el undo del borrado **reinserta** el nodo, y los dos avisos de un nodo —la marca de selección (que asigna el nodo de referencia y lo trae al frente) y el recuento— se suscribían en las puertas de **alta** (`AddNode` y el importador), no en la **única puerta por la que un nodo entra en el grafo**: el nodo que volvía del deshacer se elegía y **el núcleo no se enteraba**. Los dos avisos pasan a la suscripción de `Nodes.CollectionChanged` —la cubren el nuevo, el importado, el pegado y el restaurado— y las dos copias de las puertas de alta se quitan.
+
+### ✅ La medida (ratón y Supr inyectados + el ciclo de deshacer, 8 fases)
+Contada del árbol (tarjetas y cables, que es lo que el usuario ve), sobre el grafo de ejemplo de 3 nodos y 2 cables:
+
+| Fase | Gesto | Medida |
+| :--- | :--- | :--- |
+| P0 | arranque | **3 tarjetas / 2 cables** |
+| P1 | clic en la tarjeta **C** | 3/2 (C elegida) |
+| P2 | **Ctrl**+clic en el cable que **NO** cuelga de C | 3/2: la selección tiene las dos cosas de tipos distintos |
+| P3 | **Supr** | **2 / 0**: cae el nodo C con su cable **y** el cable marcado. Con el criterio viejo aquí quedaban 3/1 (sólo el cable) |
+| P4 | **un solo** Ctrl+Z | **3 / 2** |
+| P5 | rectángulo sobre la tarjeta **A** (A y su cable marcado) | 3/2 |
+| P6 | **Supr** | **2 / 1**: A con su cable, **sin borrarlo dos veces** (queda el otro cable) |
+| P7 | **un solo** Ctrl+Z | **3 / 2** |
+
+### 🧪 El aparato que lo guarda
+- **Tres casos nuevos en `EditorSelectionRuleTests`** (nueve en el fichero): la selección mixta cae entera y **un solo deshacer** la devuelve; el cable **que no cuelga** del nodo elegido también cae; y el nodo que vuelve del deshacer **sigue gobernado** por el núcleo (la mitad que le faltaba a la suscripción).
+- **Guardia del cable puesta al día**: su cita de la tabla compartida era la rama borrada (`if (editor.SelectedConnections.Count > 0)`) y ahora cita la orden única (`DeleteSelectionCommand`), con el porqué.
+- **Mutación nueva `borrado-que-deja-los-nodos` MUERDE** (30,8 s): devuelve la condición vieja (los nodos sólo caen si no hay cables marcados), con el borrado de sólo cables como control. `COVERAGE.md` → **113 · 15/17 · 20/51**.
+- **Sonda `ProbeMixedDeletion`** (renglón nuevo del lienzo): construye la selección mixta que deja el rectángulo, corre el Supr por la tabla del núcleo y mide el ida y vuelta —«nodos 3->2->3, cables 2->1->2»—.
+
+### 📊 Validación del estado
+Lienzo **111 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 110; +1 renglón), paneles **59**, barra **42**, ajustes **18** (las cuatro EXIT 0) y la del **escritorio** **41 / 0** EXIT 0; suite completa **1987 superadas + 1 omitida de 1988, 0 errores**; las dos soluciones **0 errores**.
+
+### 🟠 Fronteras declaradas
+- **Cierra la frontera del hito 285** («Supr borra una cosa: con marca es el cable, sin marca los nodos»): ahora borra LA SELECCIÓN, que puede ser las dos cosas. La entrada vieja no se reescribe.
+- **La acción del nodo no cambia**: el borrado que ofrece la propia tarjeta sigue siendo «este nodo» (`DeleteSelectedNodesCommand`), no «la selección».
+- **El escritorio no cambia de conducta** (nunca llena la marca de cables), pero pasa a compartir la orden en vez de tener su propia copia del criterio.
+- **El rehacer del ciclo mixto no se midió** con dedos (el undo sí); y Supr sin nada elegido sigue sin hacer nada.
+
+## [2026-09-29] - Hito 286: el Rectángulo de Selección Marca También los Cables (y el Plano Ya No lo Desplaza)
+
+### 🎯 El encargo
+«Haz que el rectángulo de selección capture también los cables que quedan dentro y que Ctrl+rectángulo AÑADA o reste marca a la selección de nodos, con su sonda, su guardia y su mutación.» Las dos respuestas de alcance del usuario: **Ctrl AÑADE y NO resta** (una sola regla, la del hito 285: la selección no se quita arrastrando) y **un cable entra cuando sus DOS anclas caen dentro** (no cuando su curva roza el borde del rectángulo).
+
+### 🔬 El diagnóstico (y el defecto latente que salió al camino)
+El rectángulo sólo miraba tarjetas: recorría `_containers` y encendía `card.Node.IsSelected`, **sin una línea sobre los cables**, así que pasar el lazo por encima de dos nodos dejaba el cable que los une sin marcar y el Supr no se lo llevaba (había que pulsar los cables uno a uno). Y al ir a añadir la mitad de los cables salió **el otro defecto, ya declarado como frontera**: el rectángulo comparaba los puntos del puntero —espacio de la RAÍZ— contra `Canvas.GetLeft/Top` de las tarjetas —espacio del GRAFO— escalando **sólo el ancho** (`card.Width * CanvasTransform.ScaleX`) y no la posición: la comparación sólo acertaba con el plano sin mover, que es palabra por palabra lo que las notas de versión dejaron escrito («el rectángulo de selección cuando el lienzo está desplazado (con el lienzo centrado acierta)»).
+
+### 🧱 El arreglo (la política en el núcleo, el gesto en la vista)
+- **`EditorViewModel.ApplyRubberSelection(nodesInside, connectionsInside, add, baseNodes, baseConnections)`**: marca **a la vez** nodos y cables —sin `add` **reemplaza** (manda el área) y con `add` **AÑADE** lo que ya estaba elegido—, con el nodo de referencia en el último elegido del grafo. La marca de los cables se toca **sólo donde cambia**: cada alta o baja de la colección repinta la capa de cables entera y el arrastre recalcula por cada movimiento del puntero.
+- **El gesto, en sus tres tiempos** (`BeginRubberBand` / `UpdateRubberBand` / `EndRubberBand`, como el gesto del puerto): el modificador se lee **al pulsar** —como en el clic— y decide **qué quedó dentro**: una tarjeta entra por su **centro** y un cable con sus **DOS anclas** dentro (`MeasureWireAnchors` las mide **una vez** al arrancar; sin las dos medidas, ese cable no entra, porque el rectángulo no adivina).
+- **Y el rectángulo se decide en el GRAFO**: los dos puntos del gesto pasan por el mismo inverso que todo lo demás (`GraphPointFromScreen`) y las cajas se comparan **sin escalar la posición**; el rectángulo *dibujado* sigue en la raíz, que es donde está el puntero y donde la capa del lazo vive.
+
+### ✅ La medida (ratón y Ctrl inyectados, 11 fases verdes)
+Medida por **anillo** (píxeles del acento alrededor del título de cada tarjeta) y por las **ventanas entre tarjetas** (por donde pasa cada cable, sin los anillos):
+
+| Fase | Gesto | Medida |
+| :--- | :--- | :--- |
+| P0 | arranque | anillos A=B=C=0 · huecos **cable 39/36, acento 0** |
+| P1 | rectángulo SIN Ctrl sobre TODO | **los tres anillos** (1576/1895/1698) y los dos huecos **cable 13/12, acento 65/60**: **nodos y cables a la vez** |
+| P2 | **Ctrl**+rectángulo lejos de todo | **idéntico**: no suelta nada de lo elegido |
+| P3 | rectángulo lejos SIN Ctrl | vuelve a P0: manda el área (vacía) |
+| P4 | clic en la tarjeta A | anillo de A (1380) y **huecos intactos**: el clic NO marca el cable (contraste con P1) |
+| P5 | rectángulo SIN Ctrl sobre C | A suelta, C elegida (1464) → reemplaza |
+| P6 | **Ctrl**+rectángulo sobre B | B y C (1465/1464) → añade |
+| P7 | **tras PAN**, clic en el vacío | todo suelto |
+| P8 | rectángulo **tras el PAN** sobre TODO | los tres anillos **en su sitio nuevo** y los dos cables marcados (acento 78/72) |
+| P9 | **tras ZOOM**, clic en el vacío | todo suelto (una tarjeta sale por la derecha: la tercera no se puede encerrar) |
+| P10 | rectángulo **tras el ZOOM** sobre lo visible | las tarjetas que quedan, elegidas, y el cable entre ellas marcado (**cable 244 → acento 746**) |
+
+P7-P10 son la prueba de la mitad que el hito 285 dejó declarada: **con el plano movido y con zoom el rectángulo sigue acertando**.
+
+### 🧪 El aparato que lo guarda
+- **`EditorSelectionRuleTests`**: dos casos nuevos (seis en total) miden la política en el núcleo —«el rectángulo encierra dos nodos y el cable que los une: las dos cosas quedan elegidas» y «con Ctrl se añade sin soltar lo de fuera; sin Ctrl manda el área»—.
+- **Guardia del cable** (`UnoCanvasWireGuardTests`), sección nueva: cita la llamada al núcleo, la base de Ctrl de los **cables**, la medida **única** de las anclas, que un cable necesita **sus dos** anclas dentro, el modificador leído al pulsar y el rectángulo decidido **en el grafo** (`GraphPointFromScreen`) con el centro de la tarjeta comparado sin escalar. La misma guardia cantó el cambio de uso de la medida del centro (**7 → 8**, con el motivo escrito: la caja del rectángulo).
+- **Dos mutaciones nuevas, las dos MUERDEN**: `rectangulo-que-no-ve-los-cables` (31,5 s) —el conjunto de cables que entran se vacía— y `rectangulo-con-ctrl-que-reemplaza` (30 s) —el Ctrl deja de conservar lo de fuera—. `COVERAGE.md` → **112 · 15/17 · 20/51**.
+- **Sonda `ProbeRubberBand`** (dos renglones nuevos en el lienzo): corre los tres tiempos del gesto con puntos de la raíz sobre un rectángulo medido del árbol, y comprueba de una vez que encierra nodos **y** cables, que con Ctrl no suelta lo de fuera y que sin Ctrl lo suelta todo.
+- **La guardia de geometría cazó a la sonda**: `TheCanvasCodeBehind_ShouldPositionThroughTheProjection_NotThroughRawLocationReads` marcó el punto construido desde `.X/.Y` del lazo de prueba; el arreglo no fue esconderlo sino **declarar el espacio** (los puntos del gesto son de la **raíz**, el cruce al grafo lo hace el rectángulo por dentro) y no construirlos desde coordenadas de otro espacio.
+
+### 📊 Validación del estado
+Lienzo **110 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 108; +2 renglones), paneles **59**, barra **42**, ajustes **18** (las cuatro EXIT 0) y la del **escritorio** **41 / 0** EXIT 0; suite completa **1984 superadas + 1 omitida de 1985, 0 errores**; las dos soluciones **0 errores**.
+
+### 🟠 Fronteras declaradas
+- **Ctrl AÑADE y no resta** (decidido con el usuario): un rectángulo nunca quita lo que estaba elegido, ni con modificadores; para soltarlo todo está el clic en el vacío.
+- **Un cable entra por sus ANCLAS, no por su curva** (decidido con el usuario): un rectángulo que sólo cubre el tramo entre dos sockets marca el cable aunque ninguna de las dos tarjetas caiga dentro.
+- **La frontera del rectángulo desplazado queda CERRADA aquí**, y se saldará en `docs/notas_de_version.md` al cerrar el tramo: una nota de una versión publicada no se reescribe, así que la frase vieja («con el lienzo centrado acierta») sigue ahí con esta entrada como referencia.
+- **El escritorio no se toca**: su rectángulo es de Nodify y no comparte este método.
+- **El rectángulo no marca cables por las anclas estimadas**: si el árbol no materializó los sockets, ese cable no entra (la estimación es el respaldo del *dibujo*, no de una decisión de selección).
+
+## [2026-09-29] - Hito 285: Pulsar REEMPLAZA la Selección (y Ctrl AÑADE) — en las Tarjetas y en los Cables
+
+### 🎯 El encargo
+«Haz que al seleccionar con el botón izquierdo sólo se seleccione un elemento, es decir que se deseleccionen los demás, excepto pulsando la tecla Control que se añadirían las selecciones.» Las dos respuestas de alcance del usuario quedan dentro: **el Ctrl vale también para los CABLES** (Ctrl+clic añade cables a la marca, y **Supr borra todos los marcados de una vez con un solo deshacer**) y **el rectángulo de selección cumple la misma regla** (sin Ctrl reemplaza, con Ctrl añade), igual que el clic.
+
+### 🔬 El diagnóstico (leído antes de tocar)
+El clic en una tarjeta hacía `SelectConnection(null)` y luego `node.IsSelected = true`: **marcaba sin soltar**, así que la selección se acumulaba y el Supr se llevaba de más —el síntoma que reportó el usuario—. El rectángulo de selección (`UpdateRubberSelection`) **nunca deseleccionaba**: sólo sumaba, así que un rectángulo sobre una zona vacía dejaba la selección de antes intacta. Y la marca del cable era **un campo suelto** (`EditorViewModel.SelectedConnection`), sin sitio donde meter un conjunto.
+
+### 🧱 El arreglo (la regla, en el núcleo y en un solo sitio)
+- **`EditorViewModel`**: `SelectNode(node, add)` y `SelectConnection(connection, add)` —sin `add` **sueltan** lo anterior, nodos **y** cables (la selección del lienzo es UNA: elegir un cable suelta los nodos y al revés), con `add` **añaden**—; `ClearSelection()` (el clic en el vacío) y `DeselectAllNodes()`; la marca del cable pasa de campo a **colección** `SelectedConnections`, con la invariante de que el cable que **sale** del grafo suelta su marca (en `Connections.CollectionChanged`); y `DeleteSelectedConnections` (**nuevo**) borra el conjunto dentro de **una transacción** de `UndoRedoService`, que es lo que hace que **un solo Ctrl+Z** los devuelva.
+- **`EditorKeyboardShortcuts` (tabla compartida)**: `case Delete` → si hay cables marcados son **los cables**; si no, los nodos (la conducta del escritorio).
+- **Host Uno**: el clic de tarjeta llama `SelectNode(card.Node, add: IsKeyDown(VirtualKey.Control))`; `OnWirePressed` llama `SelectConnection(connection, add: IsKeyDown(...Control))`; el rectángulo decide **al pulsar** (`_rubberAdditive` + `_rubberBaseNodes`, con `ClearSelection()` de arranque si no hay Ctrl); el clic en el vacío llama `ClearSelection()`; y el resalte se repinta por la suscripción a **`SelectedConnections.CollectionChanged`** (el campo suelto no podía avisar de que la marca del vecino había cambiado). Que el cable marcado **se vea** se conserva: el trazo pasa al acento y engorda.
+
+### ✅ La medida (ratón y Ctrl inyectados sobre la app en marcha, 14 fases verdes)
+Medida por **caja de tarjeta** (píxeles del acento `(236,72,153)` alrededor de cada título) y por **franja de cables** (color del cable `(244,114,182)` contra el acento):
+
+| Fase | Gesto | Medida |
+| :--- | :--- | :--- |
+| P0 | arranque | A=0 B=0 C=0 · franja cable **369**, acento **0** |
+| P1 | clic en la tarjeta **A** | **A=1385** B=0 C=0 (una sola) |
+| P2 | clic en la tarjeta **B** | A=**0** **B=1243** C=0 → **reemplaza** |
+| P3 | **Ctrl**+clic en **A** | **A=1385 B=1243** C=0 → **añade** |
+| P4 | clic en el vacío | A=B=C=0 → suelta todo |
+| P5 | clic en el **cable 1** | franja acento **305** y cable **369→257**: marca **uno** y suelta los nodos |
+| P6 | clic en el **cable 2** (sin Ctrl) | marca **sigue siendo una** (cable 245, acento 310) → **reemplaza** |
+| P7 | **Ctrl**+clic en el **cable 1** | franja cable **133**, acento **615** → **dos** marcados |
+| P8 | **Supr** | franja cable **0**, acento **0** → **los dos de una vez** |
+| P9 | **Ctrl+Z** | franja cable **369** → **un solo deshacer los devuelve** |
+| P10 | clic en la tarjeta **A** | A=1385 |
+| P11 | rectángulo SIN Ctrl sobre **C** | **A=0 C=1241** → **reemplaza** |
+| P12 | **Ctrl**+rectángulo sobre **B** | **B=1243 C=1241** → **añade** |
+| P13 | rectángulo SIN Ctrl sobre **B** | **B=1243 C=0** → **reemplaza** |
+| P14 | clic en el vacío | estado limpio |
+
+(Los píxeles de acento que aparecen en las cajas durante las fases del cable —105/140— son el **trazo grueso del cable marcado** cruzando esa caja, no un anillo de tarjeta: el anillo de una tarjeta mide ~1.240.)
+
+### 🧪 El aparato que lo guarda
+- **`EditorSelectionRuleTests` (nuevo, 4 casos, comportamiento del núcleo)**: pulsar reemplaza y Ctrl añade entre nodos; elegir un cable suelta los nodos y Ctrl suma a la marca; Supr borra los cables marcados y **una** transacción de undo los devuelve; y Supr no toca los no marcados. *(El `using Point = FileFlow.Sdk.Point;` es obligatorio dentro de `FileFlow.Tests.Unit.App`: el nombre `Sdk` resuelve al espacio de nombres de pruebas.)*
+- **Guardia del cable puesta al día** (`UnoCanvasWireGuardTests`): citaba la rama borrada (`SelectedConnection` singular) y el `SelectConnection(connection)` sin modificador; ahora cita **la colección** (`SelectedConnections.Contains`), el `add: IsKeyDown(...Control)`, la **suscripción** del resalte y `ClearSelection()`, más las **mitades de la regla** en el fuente (el rectángulo que pregunta el modificador y el `SelectNode` de la tarjeta) y los **tres renglones nuevos** del sondeo.
+- **Mutación nueva `seleccion-que-no-reemplaza`**: quita el bloque que suelta lo anterior en `SelectNode` (el clic vuelve a **acumular**), testigo `PulsarUnNodo_ShouldReplaceTheSelection_AndControlShouldAddToIt` y control el borrado en lote de los cables. **MUERDE** (33,5 s).
+- **Mutaciones del sujeto, puestas al día y verificadas**: el fragmento de `cable-marcado-que-no-se-ve` citaba `ReferenceEquals` con el campo suelto (ahora pregunta a la colección) y el de `cables-que-no-llegan-tarde` incluía el cierre del bloque de suscripciones, que se movió al entrar la línea nueva. Ambas **MUERDEN**, y con ellas `cable-que-no-se-puede-pulsar`, `menu-que-sale-en-una-esquina` y `cable-con-anclas-estimadas`.
+- **Sonido del lienzo**: +3 renglones (`ProbeSelectionRule`) —«pulsar reemplaza la selección», «y con Ctrl se AÑADE a lo elegido» y el borrado del conjunto con un solo deshacer—.
+
+### 🐛 Un fallo del instrumento, no del producto
+La sonda nueva lanzó `COMException [0x80004005]` al principio: el rastro (`WinRT.ExceptionHelpers` → `NodeCardViewModel.OnNodePropertyChanged`) mostró que el refresco del resalte pinta sobre el **árbol visual**, y el ciclo **borrar+deshacer** que corre antes reconstruye las tarjetas **sin pase de layout** (el sondeo es síncrono): la tarjeta recién creada no tiene contenedor y su refresco falla con `E_FAIL`. La sonda pasó a correr **antes** de ese ciclo, que es donde las tarjetas están materializadas —el estado del gesto real—. La app de verdad no lo sufre: entre dos gestos hay pases de layout.
+
+### 📊 Validación del estado
+Sonda del **lienzo** **108 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 105; +3 renglones), paneles **59**, barra **42**, ajustes **18** (las cuatro EXIT 0) y la del **escritorio** **41 / 0** EXIT 0; suite completa **1982 superadas + 1 omitida de 1983, 0 errores**; las dos soluciones **0 errores**; y `COVERAGE.md` regenerado: **110 · 15/17 · 20/51**.
+
+### 🟠 Fronteras declaradas
+- **No hay resta con Ctrl**: con Ctrl todo se AÑADE (el rectángulo con Ctrl no suelta lo que ya estaba elegido). Si el usuario quiere quitar uno, suelta todo con un clic en el vacío.
+- **Supr borra una cosa**: si hay cables marcados, los cables (todos los marcados); si no, los nodos. No se borran nodos y cables en la misma pulsación.
+- **El escritorio no se toca**: su lienzo (Avalonia/Nodify) nunca llena `SelectedConnections`, así que su Supr sigue borrando nodos y su multiselección sigue siendo la de su vista; la regla nueva vive en el núcleo y la consumen los hosts que la piden (`SelectNode`/`SelectConnection` con `add`).
+- **No hay «seleccionar todo»** ni multiselección por lazo sobre los **cables** pasando por encima de una tarjeta, y el rectángulo no selecciona cables (sólo tarjetas), como antes.
+
+## [2026-09-29] - Hito 284: el Menú del Cable Sale Bajo el Ratón (no en la esquina del cable)
+
+### 🎯 El encargo
+«El menú contextual al pulsar el botón derecho no sale alineado con el cursor del ratón sino en una esquina.»
+
+### 🔬 El diagnóstico (medido antes de tocar nada)
+El host Uno tiene **un solo** menú contextual: el del cable (`BuildWireMenu`), que se mostraba con **`ShowAt(hit)`** —anclado a la **DIANA**, la misma Bézier con trazo grueso que hace pulsable el cable—. Y ahí está el defecto: **el rectángulo de una curva que va de un socket al otro abarca el cable entero**, así que WinUI coloca el menú en una esquina de esa caja, no bajo el ratón. Medido con el ratón inyectado sobre la app en marcha: clic derecho en `(1442,760)` y menú en `(643,419)` — **855 px** de distancia. El escritorio no tiene ese problema porque allí el menú es un `ContextMenu` de Avalonia, y ese sale en el puntero: la posición explícita es **paridad**, no un adorno.
+
+### 🧱 El arreglo (una pieza, en la mitad de los cables)
+`ShowWireMenuAt(connection, e.GetPosition(RootGrid))` muestra el menú con **posición explícita** sobre la **raíz del lienzo**:
+```csharp
+flyout.ShowAt(RootGrid, new FlyoutShowOptions
+{
+    Position = canvasPoint,
+    Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft
+});
+```
+El punto se refiere a `RootGrid` —el **mismo** espacio en el que el lienzo lee el puntero para todo lo demás— y **no** al elemento pulsado: así el sitio del menú no depende de por dónde cayó el clic dentro de la curva.
+
+### ✅ La medida (ratón inyectado, 4 fases verdes)
+| Gesto | Medida |
+| :--- | :--- |
+| Clic derecho en el **cable 1** `(1151,792)` | menú en `(1158,799)` → desplazado **(7,7)** — antes: 855 px |
+| Clic derecho en el **cable 2** `(1463,792)` | menú en `(1469,799)` → desplazado **(6,7)**: **sigue al puntero**, no es un desplazamiento fijo desde el cable |
+| Su entrada, pulsada | **borra la conexión**: 179 → **117 píxeles** de cable |
+| **Ctrl+Z** | **la devuelve**: 117 → **179 píxeles** |
+
+Los ~7 px del borde son el marco del propio `MenuFlyoutPresenter` (la entrada queda 20 px dentro), que es como Windows coloca un menú de contexto.
+
+### 🧪 El aparato que lo guarda
+La conducta es de **puntero** y el host Uno no se materializa en el suite, así que se guarda como las demás de su clase: **censo de fuente** en el caso del cable (el punto del puntero, el `ShowAt` sobre la raíz con `FlyoutShowOptions`, su `Position`… y **prohibido `ShowAt(hit)`**, que es la firma del defecto) y **mutación nueva** [`menu-que-sale-en-una-esquina`](mutations/menu-que-sale-en-una-esquina.json), que devuelve el anclaje al elemento y hace caer esas líneas. La mutación se probó: **MUERDE** (28,5 s, testigo rojo y control verde).
+
+### 🟠 Fronteras declaradas
+- **La entrada 280 declaraba la frontera contraria** («el menú lo coloca WinUI… no se fija una posición propia»): queda **cerrada** por el informe del usuario. La entrada vieja **no se reescribe** (así se lee en esta bitácora): lo que cambió se dice aquí.
+- **La sonda del lienzo no muestra el menú**: su renglón lee la **entrada** del menú construido, no sus píxeles, y mostrar un `Flyout` dentro del sondeo lo metería en el informe de las demás sondas. La posición se mide donde se puede —con el ratón inyectado, arriba—, y su censo de fuente y su mutación la atan.
+- **`Escape` y el clic fuera siguen cerrando el menú** sin borrar nada (probado en el propio playtest: se abre y se cierra entre las dos medidas).
+- **El escritorio no se toca**: su `ContextMenu` ya sale en el puntero.
+
+### 📊 Validación del estado
+Sonda del **lienzo** EXIT 0 con **105 `[OK]` · 0 `[FALLO]` · VERIFICADO** (sin cambios: el sitio del menú no es cosa suya), las otras tres **59 / 42 / 18** y la del **escritorio** **41 / 0**, todas EXIT 0; suite **1978 + 1 omitida de 1979, 0 errores**; las dos soluciones **0 errores**; `COVERAGE.md` regenerado por su guardia: **109 declaradas · 15 de 17 · 20 de 51**.
+
+## [2026-09-29] - Hito 283 (verificación): Supr Sobre el Cable Marcado, Re-medido con Rehacer y Retroceso
+
+### 🎯 El encargo
+«Que el cable seleccionado se borre también con **Supr**, reutilizando la misma orden del núcleo, y medir con el ratón y el teclado inyectados que el **undo** lo restaura.»
+
+### 🔬 Lo que se encontró: **ya estaba servido** (hito 281), y no se re-implementó nada
+Leído en el camino real, no supuesto: el host mapea **`Delete` y `Retroceso`** a la misma clave física de la tabla compartida (`EditorCanvasControl.xaml.cs`, `MapKey`), y `EditorKeyboardShortcuts.Execute` resuelve `ShortcutKey.Delete` así — **si hay cable marcado, es el cable**:
+```csharp
+if (editor.SelectedConnection is { } connection)
+{
+    editor.DeleteConnection(connection);   // la orden del NÚCLEO, la misma que cumple el menú
+    return true;
+}
+
+editor.DeleteSelectedNodesCommand.Execute(null);   // y si no, los nodos, como el escritorio
+```
+`EditorViewModel.DeleteConnection` es el **único** cuerpo del borrado de una conexión (lo comparten el menú del clic derecho —vía `ConnectionViewModel.DeleteCommand`, que la sonda compara por referencia— y este atajo), y es quien **registra `DeleteConnectionAction` en la pila del undo**. No hay copia en el host que pudiera divergir: el host sólo pide la orden. **Este pase no añade ni cambia una línea de producto**; añade la medida que faltaba.
+
+### ✅ La medida (ratón y teclado inyectados sobre la app en marcha, 7 fases verdes)
+El ejemplo trae **2 cables**; se marca el primero con el **clic izquierdo** (el trazo pasa al acento, `(236,72,153)`) y se recorre el resto **con el teclado**:
+| Gesto | Medida |
+| :--- | :--- |
+| **Supr** | 2 → **1 cable** (el otro sigue ahí) y 179 → **117 píxeles** de cable: borra **el marcado**, no cualquiera |
+| **Ctrl+Z** | 1 → **2 cables**, 117 → **179 píxeles**: el undo lo devuelve |
+| **Ctrl+Y (rehacer)** | 2 → **1 cable**, 179 → **117 píxeles** |
+| **Ctrl+Z** | vuelve a **2 cables / 179 píxeles** |
+| Marcar + **Retroceso** | 2 → **1 cable**: la otra tecla de la MISMA clave de la tabla hace lo mismo |
+| **Ctrl+Z** | **2 cables / 179 píxeles** |
+
+El **rehacer** es la prueba de que el borrado está **en la pila del núcleo** y no es un quitado del host: un borrado que el host hiciera por su cuenta no se podría rehacer (y el undo del renglón anterior tampoco lo restauraría).
+
+### 🐛 Un fallo del instrumento, no del producto (medido y corregido en el sitio)
+La primera corrida dio tres `[FALLO]` y el producto estaba bien: mi sonda contaba **filas** de cable (el trazo mide ~3 px, así que cada cable producía 3 «cables») y comparaba contra `cables - 1`. Los cables se agrupan **por columna**, no por fila consecutiva —dos cables distintos son vecinos en la misma fila—, y con eso las siete fases quedaron verdes. Se deja escrito porque el error es del tipo que se repite: medir el lienzo por barrido de píxeles exige agrupar antes de contar.
+
+### 🟠 Fronteras declaradas
+- **Nada cambió en el producto**, así que no hay guardia ni mutación nueva: el aparato que ya existe sigue midiendo lo mismo —el renglón permanente de la sonda del lienzo («y el **Supr** de la tabla del núcleo borra el cable marcado, con el undo restaurándolo», dentro de los **105 `[OK]` · 0 `[FALLO]`**) y la mutación `cable-marcado-que-no-se-ve`—, y el atajo comparte clave con el escritorio por la tabla (`UnoShortcutParityGuardTests` censa que ninguna tecla mapeada en un host falte en la tabla).
+- **El rehacer no entra en la sonda permanente**: se midió a mano (arriba) y el undo de la sonda ya implica que la acción está en la pila; añadir el paso de rehacer al renglón sería medir dos veces lo mismo.
+- **Supr borra UNA cosa, la marcada**: con la marca puesta es el cable; sin marca, los nodos (conducta del escritorio). Marcar un cable desmarca los nodos a propósito.
+
+## [2026-09-29] - Hito 282: la Mitad de los Cables del Lienzo (el traslado, sin cambiar ni una medida)
+
+### 🎯 El encargo
+El lienzo del host Uno tenía **los cables dentro del fichero del control** —un fichero de 3.271 líneas que también lleva el pan/zoom, las tarjetas, el teclado y los decoradores—. El encargo: sacar **la diana del cable, su menú y su sonda** a **su propia mitad parcial** del control, como ya se hizo con el instrumento del inspector (`NodeInspectorPanel.Probes.cs`), **sin cambiar ni una medida**.
+
+### 🧱 Lo que se movió (entero, sin editar una línea de código)
+| Pieza | Qué es |
+| :--- | :--- |
+| `EditorCanvasControl.Wires.cs` (**nuevo**, 278 líneas) | `DrawWires` (el cable que se ve **y su diana**), `CreateWireGeometry` —la figura, con su porqué de las dos Bézier—, `ToWindowsPoint`, las anclas y nombres (`CanvasWire`, `CanvasWireHit`, los grosores, `SelectedWireBrushKey`), `WireLabel`, `OnWirePressed` (el clic que marca y no panea), `BuildWireMenu` (la orden del núcleo con su rótulo) y `ProbeWireSelection`. |
+| `EditorCanvasControl.xaml.cs` | **3.271 → 3.023 líneas**: se queda con el pan/zoom, las tarjetas, el teclado, los decoradores y el gesto del puerto. La figura del cable y sus dos sondas siguen aquí; el objeto `Path` de la diana se construye en la mitad nueva. |
+
+El traslado se hizo **por rango de líneas, verbatim** (sin reformatear ni retocar comentarios), y el compilador es el que dice si el corte está bien: `FileFlow.Uno.slnx` con **0 errores**. La mitad nueva lleva su cabecera explicando **por qué** está separada (el control tiene tres sujetos y éste es el de los cables: se rompen juntos) y que la convención es la del instrumento del inspector.
+
+### 🧪 Las medidas que había que NO mover (y no se movieron)
+Un traslado sólo es inocuo si lo que medía sigue midiendo lo mismo. Pero cuatro guardias y **cuatro mutaciones** apuntaban al fichero viejo, así que el pase tuvo que **re-apuntar el aparato** —y el propio aparato lo dijo, sin que nadie lo adivinara:
+- **La guardia de las mutaciones** (`EveryDeclaredMutation_ShouldStillFitTheProductAndTheSuite`) cantó los cuatro fragmentos que ya no aparecían: `cable-con-anclas-estimadas`, `cable-marcado-que-no-se-ve`, `cable-que-no-se-puede-pulsar` y `cable-que-no-toca-su-socket` (dos fragmentos). Los cuatro cambian de fichero, con el porqué del control de uno de ellos ajustado (ya no es «el mismo fichero»).
+- **Los censos**: la guardia del redibujado lee ahora la mitad nueva para `DrawWires` (las suscripciones siguen en el fichero del control); la del cable lee **las dos mitades** donde la figura se declara en una y la usa la otra (el cable del grafo y su diana, allí; el pendiente del arrastre, aquí), con los **mismos números** (tres usos de la figura, tres del trazado del núcleo); la de **portabilidad de textos** añade la mitad nueva a su censo (el rótulo del menú, `Uno_Connection_Delete`, se cita ahora ahí: sin añadirla, la clave se habría quedado sin quien la vigile); y la de **geometría** barre **las dos mitades** del code-behind —una mitad nueva no puede quedar fuera de una regla que no admite excepciones históricas—. **El barrido por comodín no valía**: `EditorCanvasControl*.xaml.cs` no casa con `EditorCanvasControl.Wires.cs` (el nombre de la mitad sigue la convención del inspector, `<Control>.<Sujeto>.cs`), y la lista explícita de las dos mitades es la que lo deja claro.
+
+### ✅ Validación (las mismas medidas, del mismo tamaño)
+- **Playtest con ratón y teclado inyectados**, las cinco fases **verdes** igual que antes del traslado: el clic izquierdo **marca** (el píxel al acento `(236,72,153)` y el grosor **3 → 5 px**), **Supr borra** el cable marcado (los píxeles del color del cable caen de **179 a 117** —y el tramo horizontal del cable mide **62 px**, idéntico—), **Ctrl+Z lo devuelve** (→ 179), el clic en el **vacío** quita la marca, y el **clic derecho** sigue abriendo el menú del núcleo (su entrada se lee en el árbol) **borrando** la conexión y volviendo con el undo. *(El recuento absoluto cambia de una corrida a otra porque el muestreo va cada 2 px desde la esquina de la ventana, que no está en el mismo sitio; lo comparable —tramo, grosor y proporción— es idéntico.)*
+- **Sonda del lienzo EXIT 0: 105 `[OK]` · 0 `[FALLO]` · VERIFICADO**, con los mismos renglones (eran 105 antes del traslado); las otras tres del host **59 / 42 / 18** EXIT 0 y la del **escritorio** **41 / 0** EXIT 0.
+- **Suite completa: 1978 superadas + 1 omitida de 1979, 0 errores** —incluidas las cinco guardias que hubo que re-apuntar— y las dos soluciones **0 errores**.
+- **Las cinco mutaciones del sujeto siguen MUERDEN** tras el traslado, ya mutando la mitad nueva: `cable-que-no-se-puede-pulsar` (28,8 s), `cable-marcado-que-no-se-ve` (29,4 s), `cable-que-no-toca-su-socket` (27,9 s), `cable-con-anclas-estimadas` (28 s) y `ancla-que-ignora-la-escala` (28,5 s), con **0 rechazos** (es decir: los fragmentos encajan en el fichero nuevo). `COVERAGE.md` regenerado por su guardia: **108 · 15/17 · 20/51**.
+
+### 🟠 Fronteras declaradas
+- **La sonda del seguimiento del cable** (`ProbeWireTracking`, con su forma del hueco estrecho y el pan/zoom que la mueve) **se queda en el fichero del control**: mide el plano y las anclas, no la capa de cables, y moverla habría arrastrado el aparato del pan/zoom. Es una mitad de cables, no un museo del cable.
+- **El gesto del puerto** (pulsar/mover/soltar) sigue en el fichero del control: es el gesto de las **tarjetas** que arranca un cable, no la capa.
+- **El `.xaml` no se tocó**: la capa `WireLayer` es del lienzo, y su mitad de cables la usa por nombre.
+- **Nada de conducta cambió**, y eso es una frontera: el pase no arregla nada que estuviera roto —su valor es que el siguiente cambio en los cables no tenga que leer tres mil líneas de tarjetas—.
+
+## [2026-09-29] - Hito 281: la Selección Visible del Cable (marcarlo, verlo y borrarlo con Supr)
+
+### 🎯 El encargo
+El hito 280 dejó el cable **borrable por su menú**; lo que faltaba es lo que el escritorio hace con un clic: **marcar** la conexión, **verla marcada** y borrarla con **Supr**. Sin la marca visible, el usuario elige algo que se ve igual que los demás y el atajo se lleva una conexión que nunca vio elegida.
+
+### 🔬 El diagnóstico (la convención del producto, leída antes de escribir)
+- **Cómo marca el producto un nodo**: `NodeViewModel.IsSelected` (lo pinta la tarjeta) + `EditorViewModel.SelectedNode` (el último), y la tecla entra por la **tabla del núcleo** `EditorKeyboardShortcuts.Execute`, cuyo caso `ShortcutKey.Delete` ejecuta `DeleteSelectedNodesCommand`. La vista del host no tiene estado propio: pide la orden y el grafo se entera.
+- **El resalte del nodo** lo fija la propia tarjeta: un borde con `CanvasAccentPrimaryBrush`. Esa es la vara con la que se mide «seleccionado» en este producto (y el motivo de que el cable marcado use el mismo pincel, no uno inventado).
+- **El escritorio no se toca**: allí el cable no se marca (no tiene gesto) y su borrado por menú sigue igual; el caso `Delete` de la tabla sólo cambia cuando **hay** un cable marcado, que es estado que el escritorio nunca pone.
+
+### 🧱 Lo construido (cuatro piezas, ninguna capa nueva)
+| Pieza | Qué hace |
+| :--- | :--- |
+| `EditorViewModel` (`SelectedConnection` + `SelectConnection`) | **La única casa de la marca** (uno a la vez): marcarla desmarca los nodos —Supr borra una cosa, la marcada—, desmarcarla (`null`) no toca la selección de nodos, y la invariante vive en `Connections.CollectionChanged`: el cable marcado que **sale** del grafo (borrado, undo, otro grafo) no puede dejar la marca puesta. |
+| `EditorKeyboardShortcuts.Execute` (`case Delete`) | **Supr borra LO MARCADO**: si hay cable marcado, es el cable (por `DeleteConnection`, con su undo); si no, los nodos, que es la conducta del escritorio. Ocho líneas, en la tabla compartida. |
+| `EditorCanvasControl.DrawWires` | El cable marcado **se ve marcado**: trazo `CanvasAccentPrimaryBrush` (el mismo acento de la tarjeta seleccionada) y **6 px** en vez de 3,5. La marca se pregunta al núcleo en cada trazado (`ReferenceEquals(connection, _editor.SelectedConnection)`): el cable **no lleva copia** que pueda divergir. |
+| `EditorCanvasControl.OnWirePressed` | El clic **izquierdo** marca el cable y le entrega el **FOCO** al lienzo (hito 252) — sin foco ninguna tecla llega—; el **derecho** no reclama el teclado (su menú manda). El clic en una tarjeta y el clic en el vacío **desmarcan**: `Supr` borra lo que se ve marcado, y tiene que poder quitarse. |
+| `SelfCheckCanvas` + `ProbeWireSelection()` | Dos renglones nuevos en la app viva: la marca se VE (el trazo del acento, más grueso) y **el Supr de la tabla del núcleo borra el cable marcado**, con el undo devolviendo la medida. |
+| `mutations/cable-marcado-que-no-se-ve.json` (nuevo) | Quita el resalte (el cable se pinta siempre normal): la marca sigue en el núcleo y deja de verse. Testigo el caso del cable, control la figura (otro sujeto del mismo censo). |
+
+### 🐛 El defecto que introdujo el primer intento (y lo cazó el rastro, no la intuición)
+Al entregar el foco también en el pulsado del **botón derecho**, el menú del hito 280 dejó de quedarse abierto: el rastro del lienzo (`FILEFLOW_CANVAS_TRACE=1`) lo midió entero — `WIRE press right=True`, `WIRE RightTapped -> menú`, la ventana `MenuFlyoutPresenter#` **cargada y midiendo 141x38**, y en la línea siguiente `foco RECUPERADO del envoltorio ajeno (MenuFlyoutPresenter#<-Canvas#)`: reclamar el teclado cerraba el menú recién abierto. El playtest del clic derecho lo confirmó (la entrada «Eliminar conexión» ya no estaba en el árbol). **El arreglo no toca la reclamación**: el botón derecho ya no la pide —su menú es el dueño del teclado— y la izquierda sigue pidiéndola, que es lo que hace funcionar el Supr. Las dos mitades quedan medidas en el mismo playtest.
+
+### ✅ Validación (medida)
+- **Playtest con ratón y teclado inyectados sobre la app en marcha** (tema pastel activo: cable `(244,114,182)`, acento `(236,72,153)`), las cinco fases verdes:
+  - **El clic IZQUIERDO marca el cable**: el píxel del trazo pasa de `(244,114,182)` a **`(236,72,153)`** —el acento— y el grosor medido en esa columna pasa de **3 a 5 px**.
+  - **Supr borra el cable marcado**: los píxeles del color del cable caen de **185 a 123** (los del cable que estaba marcado) y **Ctrl+Z los devuelve a 185**.
+  - **El clic en el vacío quita la marca**: el cable vuelve a su color.
+  - **El clic DERECHO sigue abriendo el menú del núcleo** (su entrada se lee en el árbol, en `(L708,T484,R872,B519)`), **su entrada borra la conexión** (185 → 123) **y Ctrl+Z la restaura** (→ 185). El hito 280 no se reabrió.
+- **Sonda del host Uno (lienzo) EXIT 0**: **105 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 103), con los dos renglones nuevos: «el cable marcado **SE VE marcado**: su trazo pasa al acento de selección y engorda» y «y el **Supr** de la tabla del núcleo borra el cable marcado, con el undo restaurándolo». Las otras tres sondas del host, EXIT 0: paneles **59**, barra **42**, ajustes **18**. Sonda del **escritorio** (`run-fast.ps1 -SelfCheck`) EXIT 0: **41 `[OK]` · 0 `[FALLO]` · VERIFICADO**.
+- **Suite completa: 1978 superadas + 1 omitida de 1979, 0 errores**; las dos soluciones (`FileFlow.slnx` y `FileFlow.Uno.slnx`) **0 errores**.
+- **Mutaciones**: `cable-marcado-que-no-se-ve` (nueva) **MUERDE** (28,5 s), y siguen mordiendo las tres del mismo sujeto re-ejecutadas tras tocar la guardia (`cable-que-no-se-puede-pulsar`, `cable-que-no-toca-su-socket`, `ancla-que-ignora-la-escala`). `mutations/COVERAGE.md` regenerado por su guardia: **108 declaradas · 15 de 17 subsistemas · 20 de 51 guardias**.
+- **El corte del pase**: la marca empezó con una bandera `IsSelected` en el propio cable (hermana de la del nodo) y se **podó antes de cerrar** —era una segunda copia de un estado que el núcleo ya tiene, y dos copias pueden divergir—; `ConnectionViewModel` queda **sin una línea de diff** y la guardia del trazo mide la marca que queda. También se actualizó el fragmento de `cable-que-no-se-puede-pulsar` (su bloque `old` citaba la línea del cable que el clic cambió).
+- **Un `flake` de rendimiento, declarado con sus números**: el renglón `re-posicionado total bajo el umbral (< 60 ms)` del lienzo midió **58,1 / 61,1 / 62,5 / 72,3 ms** en corridas del mismo binario (y **3,7 ms** en la primera, con el proceso frío). Es la misma línea que ya había fallado antes de este pase (59,2 ms el del frame de drag), no una regresión: el pase añade una comparación por cable al trazar. Queda como frontera, medida por los dos lados.
+
+### 🟠 Fronteras declaradas
+- **La marca es de UN cable** (no hay multiselección de cables): es lo que el encargo pide y lo que el escritorio tiene —un cable se borra de uno en uno—; un `Ctrl+clic` de cables sería capacidad nueva.
+- **Marcar el cable NO lo trae al frente ni cambia el orden de dibujo**: se repinta con el acento, y el orden de la capa es el del grafo.
+- **El clic derecho no marca** (abre el menú): marcar y ofrecer el borrado en el mismo gesto se solaparían.
+- **No se probó el Supr con el cable marcado sobre un grafo grande** (40 nodos/28 cables): el playtest corre sobre el ejemplo de 2 cables, y la sonda mide el camino del núcleo.
+- **El escritorio no se tocó**: su caso `Delete` sigue borrando nodos (nunca marca un cable) y no se le añadió resalte.
+
+## [2026-09-29] - Hito 280: El Cable que No Se Podía Seleccionar (la conexión que se ve y no se puede borrar)
+
+### 🎯 El encargo
+«No puedo seleccionar las conexiones para borrarlas.» El usuario ve el cable en el lienzo, quiere quitarlo y no tiene sobre qué pulsar: la capacidad (borrar una conexión) existe en el producto desde el escritorio, y en **este host estaba sin servir**.
+
+### 🔬 El diagnóstico (leído en el árbol y medido en la app)
+- **El cable no existía para el ratón**: `DrawWires()` materializa cada conexión como un `Microsoft.UI.Xaml.Shapes.Path` de **3,5 px** dentro de `WireLayer`, y esa capa nacía con **`IsHitTestVisible="False"`**. No era una diana pequeña: era nada.
+- **Y el clic derecho hacía otra cosa**: al no haber nada bajo el puntero, el evento caía al fondo del lienzo, donde `OnCanvasPressed` arranca el **PAN** (`properties.IsRightButtonPressed && !HitsInteractiveControl(point)`). Es decir: el usuario pulsaba el cable para borrarlo y **se le movía el lienzo** (medido en este pase: el rectángulo del otro cable no cambia con el clic derecho *después* del arreglo; antes lo hacía el pan).
+- **Lo que el producto sí tiene**: el escritorio borra una conexión con **clic derecho sobre el cable → menú → «Eliminar conexión»** (`FileFlow.App/Views/EditorView.axaml`, la entrada `DeleteConnection` de su diccionario, sobre `ConnectionViewModel.DeleteCommand` — la orden del **núcleo**, con su undo). Lo único que este host ofrecía era el clic derecho sobre un **socket** (hito 278), que desconecta ese puerto: no es lo mismo que el cable que el usuario está mirando.
+
+### 🧱 Lo construido (la capacidad que el producto ya tenía, servida aquí)
+| Pieza | Qué hace |
+| :--- | :--- |
+| `EditorCanvasControl.xaml` | `WireLayer` pasa a **`IsHitTestVisible="True"`**: sin eso, el cable se ve y no existe para el puntero. |
+| `EditorCanvasControl.xaml.cs` (`DrawWires`) | Cada cable lleva su **DIANA**: la MISMA Bézier con un trazo **grueso (14 px) y transparente**, anclada (`CanvasWireHit`) y con su **nombre accesible** («origen: puerto → destino: puerto»). |
+| Idem (`OnWirePressed`) | El botón derecho sobre el cable **no es el pan**: el manejador del cable marca el evento como atendido (el fondo no recibe lo ya atendido) y el menú se abre al soltar. |
+| Idem (`BuildWireMenu`) | El menú del cable: **una** entrada, «Eliminar conexión», cuya orden es **la del núcleo** (`connection.DeleteCommand`, con su undo), igual que la del escritorio. El host no borra nada por su cuenta. |
+| `FileFlow.App.Uno/Resources/Strings{,.es}.resx` | La clave `Uno_Connection_Delete` con **el texto del escritorio** (`DeleteConnection`): «Eliminar conexión» / «Delete Connection». |
+| `UnoDialogPortabilityGuardTests` | La pareja `Uno_Connection_Delete` ↔ `DeleteConnection` entra en su tabla de textos compartidos, y **el lienzo entra en su censo**: la clave se mide como las de las demás superficies. |
+| `UnoCanvasWireGuardTests` | Caso nuevo `TheWire_ShouldBeSelectableToBeDeleted_ThroughTheCoreOrder`: la capa alcanzable, la diana (trazo grueso y transparente, figura propia trazada del MISMO `wire`), el botón derecho no-pan, la orden del núcleo con su rótulo del diccionario, y la sonda que lo mide. |
+| `SelfCheckCanvas.cs` + `ProbeWireSelection()` | Dos medidas nuevas en la app viva: cada cable tiene su diana y su menú es el del núcleo con el rótulo del diccionario. |
+| `mutations/cable-que-no-se-puede-pulsar.json` (nuevo) | Quita la diana: testigo el caso nuevo, control la medida del ancla (otro sujeto del mismo censo). |
+
+### 🐛 La trampa que midió la sonda (y que obligó a trazar dos figuras)
+La primera versión de la diana **reutilizaba la misma `Geometry`** que el cable dibujado. La sonda del lienzo lo cazó al instante: `[FALLO] cables dibujados en la capa: 1 (esperados 8)` y siete sondas más cayendo con `ArgumentException: Value does not fall within the expected range` — una `Geometry` de WinUI **no se puede compartir entre dos `Path`**. La diana traza **su propia Bézier desde el mismo `wire` del núcleo** (el dibujo sale idéntico; lo que se comparte es el trazado, no el objeto), y el porqué queda escrito en el fuente. Consecuencia en la guardia de la figura: su censo pasa de **dos** usos de `CreateWireGeometry(wire)` a **tres**, con la razón (eran el cable del grafo y el pendiente; ahora también la diana).
+
+### ✅ Validación (medida)
+- **Playtest con el ratón inyectado sobre la app en marcha** (el ejemplo trae 2 cables, los dos con diana observable por UIA: `CanvasWireHit`, tipo `Group`, nombre `Folder Source: Out → Optimizador de Imágenes: In`, rect `(1003,686,1121,704)`):
+  - **El clic DERECHO sobre el cable abre su menú**, con su entrada «**Eliminar conexión**» (leída del árbol)
+  - **y NO panea el lienzo**: el otro cable sigue exactamente en `(1311,686,1432,704)` — el defecto que el usuario estaba viendo era, además de no poder borrar, que se le movía el lienzo.
+  - **Su entrada borra la conexión**: 2 → 1 cable(s) con diana, y el **píxel** en el centro del cable pasa del color del cable `(244,114,182)` al fondo del lienzo `(255,248,250)`.
+  - **Ctrl+Z la restaura** (2 cables y el píxel otra vez en `(244,114,182)`): la orden es la del **núcleo**, con su undo, no un borrado del host.
+- **Sonda del host Uno (lienzo) EXIT 0**: **103 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 101), con los dos renglones nuevos: «cada cable del grafo tiene su diana en la capa (**2 de 2**): el cable que se ve se puede pulsar» y «y su menú es el del núcleo, con el rótulo del diccionario: '**Eliminar conexión**'». Las otras tres sondas del host, EXIT 0: paneles **59**, barra **42**, ajustes **18** (0 `[FALLO]`). El rendimiento del redibujado no se movió (build 40 nodos + 28 cables **124 ms**, frame de drag **3,8 ms**).
+- **Suite completa: 1978 superadas + 1 omitida de 1979, 0 errores**; las dos soluciones **0 errores**.
+- **Mutación nueva `cable-que-no-se-puede-pulsar` MUERDE** (30,4 s: testigo rojo, control verde, árbol restaurado por bytes y recompilado). `mutations/COVERAGE.md` regenerado por su guardia: **107 declaradas · 15 de 17 subsistemas · 20 de 51 guardias**.
+- **Un rechazo del propio andamiaje, corregido antes de cerrar**: la primera declaración de esa mutación salió **IMPRECISA** porque su control (`TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor`) **también cae** con el mutante —ese caso cuenta los trazados del núcleo y la diana añade uno—. El control pasó a un hermano de otro sujeto (`TheAnchorMeasurement_ShouldTransformTheCenter_NotSumIt`) y el porqué quedó escrito en la declaración.
+
+### 🟠 Fronteras declaradas
+- **Sin cursor propio**: el cable del escritorio **no** pone `Cursor` (el `Cursor="Hand"` que aparece en `EditorView.axaml` es de un botón de las migas), así que aquí no se añade ninguno: sería capacidad nueva.
+- **El clic derecho sobre un SOCKET sigue desconectando su puerto** (hito 278): son dos caminos que el escritorio también tiene por separado, y este pase no toca el del socket.
+- **El menú lo coloca WinUI** (`MenuFlyout.ShowAt`, junto al elemento pulsado): no se fija una posición propia —el escritorio tampoco la fija— y la medición lee su entrada, no sus píxeles.
+- **El borrado NO se probó sobre una conexión entrante a un nodo de subflujo ni sobre el cable pendiente del arrastre** (esos casos no tienen menú: el pendiente no es una conexión del grafo).
+- **El escritorio no se tocó**: su menú del cable es el que ya tenía.
+
+## [2026-09-29] - Hito 279 (cierre): el Playtest de Importar/Exportar y una Sola Fuente para los Textos del Gestor
+
+### 🎯 El encargo
+El arreglo del desempaquetador dejó dos deudas, ninguna capacidad nueva: **(1)** el cuerpo del gestor estrena botones de **importar y exportar** que nadie había pulsado —recorrerlos con el **ratón inyectado** sobre la app en marcha (abrir, elegir un archivo real, cancelar y la vuelta a la fila) y dejar medido qué hace cada uno; si alguno no puede completar su trabajo, **o se sirve o no se ofrece**—; y **(2)** cada texto del gestor vive en **tres copias** (el diccionario del plugin, el del host y lo que ya registra el cargador): dejar **una sola fuente de verdad** y que **la guardia siga mordiendo** si vuelven a divergir. Fuera del encargo: reabrir las dos conductas ya probadas (conectar nodos y el botón abriendo su diálogo) y llevarlo al **escritorio** (la fila de claves de la app de escritorio no es parte del defecto). El diff debía **encoger o quedarse igual**.
+
+### 🔬 El playtest de importar/exportar (medido, con clics reales inyectados)
+Recorrido completo sobre la app en marcha (cajón → tarjeta → fila `ParamPassword_PasswordList` → gestor), con el **mismo instrumento del hito 278** (`mouse_event` absoluto, `pywinauto` para leer anclas, `send_keys` para teclear en los pickers de WinRT):
+- **Abrir**: la fila abre el gestor de ESTE host (el modal se titula `Gestor de Contraseñas - SmartUnpack`, que es la clave del diccionario del PLUGIN resuelta en español). Lista de partida `alfa / beta`, recuento «2 clave(s) cargada(s)».
+- **IMPORTAR**: pulsar `PasswordManagerImportButton` abre el selector **`Abrir`** del host; se escribe la ruta de un fichero real de 14 bytes y se pulsa `Abrir` → el selector se cierra y el editor queda `alfa\rbeta\rgamma\rdelta` con el recuento en «4 clave(s) cargada(s)». **Sirve.**
+- **IMPORTAR y CANCELAR**: reabrir el selector y pulsar `Cancelar` deja la lista **igual**. **Sirve.**
+- **EXPORTAR**: pulsar `PasswordManagerExportButton` abre **`Guardar como`**; el selector **llega prerelleno** con el nombre sugerido (`passwords.txt`), y escribir la ruta sin vaciarlo antes produce el error del sistema («El nombre de archivo no es válido») —trampa medida—; con `Ctrl+A` + `Supr` el selector se cierra, **el archivo se crea en disco** con `alfa\nbeta\ngamma\ndelta`, y el aviso del resultado se muestra **dentro** del gestor (no en un modal aparte). **Sirve.**
+- **La vuelta a la fila**: «Guardar Claves» escribe el parámetro y la fila enseña `alfa; beta; gamma; delta`; el aviso de frontera «se abre en el host de escritorio» aparece **0 veces** en todo el recorrido.
+- **Veredicto**: los dos botones **completan su trabajo** en este host → **se quedan**; ninguno contesta que no puede.
+
+### 🔬 La fuente única de los textos (medido antes de borrar)
+- **Lo que de verdad estaba triplicado**: la familia **`PresetManager_*`** — **20 claves** en cada diccionario del host (`Strings.resx` y `Strings.es.resx`) que ya declaraba `FileFlow.Plugin.Integrations`, el plugin que trae la superficie. La familia **`PasswordManager_*` NUNCA tuvo copia en el host** (los textos del gestor de claves ya se resolvían del diccionario de `FileFlow.Plugin.Archives`): esto **corrige** la fila de la tabla de la entrada anterior, que daba por copiadas también esas claves.
+- **Por qué la copia era redundante y peligrosa**: `PluginLoader.RegisterPluginResources` registra el diccionario de cada plugin al cargar el ensamblado (`PluginRegistryHelper.CreateConfiguredLoader` es el camino que usan los dos hosts), y `LocalizationManager.GetString` recorre los `ResourceManager` **en orden de registro** devolviendo el primero con valor: el del host se registra antes (en `App.OnLaunched`), así que **tapaba** al del plugin — dos fuentes de la misma frase, con la del host ganando—.
+- **Medido antes de tocar**: las 20 copias eran **byte-idénticas** a las del plugin en los dos idiomas (0 discrepancias) → quitarlas **no cambia ningún texto visible**. 40 líneas menos en el diff.
+- **Un artefacto de la deduplicación, corregido**: los dos `.resx` del host habían perdido su **BOM** al reescribirlos (ruido en el diff, sin efecto funcional). Se restauró para que el diff de los diccionarios sea **sólo las familias**: 20 claves fuera + `Uno_InspectorResetMetrics` (del hito 275) + `Node_Param_OpenPasswordManager` (del 279).
+
+### 🧱 La guardia, reparada (y comprobada mordiendo)
+`UnoDialogPortabilityGuardTests.EveryTextUsedByTheDialogs_ShouldExistInBothHostDictionaries` contrastaba **todas** las claves citadas contra los dos diccionarios del **host**, así que la deduplicación la dejaba roja exigiendo la copia que se acababa de quitar. Ahora el censo se contrasta **contra el diccionario que DECLARA cada familia** (tabla `PluginFamilies`: `PresetManager_` → `FileFlow.Plugin.Integrations`, `PasswordManager_` → `FileFlow.Plugin.Archives`), y además exige que el host **NO** vuelva a copiar esas familias (la tercera copia tapa a la del plugin) y que **cada par** de diccionarios declare las mismas claves en los dos idiomas. El nombre del caso se conserva porque **dos mutaciones ya declaradas** (`cuerpo-del-gestor-que-habla-con-el-almacen` y `tarjeta-sin-la-puerta-de-sus-parametros`) lo usan como **control** —renombrarlo las dejaría sin medida—.
+- **Muerde por los tres caminos, medido uno a uno** (mutante aplicado a mano sobre los `.resx`, guardia roja, árbol restaurado y **verificado por `diff`** contra la copia previa): (a) quitar `PasswordManager_HeaderTitle` del diccionario del **plugin** → `[FAIL]`; (b) reintroducir la copia en el diccionario del **host** → `[FAIL]`; (c) dejar una clave del plugin **sólo en inglés** → `[FAIL]`. Sin mutación nueva declarada (el diff no debía crecer); la que ya existe sigue mordiendo.
+
+### ✅ Validación (medida)
+- **Playtest con ratón inyectado**: arriba, todos los desenlaces verdes.
+- **Cuatro sondas del host Uno EXIT 0**: lienzo **101 `[OK]` · 0 `[FALLO]`**, paneles de nodo **59 / 0**, barra **42 / 0**, ajustes **18 / 0**. **Sonda del host de ESCRITORIO** (`run-fast.ps1 -SelfCheck`) **EXIT 0 · 41 `[OK]` · 0 `[FALLO]`**.
+- **Suite completa**: **1977 superadas + 1 omitida de 1978, 0 errores**. Build de las dos soluciones **0 errores**.
+- **Dos *flakes* de CPU vistos en la sesión** (medidos y declarados, ninguno tocado por este pase): en una corrida completa cayó `EngineFirstRunTests.FirstRun_ShouldUseEveryThreadItWasGiven` (ya conocido) y en otra `SystemPerformanceMonitorTests.TheHeartbeat_ShouldPublishAPlausibleSample`; **los dos verdes en aislamiento** (9 casos, 38 ms) y la corrida completa siguiente **verde entera**. Son medidas de carga de la máquina, no del árbol.
+- **Mutaciones re-ejecutadas: las cuatro MUERDEN** — `gestor-de-claves-que-el-host-no-sirve` (29 s), `fila-de-presets-sin-su-boton` (28,5 s) y las dos cuyo **control es la guardia tocada** (`cuerpo-del-gestor-que-habla-con-el-almacen` 27,4 s y `tarjeta-sin-la-puerta-de-sus-parametros` 27,2 s: control emparejado y verde, testigo rojo). `mutations/COVERAGE.md` regenerado por su guardia: **106 declaradas · 15 de 17 subsistemas · 20 de 51 guardias**.
+
+### 🐛 Hallazgo de método (una trampa de la sesión, cazada por la propia sonda)
+El **sabor de UI lo elige el NOMBRE de la solución** (`Directory.Build.props`): compilar **`FileFlow.slnx`** (escritorio) *después* de `FileFlow.Uno.slnx` deja en el `bin` del host Uno los **plugins del sabor de escritorio** (sin `FILEFLOW_NO_DESKTOP_TOOLKIT`). Con ese `bin` híbrido, la sonda de los paneles de nodo **falla sus dos medidas de la frontera** (el nodo del Estudio de Scripts toma la rama del toolkit y **no llega a declarar**: `[FALLO] su botón AVISA … ('')`), sin que haya nada roto en el producto. Se midió las dos caras: con ese `bin` la sonda da **57 / 2**; reconstruyendo **`FileFlow.Uno.slnx` al final**, **59 / 0**. *La solución del host Uno se compila la ÚLTIMA antes de sondearlo.*
+
+### 🟠 Fronteras declaradas
+- **La familia `PasswordManager_*` ya era de una sola fuente** (el host nunca la copió): la deduplicación fue la de `PresetManager_*`. Queda como está — el gestor de claves se sigue leyendo del diccionario de su plugin.
+- **No se añadió mutación nueva** para la guardia reparada: morder está **demostrado a mano por sus tres caminos** y el encargo pedía que el diff no creciera. Si otro pase quiere atarlo con el andamiaje, la mutación natural es reintroducir una copia en el diccionario del host.
+- **La fila de claves del ESCRITORIO** sigue sin editor ni botón (`IsStandardInput` excluye `IsPasswordList`): defecto latente anterior, **fuera de este encargo por indicación expresa**.
+- **El aviso inline de exportación** se lee por el ancla `HostConfirmationAccept` del modal del host: el playtest mide que **aparece dentro del gestor**, no que su texto sea el esperado (el texto sale del diccionario del plugin, ya cubierto por la guardia de textos).
+
+## [2026-09-29] - Hito 279: El Gestor de Claves del Desempaquetador (la capacidad que se ofrecía sin poder servirse)
+
+### 🎯 El encargo
+«En el nodo desempaquetador, pulsar la acción de claves contesta con el aviso “se abre en el host de escritorio” en vez de abrir su diálogo. El resultado esperado es que en ESTE host el botón abra su diálogo y funcione lo que ese diálogo ofrece, y que el mensaje deje de poder aparecer por esa puerta. Lo importante no es sólo el botón: hoy la misma capacidad se declara “no servida” en la tabla de puertas de la ficha y a la vez se ofrece como acción de la tarjeta. Deja esas dos puertas de acuerdo (la tabla, la acción y el camino de compilación deben decir lo mismo), sin borrar la capacidad por la vía fácil de esconder el botón. Lo mides pulsando de verdad con el ratón inyectado sobre la app en marcha, y dejas una guardia o sonda que muerda si la oferta y la capacidad vuelven a contradecirse.»
+
+### 🔬 El diagnóstico (leído en el árbol y medido en la app)
+- **El aviso era literal del diccionario del plugin**: `Plugin_DesktopOnly_Title` + `Plugin_DesktopOnly_Message` con `PasswordManager_WindowTitle` («Gestor de Contraseñas - SmartUnpack») — carácter a carácter el modal de la captura del usuario. Sale de `DesktopOnlySurface.Declare` en la rama `#if FILEFLOW_NO_DESKTOP_TOOLKIT` de `SmartUnpackNode` y `ArchiveFanOutNode`.
+- **La contradicción, medida en el árbol**: la ficha declaraba `OpenPasswordManagerCommand` en su tabla de **puertas pendientes** («abre el gestor de contraseñas, una ventana que este host todavía no tiene») y la **misma capacidad** se ofrecía como acción del nodo (`ManagePasswords`, la que pinta la tarjeta y la ficha). El nodo **no declaraba ninguna superficie** al SDK, así que no había forma de servirla: la única salida del botón era declarar la frontera.
+- **El camino de compilación decía lo mismo que las otras dos puertas: nada.** La ventana vive en `FileFlow.Plugin.Archives/UI/Views`, que en el host Uno ni se compila (`Compile Remove="UI\Views\**\*.cs"`), y no había clave de diálogo ni view model portable que los dos hosts pudieran pintar.
+- **Y el gestor se ofrecía por una fila que no podía abrirlo** en el escritorio: su botón «Claves» vive dentro del bloque `IsVisible="IsStandardInput"`, y `IsStandardInput` **excluye** `IsPasswordList` — la fila de claves del escritorio no enseña ni editor ni botón (defecto latente, de antes de este pase; ver fronteras).
+
+### 🧱 Lo construido (la capacidad servida, no escondida)
+| Fichero | Qué cambia |
+| :--- | :--- |
+| `FileFlow.Sdk/Services/IWindowService.cs` | Clave canónica nueva: `DialogKeys.PasswordManager` (la identidad del diálogo no depende del host). |
+| `FileFlow.Plugin.Archives/UI/ViewModels/PasswordManagerViewModel.cs` (nuevo) | El gestor **portable**, sin toolkit: el texto (una clave por línea), su recuento, la forma canónica que se guarda (`; `), la lectura/escritura del .txt y la vuelta al nodo. Es donde vive la regla del producto; las dos vistas la pintan. |
+| `FileFlow.Plugin.Archives/UI/Views/PasswordManagerWindow.axaml(.cs)` | La ventana del **escritorio** pasa a ser una VISTA de ese view model (antes tenía la regla en su code-behind): el editor y el recuento van enlazados y guardar/cerrar es lo único que decide la ventana. |
+| `FileFlow.Plugin.Archives/SmartUnpackNode.cs` y `ArchiveFanOutNode.cs` | Los dos nodos que ofrecen «🔑 Claves...» declaran la superficie (`INodeDialogSurfaceProvider`, clave `PasswordManager`, `ReplacesCustomActionId => "ManagePasswords"`) con su carga útil portable y **una sola vuelta** al parámetro (`SavePasswordList`), compartida por la superficie y la rama del toolkit. |
+| `FileFlow.App.Uno/Controls/PasswordManagerBody.xaml(.cs)` (nuevo) | El cuerpo del **host Uno**: pinta el mismo view model, con su selector de archivos (el del host) para importar/exportar. Ninguna regla del producto: ni una línea escribe el parámetro del nodo. |
+| `FileFlow.App.Uno/Platform/UnoWindowService.cs` | La clave pasa a la tabla de **servidos** (`(DialogKeys.PasswordManager, nameof(PasswordManagerBody))`), con la comprobación de carga útil, la propiedad `ActivePasswordManager` para la sonda y el modal (`Guardar Claves` guarda por el view model; cancelar/Escape descarta). |
+| `FileFlow.App/Services/AvaloniaWindowService.cs` | El escritorio sirve la MISMA clave con la ventana del plugin sobre ese view model (sin esto, declararla habría roto el escritorio). |
+| `FileFlow.Core` → `NodeParameterViewModel.cs` | La **fila** abre la superficie declarada primero (`OpenPasswordManagerAsync`, con la vuelta que resincroniza) y sólo cae al camino del toolkit si el nodo no declara nada — el mismo contrato que ya usaba el gestor de presets. |
+| `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | El botón «🔑» de la fila (`ParamPassword_` + clave, mismo flag `IsPasswordList` que el escritorio) y la orden movida de **pendientes** a **servidas** en la tabla de puertas: las dos puertas dicen lo mismo. |
+| `FileFlow.App.Uno/Resources/Strings{,.es}.resx` | Las claves que la superficie cita (las del plugin, copiadas como las del gestor de presets) y `Node_Param_OpenPasswordManager`, en los dos idiomas. |
+| `FileFlow.Tests/Unit/App/UnoDeclaredSurfaceGuardTests.cs` | Caso nuevo: censo **por barrido** de todos los nodos que ofrecen `ManagePasswords` —cada uno tiene que declarar su superficie—, el host que la sirve (servida, no pendiente), las dos vistas como vistas del view model portable y las dos puertas cableadas. |
+| `FileFlow.Tests/Unit/App/UnoNodeDialogCatalogGuardTests.cs` y `UnoDialogPortabilityGuardTests.cs` | La fila de claves se dibuja donde el escritorio la marca (`IsPasswordList`), y el censo de textos del host incluye ya la familia `PasswordManager_`. |
+| `mutations/gestor-de-claves-que-el-host-no-sirve.json` (nuevo) | Quita la clave de la tabla de servidos: testigo el caso nuevo, control el gestor de presets. |
+
+### ✅ Validación (medida)
+- **Playtest con el ratón inyectado sobre la app en marcha** (el camino entero, con clics reales): se añade el nodo por el cajón (chip *Archives* + doble clic) → se pulsa su tarjeta → la ficha expone el botón `ParamPassword_PasswordList` → **pulsarlo abre el GESTOR DE CONTRASEÑAS de este host** (clave `PasswordManager`), no el aviso → se teclea `alfa / beta` (el recuento de la superficie dice «2 clave(s) cargada(s)») → «Guardar Claves» cierra y **la fila enseña `alfa; beta`** → la **ACCIÓN del nodo** (`InspectorAction_ManagePasswords`, la puerta de la tarjeta) abre el mismo gestor **con la lista guardada ya cargada** (ida y vuelta) → cancelar deja el host limpio → y el aviso «se abre en el host de escritorio» **aparece 0 veces** por ninguna de las dos puertas.
+- **Defecto cazado por el playtest** (no por el censo): el gestor **reabría con la lista en una sola línea** —`alfa; beta`— porque el view model nuevo no partía por el «; » con el que el nodo guarda el parámetro. Corregido en la MISMA entrada (`Separators` incluye el «; ») y re-medido: reabre con una clave por línea.
+- **Sonda del host (paneles de nodo) EXIT 0**: **59 `[OK]` · 0 `[FALLO]` · VERIFICADO** (eran 51: +8 comprobaciones nuevas —ancla, apertura, regla del view model, guardado en el parámetro, la puerta de la acción, el cierre y la traza—). El resto de sondas, con sus cifras: lienzo **101 / 0**, barra **42 / 0**, ajustes **18 / 0**.
+- Suite completa: **1977 superadas + 1 omitida de 1978, 0 errores** (2 m 39 s); build de las dos soluciones (`FileFlow.Uno.slnx` y `FileFlow.slnx`) **0 errores**.
+- **Sonda del host de ESCRITORIO** (`run-fast.ps1 -SelfCheck`) **EXIT 0**: **41 `[OK]` · 0 `[FALLO]` · VERIFICADO** — la ventana de la otra rama (la que monta el toolkit) sigue arrancando con su ventana convertida en vista del view model portable.
+- Mutaciones re-ejecutadas tras el cambio (una nueva y una que el producto invalidaba): `gestor-de-claves-que-el-host-no-sirve` **MUERDE** (29,4 s) y `fila-de-presets-sin-su-boton` **MUERDE** (28,6 s) —su fragmento se actualizó al nuevo texto de la condición, como manda su guardia—. `mutations/COVERAGE.md` regenerado: **106 declaradas · 15 de 17 subsistemas · 20 de 51 guardias**.
+
+### 🟠 Fronteras declaradas
+- **La rama del toolkit sigue en los dos nodos** como defensa declarada (`DesktopOnlySurface.Declare`): un host que ignore las superficies declaradas —o que llame al proveedor directamente— sigue avisando en vez de quedarse mudo. Las dos puertas del producto (la fila y la acción) ya no pasan por ahí: `NodeViewModel` y `NodeParameterViewModel` abren la superficie declarada ANTES de caer al camino del toolkit.
+- **El gestor se ofrece por la tarjeta Y por la ficha Y por la fila** (tres puertas, una superficie); en el escritorio la fila **no** enseña su editor ni su botón «Claves» (`IsStandardInput` excluye `IsPasswordList`): la fila de claves del escritorio sólo tiene la puerta de la tarjeta. Es un defecto **latente y anterior** a este pase —no se tocó por no cambiar la conducta del otro host— y queda nombrado aquí.
+- **El botón de importar/exportar del host Uno usa su propio selector** (el del host), y el VM sólo recibe rutas: el archivo lo elige la vista y la regla —qué es una clave— es del view model.
+- **La cifra del lienzo sigue siendo 101**, la misma que dejó el hito 278 (sin comprobaciones nuevas de este pase).
+
+## [2026-09-29] - Hito 278: El Gesto del Cable, de Punta a Punta (dos defectos del usuario, medidos con el ratón inyectado)
+
+### 🎯 El encargo
+«El usuario no puede conectar nodos: al pulsar sobre un puerto, o bien se arrastra la tarjeta en vez de arrancar el cable, o bien no ocurre absolutamente nada. Haz que el gesto funcione de punta a punta sobre la app en marcha: pulsar el puerto con el botón izquierdo arranca el cable sin mover ni arrastrar la tarjeta; mover el puntero lo dibuja; soltarlo sobre un puerto compatible crea la conexión; y sobre un destino incompatible, sobre vacío o con Escape, la cancela dejando el estado limpio (sin cable fantasma y sin captura de puntero colgada). Comprueba cada desenlace con el ratón inyectado sobre la ventana real, no leyendo código, y arregla lo que rompa». El otro síntoma que reportó el usuario —el botón del desempaquetador que avisa en vez de abrir su ventana— quedaba **fuera de este pase**, y no se tocó.
+
+### 🔬 El diagnóstico (medido con el ratón inyectado, no leído)
+Tres defectos independientes, cada uno capaz de matar el gesto por su cuenta:
+
+1. **El cableado de los sockets no existía.** Pulsar la etiqueta de un puerto **sí** entraba al handler de la tarjeta (`OnSocketPressed`, con su `PortViewModel`) y **moría ahí**: `SocketRequested` no tenía suscriptor. `WireCardEvents` se llamaba desde `Rebuild` —donde el `ItemsSource` acaba de asignarse y **todavía no hay ninguna vista**— y buscaba la vista en `pair.Value.Content`, que es el **`NodeCardViewModel`**, no el `NodeCardView`: la comparación no podía dar `true` nunca. Dos errores en la misma línea de razonamiento, y el defecto entero del «no pasa nada».
+2. **El punto del puerto estaba fuera de la tarjeta.** La fila del puerto sangraba 16 px a cada lado (`Grid Margin="-16,0"`) para sacar el socket al borde, y ese sobrante quedaba **fuera del rectángulo de la tarjeta**: no se pintaba **ni se podía pulsar**. Medido con el barrido de pulsaciones sobre la ventana real a la altura de la fila: de `x=702` a `x=732` (físicos) el pulsado era del **puerto**; a partir de `x=735` —donde está el punto— **no ocurría nada en absoluto**, ni puerto ni lienzo; y en la cara de la tarjeta, a `x≤700`, el pulsado **armaba el arrastre del nodo**. Son exactamente los dos síntomas que reportó el usuario, separados por unos píxeles.
+3. **Sin captura de puntero no llegaban los movimientos.** Con la pulsación en la fila, la app recibía **un solo** `PointerMoved` —en la posición de la pulsación— y **ninguno más** hasta soltar (medido con el rastro y con una sonda que inyecta y cronometra): el cable no podía seguir al cursor. Con `CapturePointer` en la fila, los movimientos llegan uno a uno.
+4. **Cable fantasma (cazado por la sonda, no por el playtest).** `EndSocketGesture` cambiaba el estado del núcleo pero **nunca sacaba de la capa el cable en la mano**: quedaba colgado del último punto del arrastre. Lo cazó la sonda del sondeo en la app viva —`cable en la capa=True` en todos los cierres, `93 [OK] / 3 [FALLO]`— antes de que el playtest lo midiera (el playtest lo daba por bueno porque medía la banda equivocada).
+
+**Instrumento (hallazgo de método, para las sesiones siguientes)**: `SetCursorPos` mueve el cursor pero la app **ve la posición de la pulsación en todos los movimientos siguientes** (con captura activa); lo que un ratón físico genera —y lo que la app procesa bien— es un evento **absoluto** (`mouse_event(MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE)`, o `SendInput`). El playtest se apoya en eso y **espera a que la app procese cada movimiento** (lo delata el rastro) en vez de suponer que el mensaje ya llegó.
+
+### 🧱 Lo construido (mínimo para la conducta pedida)
+| Fichero | Qué cambia |
+| :--- | :--- |
+| `FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs` | **El cableado** se hace en el pase de layout que ya tiene contenedores (`WireCardEvents()` desde `OnNodesHostLayoutUpdated`) y la vista se busca en el **árbol visual** del contenedor con un `FirstDescendant<NodeCardView>` nuevo. `EndSocketGesture` **retira el cable pendiente** de la capa (`ClearPendingWire`), que es lo que cierra el gesto sin fantasma. La sonda `ProbeSocketGesture` exige además que **todas las tarjetas materializadas estén cableadas** y **explica por qué** falla cada desenlace; el rastro del gesto (arranca / cambia de destino bajo el cursor / cierra con el recuento de conexiones) queda escrito con `FILEFLOW_CANVAS_TRACE=1`, el mismo instrumento de sesión del hito 252. |
+| `FileFlow.App.Uno/Controls/NodeCardView.xaml` | Los puertos viven **dentro** de la cara de la tarjeta (se va el sangrado de ‑16 px), la fila lleva **relleno** (`Padding="4,3"`) y fondo transparente —la diana deja de ser el texto de la etiqueta, que medía ~19 px— y se engancha `PointerReleased`/`PointerCaptureLost`. |
+| `FileFlow.App.Uno/Controls/NodeCardView.xaml.cs` | La fila del puerto **se queda con el puntero** al pulsarla (`CapturePointer`) y lo suelta por los dos finales del gesto (`OnSocketReleased`), para que los movimientos lleguen al lienzo sin dejar una captura colgada. |
+| `FileFlow.Tests/Unit/App/UnoCanvasWireGuardTests.cs` | El caso del gesto vigila también el **cableado** (la llamada después del posicionamiento, la búsqueda en el árbol visual), la **captura y su suelta** y el **relleno** de la diana; cita la mutación nueva. |
+| `mutations/socket-que-se-queda-sin-cablear.json` (nuevo) | La mutación del cableado: `FirstDescendant<NodeCardView>(pair.Value)` → `pair.Value.Content as NodeCardView`. Testigo: el caso del gesto. Control: la figura del cable. |
+
+### ✅ Validación (medida)
+- **Playtest con el ratón inyectado sobre la ventana real** (9 desenlaces, todos verdes): pulsar el socket arranca el gesto y **no** mueve la tarjeta · mover dibuja el cable (banda hacia el puntero: 998 px distintos) · soltar en un puerto compatible **crea la conexión** (`conexiones 1->2`, y el click derecho la quita) · soltar en el vacío, con Escape y sobre un destino incompatible **cancela** (`destino=ninguno`, `conexiones 1->1`, `cable en la capa=False`) · tras soltar no queda captura colgada · y la cara de la tarjeta **sigue arrastrando el nodo** (la regresión del arreglo).
+- **El punto del puerto se ve**: el mapa de píxeles de la fila muestra ahora el socket dibujado (15×15) junto a la etiqueta, dentro de la tarjeta — antes esa zona estaba vacía.
+- **Cuatro sondas del host EXIT 0**: lienzo **101 `[OK]` · 0 `[FALLO]`** (era 97: la sonda del gesto añade sus cuatro comprobaciones y **pasó de 93/3 a verde** al quitar el cable fantasma) y **42 / 18 / 51** en barra, ajustes y paneles.
+- Suite completa: **1976 superadas + 1 omitida de 1977, 0 errores** (2 m 42 s); build `FileFlow.Uno.slnx` **0 errores**.
+- Las **dos mutaciones del gesto muerden en aislamiento**: `gesto-de-puerto-que-no-conecta` (29,9 s) y `socket-que-se-queda-sin-cablear` (31,1 s), testigo rojo, control verde y árbol restaurado por bytes. `mutations/COVERAGE.md` regenerado por su guardia: **105 declaradas · 15 de 17 subsistemas · 20 de 51 guardias**.
+
+### 🟠 Fronteras declaradas
+- **El ancla del cable es el centro de la fila** (etiqueta + punto + relleno), no el centro del punto: es de antes de este pase y no se cambió (la fila es el elemento que declara el `PortViewModel`), pero ahora la fila está dentro de la tarjeta, así que el cable muere unos píxeles más adentro.
+- **La diana al soltar es de 48 px** (`SocketDropTolerance`, radio): es una **decisión de producto nueva** (antes eran 20 px sobre la tarjeta bajo el puntero) y es lo que hace que soltar unos píxeles corto **sí** conecte.
+- **`SetCursorPos` no sirve para inyectar arrastres** en esta app: mueve el cursor y la app sigue viendo la posición de la pulsación. Queda escrito arriba para no repetir la trampa.
+- **El defecto del botón del desempaquetador sigue abierto** (es el otro síntoma del informe del usuario): quedó fuera del encargo de este pase, por indicación expresa.
+- El punto del puerto se dibuja con la matriz del socket (forma por tipo, relleno por estado): en estado libre el relleno es del color de la paleta, así que se lee como una ficha cuadrada — es la matriz del escritorio, no un cambio de este pase.
+
+## [2026-09-29] - Hito 277: La Partición, Terminada: los Cuatro Modos en su Casa y Cada Guardia por su Sujeto
+
+### 🎯 El encargo
+«El pase anterior abrió la separación pero la dejó a medias: en el fichero del sondeo siguen dentro sus cuatro modos y el cinturón de medida compartido, y las dos guardias de unas novecientas líneas continúan mezclando sujetos distintos, que es lo que mantiene el diseño en la nota más baja del hilo. Termina esa misma separación con el criterio que el propio pase dejó escrito —una capa, una casa; cada preocupación recibe el comprobador de quien la llama; la vista sin su instrumento y el instrumento sin veredictos—, llevando cada modo junto a sus iguales y agrupando cada guardia por el sujeto que vigila, sin cambiar una línea de comportamiento del producto ni el veredicto de ninguna sonda.»
+
+### 🔬 El diagnóstico (medido antes de tocar nada)
+- **`RuntimeSelfCheck.cs`: 3079 líneas** — el pase anterior sacó el marco y los paneles, pero seguían dentro **los cuatro modos** (el del lienzo, con su `Inspect` de 388 líneas; ajustes, 405; barra de control, 791; diálogos, 953) y **el cinturón de medida compartido** (recorrer el árbol visual y describir un fallo), que los cuatro citaban desde su propio fichero.
+- **Dos guardias de ~900 líneas mezclando sujetos**: `UnoControlBarParityGuardTests` (**965**) —censo de entradas, paridad de órdenes, atajos, entradas con ventana, textos y su medición— y `UnoNodeDialogsGuardTests` (**899**) —catálogo de diálogos, filas del inspector, portabilidad de las vistas, textos, superficies declaradas por el nodo y su medición—.
+- **Ayudantes con dos dueños**: la lectura de una tabla declarada en el control de la barra (`Table`/`ReadTable`, usada por dos guardias) y la lectura de un `.resx` (`Dictionary`, escrita **dos veces**, idéntica en los dos ficheros). Y el fichero del sondeo tenía **dos** `FixtureSignalPath` (el suyo y el que ya declaraba `SelfCheckUia`).
+
+### 🧱 La estructura resultante (una capa, una casa)
+| Casa | Qué es | Tamaño |
+| :--- | :--- | :--- |
+| `RuntimeSelfCheck.cs` | El **DESPACHADOR, y nada más**: el bucle de reintentos hasta ver las plantillas materializadas, el veredicto por código de salida y el informe `selfcheck-report.txt`. Arranca el modo del lienzo y no contiene ningún modo. | **104** (era 3079) |
+| `SelfCheckTree.cs` (nuevo) | El **cinturón de medida compartido**: recorrer el árbol visual (la única vía de WinUI), el ascendiente del contenedor generado y describir el marco de una excepción. Los modos lo piden por su nombre. | 141 |
+| `SelfCheckCanvas.cs` (nuevo) | El **modo del LIENZO** (el base): tarjetas, cables, área de clic, fases 3.2/3.3/3.4 por los mismos métodos de los handlers, el tema en caliente (3.5) y el rendimiento con el grafo de referencia (3.6). Es el dueño de `PerformanceProbeRan`, el one-shot que lee el despachador. | 361 |
+| `SelfCheckPointerless.cs` (nuevo) | Las medidas que **este entorno no puede recorrer con el puntero real** (el inyectado entrega pulsaciones pero no movimientos): superficie UIA (238), foco (252), enrutado de atajos (252), seguimiento de cables (254) y reclamación del teclado (253). Recibe el comprobador del modo del lienzo. | 109 |
+| `SelfCheckSettings.cs` (nuevo) | El modo de **AJUSTES** (`--selfcheck-settings`), con sus dos tiempos y su informe. | 453 |
+| `SelfCheckControlBar.cs` (nuevo) | El modo de la **BARRA Y SU CAJÓN** (`--selfcheck-controlbar`), con su censo de entradas (16 + 15) y las tres lecturas de su ciclo. | 893 |
+| `SelfCheckDialogs.cs` (nuevo) | El modo de los **PANELES DE NODO** (`--selfcheck-dialogs`), con sus dos lecturas de fila y la del almacén de presets. | 1061 |
+| `SelfCheckUia.cs` | La observación externa, que ahora alberga **también** la montura del fixture (`MountUiaExternalScene`/`TryMountUiaScene`): la escena del inspector se prepara en el modo que la observa. | 383 |
+
+**Las guardias, por el sujeto que vigilan** (cada una declara sólo los ficheros que lee: el censo bajó **65 constantes sin uso**):
+
+| Guardia | Sujeto | Tamaño |
+| :--- | :--- | :--- |
+| `UnoControlBarEntryGuardTests` | El **censo de entradas** de la barra y su paridad con el escritorio (órdenes + atajos) y su medición. | 481 |
+| `UnoControlBarSurfaceGuardTests` | Las entradas que abren una **VENTANA** por el catálogo de diálogos (ajustes, VFS, métricas, estudio de temas, actualización) y el diseñador de datasets. | 358 |
+| `UnoControlBarTextsGuardTests` | Los **textos** del menú, copiados del escritorio clave por clave. | 169 |
+| `UnoNodeDialogCatalogGuardTests` | El **catálogo de diálogos** del host y las filas del inspector que los abren. | 327 |
+| `UnoDialogPortabilityGuardTests` | La **portabilidad** de las dos vistas de diálogo (view models portables) y sus textos. | 173 |
+| `UnoDeclaredSurfaceGuardTests` | Las **superficies que declara el nodo** (gestor de presets, diseñador de datasets) y sus órdenes destructivas. | 398 |
+| `UnoNodeDialogProbeGuardTests` | La **medición** de los paneles de nodo (modo propio, canal del usuario, valor escrito). | 81 |
+| `TestHelpers/UnoControlBarTables.cs` (nuevo) | La lectura de una tabla del control, que **dos** guardias necesitaban. `EmptyableTable` desaparece: el ayudante admite la tabla vacía. | 46 |
+| `TestHelpers/HostDictionaries.cs` (nuevo) | La lectura de un `.resx` como clave → valor, que estaba **escrita dos veces**. | 34 |
+
+Y la guardia de la forma (`UnoSelfCheckLayoutGuardTests`, **6 casos**, antes 3) pasa a fijar el reparto nuevo: el despachador sólo despacha; cada modo declara su clase y su informe, y ningún otro fichero escribe ese informe; cada medida tiene una sola casa; el recorrido del árbol vive en el cinturón; y las preocupaciones reciben el comprobador (marco, paneles y puntero) sin escribir veredictos.
+
+### 🧁 Lo que se tiró (superseded)
+- `EmptyableTable` (dos líneas que sólo envolvían `ReadTable`) · **65 constantes privadas sin uso** en las guardias nuevas (cada una declara ya sólo lo que lee) · la **lectura de `.resx` duplicada** (`Dictionary` en los dos ficheros) · el **`FixtureSignalPath` duplicado** del sondeo (ya vivía en `SelfCheckUia`) · el `<summary>`/`<param>` huérfanos de `MountUiaExternalScene` (tenía dos cabeceras, una con parámetros de un método que ya no los tiene) · los ayudantes de tabla duplicados.
+- **Nada que quedara sin casa**: las 28 afirmaciones de las dos guardias (14 + 14) se cuentan una a una antes y después —las mismas, verbatim—; el reorden no reescribió ninguna aserción.
+
+### ✅ Validación
+| Prueba | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **0 errores** (50 avisos) |
+| Las **cuatro sondas** del host | **EXIT 0**: `-SelfCheck` **97 `[OK]` · 0 `[FALLO]` · VERIFICADO**, control-bar **42**, settings **18**, dialogs **51** — la misma cuenta y el mismo veredicto que antes del corte: el código se movió entero |
+| Suite completa | **1975 superadas + 1 omitida de 1976, 0 errores** (2 m 31 s; +3 casos de la guardia de forma) |
+| `mutations/COVERAGE.md` | Regenerado por su guardia: **103 declaradas · 15 de 17 subsistemas · 20 de 51 guardias** (antes 17 de 46) |
+| Las 103 referencias | Resuelven contra el árbol: **112 reemplazos**, 60 ficheros, **0 sin resolver** (comprobado tras el corte) |
+| `./mutate.ps1 -All` | **103 ejecutadas**: la pasada completa marca **101 mordidas** y **2 marcadas** (una superviviente y un rechazo del andamiaje por binarios); **las dos repetidas EN AISLAMIENTO muerden** (`vista-del-disenador-con-su-propio-modelo` 26,1 s · `tabla-en-cache-sin-tope` 26,0 s: testigo rojo, control verde, árbol restaurado por bytes) — el marcado era del andamiaje al encadenar 103 corridas, no de una guardia muerta |
+
+### ⚠️ Fronteras declaradas
+1. **Sin cambio de comportamiento**: es una mudanza, no una reescritura; la prueba fuerte son las cuatro sondas con la misma cuenta y el mismo veredicto, y el suite entero verde.
+2. **Los dos modos grandes siguen grandes**: `SelfCheckControlBar.cs` (893) y `SelfCheckDialogs.cs` (1061) son **un sujeto cada uno** (un modo, un proceso, un informe), pero dentro tienen secciones —censo/cajón/ejecución, y cada familia de diálogo— que otro pase podría partir con el mismo criterio. No se hizo aquí porque el encargo era sacar los modos del fichero del sondeo, no abrirlos por dentro.
+3. **`SelfCheckPointerless` agrupa por el eje «lo que el puntero no puede medir aquí»**, no por familia: sus cinco medidas son de hitos distintos (238, 252, 253, 254) y las une la razón por la que están juntas en un mismo archivo —el puntero inyectado entrega pulsaciones pero no movimientos—, no un tema común.
+4. **Dos guardias nuevas no tienen mutación que las muerda**: `UnoControlBarTextsGuardTests` y `UnoNodeDialogProbeGuardTests` aparecen en la lista de trabajo de `COVERAGE.md`. Se declara aquí en vez de dejarlo caer.
+5. **Un defecto de este pase, cazado por su propia validación**: el ayudante compartido de tablas se escribió con una lectura **infiel** —expresión regular y exigencia de «tabla no vacía» distintas de las de las dos guardias de origen, y una línea de `Where` que no filtraba nada—, justo el riesgo de extraer un ayudante: cambiar lo que se mide sin cambiar la aserción. Se volvió a escribir **replicando la lectura previa** (misma expresión, misma exigencia) y la mutación que la ronda marcó como superviviente muerde en aislamiento.
+
+## [2026-09-29] - Hito 276: El Aparato de Prueba, Repartido: Una Capa por Afirmación y Cada Cosa en su Fichero
+
+### 🎯 El encargo
+«Seis pases de arreglos han ido dejando su aparato de prueba amontonado en los dos ficheros que ya lo llevan todo —el sondeo del host y el panel del inspector— y hay afirmaciones que hoy se prueban hasta tres veces (sonda, guardia de xunit y mutación) sin que quede claro cuál es su casa. Reordena sólo el trabajo de este hilo: da a cada afirmación una sola capa y el fichero que le corresponde, saca de los ficheros grandes lo que sea una preocupación aparte, y tira lo que los seis pases dejaron superseded —ayudantes que ya nadie llama, guardias que sólo repiten una aserción, referencias muertas—, sin cambiar ni una línea de comportamiento del producto.»
+
+### 🔬 El diagnóstico (medido antes de tocar nada)
+- **`RuntimeSelfCheck.cs`: 3324 líneas** — los cuatro modos (base, control-bar, ajustes, diálogos) más un modo base cuyo recorrido entero vivía dentro de un `Inspect` de 638 líneas.
+- **`NodeInspectorPanel.xaml.cs`: 1485 líneas** — las últimas **227** eran la superficie de observación (accesos por ancla, censos de lo materializado, sondas de estado) pegada al final del fichero que construye la ficha, sin ninguna frontera entre lo que la aplicación usa y lo que sólo la mide.
+- **Una afirmación, tres capas sin casa declarada**: el «Probar» (sonda + guardia + mutación), la Telemetría (ídem), las pestañas (sonda + guardia)... y, dentro de la MISMA capa, literales repetidos: `InspectorPanel_ShouldSeparateInputsAndOutputs_WithParityOfData` repetía las dos aserciones de colecciones del caso de las pestañas; `TheUnoHost_ShouldExposeTheCanonicalExecuteCommand_AsAnObservableChannel` (barra de control y franja de estado) vivía en la guardia del panel.
+- **Muertos de los seis pases**: `_scrollPanes` (declaración y dos `.Add`, nadie lo leía), `FrameInspectorSplitter`/`FrameInspectorColumn`, `ParameterControlIds`/`ActionControlIds`.
+
+### 🧱 La estructura resultante (una capa, una casa)
+| Capa | Casa | Qué es |
+| :--- | :--- | :--- |
+| **La sonda** (mide el comportamiento y afirma) | `SelfCheckFrame.cs` (nuevo, 81) · `SelfCheckPanels.cs` (nuevo, 257) · `SelfCheckUia.cs`, orquestados por `RuntimeSelfCheck.cs` (**3079**, era 3324) | Cada preocupación recibe el **comprobador** de quien la llama: la sonda escribe `[OK]`/`[FALLO]` y decide el veredicto, y las preocupaciones sólo miden. El orquestador queda como cáscara: los cuatro puntos de entrada, el `Inspect` que ordena y el cinturón de medida compartido (recorrer el árbol visual, describir un fallo). |
+| **El instrumento** (mide y devuelve, nunca juzga) | `NodeInspectorPanel.Probes.cs` (nuevo, 280) | La otra mitad (`partial`) del panel: la superficie de observación de la ficha. Su cabecera declara el contrato —recorren el estado por el MISMO camino del usuario y lo **restauran**; devuelven medidas, no veredictos— y su sitio es ése: si un miembro pasa a usarlo la aplicación, se va al fichero de la vista. |
+| **La guardia** (fija la regla en el árbol de pruebas y es testigo de su mutación) | `UnoInspectorPanelGuardTests` (383) · `UnoInspectorTelemetryGuardTests` · `UnoSelfCheckLayoutGuardTests` (nuevo, 3 casos) · el resto de `Uno*GuardTests` | Cada caso cita el fichero donde vive lo que vigila (la vista, el instrumento o la sonda de los paneles), no «el sondeo» en general. La guardia nueva fija la FORMA: cada preocupación en su archivo, la vista sin su instrumento, y el instrumento sin veredictos. |
+| **La mutación** (demuestra que muerde) | `mutations/*.json` | Sin cambios: las 103 declaradas siguen apuntando a código vivo. |
+
+### 🧁 Lo que se tiró (superseded)
+`_scrollPanes` y sus dos escrituras · `FrameInspectorSplitter` y `FrameInspectorColumn` · `ParameterControlIds` y `ActionControlIds` · las dos aserciones duplicadas del caso de Entradas/Salidas (**el caso sigue**, sin repetir lo que ya dice el de las pestañas) · el caso del canal de ejecución se **mudó** a la guardia de la barra de control, que es su sujeto.
+
+### ✅ Validación
+| Prueba | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **0 errores** (50 avisos, eran 54 al empezar el tramo) |
+| Las **cuatro sondas** del host | **EXIT 0**: `-SelfCheck` **97 `[OK]` · 0 `[FALLO]` · VERIFICADO**, control-bar **42**, settings **18**, dialogs **51** — la misma cuenta, el mismo veredicto y los mismos textos de comprobación (el código se movió entero, sin reescribir una línea) |
+| Suite completa | **1972 superadas + 1 omitida de 1973, 0 errores** (2 m 33 s; antes 1969 + 1: +3 del guardián de la forma) |
+| Las mutaciones del hilo | `boton-probar-que-se-ofrece-sin-nodo` **MUERDE (26,6 s)** y `seccion-de-telemetria-que-se-ofrece-en-vacio` **MUERDE (26,1 s)**: testigo rojo, control verde, árbol restaurado por bytes |
+| Las 103 mutaciones declaradas | los **112 reemplazos** siguen resolviendo contra el árbol (comprobado uno a uno antes de mutar: mover el instrumento no dejó ninguna apuntando a texto ausente) |
+| `mutations/COVERAGE.md` | regenerado por su guardia: **103 declaradas · 15 de 17 subsistemas · 17 de 46 guardias** |
+
+### ⚠️ Fronteras declaradas
+1. **Sin cambio de comportamiento**: el reorden movió código (el diff es una mudanza, no una reescritura); las cuatro sondas dan la misma cuenta con el mismo veredicto, y el suite entero sigue verde.
+2. **La guardia de forma no tiene mutación**: `UnoSelfCheckLayoutGuardTests` fija la forma y nadie ha demostrado que muerda. Se declara aquí en vez de dejarlo caer: el censo de `COVERAGE.md` no la cuenta (sólo cuenta las guardias que auditan el árbol con `SourceTree`/`TestRepositoryLocator`/`TestSuiteIndex`), así que este apartado es su registro.
+3. **Lo que NO se movió, y por qué**: los otros tres modos (control-bar, ajustes, diálogos) y el cinturón de medida compartido siguen en el orquestador — son de hitos anteriores y el encargo era reordenar el trabajo de este hilo; y `NodeToolboxPanel` conserva su superficie de observación dispersa porque no es uno de los dos ficheros que lo llevaban todo (si crece, la convención es la misma: una mitad `*.Probes.cs`).
+4. **La convención queda escrita donde se lee**: en la cabecera de `RuntimeSelfCheck` (el reparto y las capas), en la de `NodeInspectorPanel` (dónde vive su instrumento) y en la del propio instrumento (el contrato con el sondeo).
+
+## [2026-09-29] - Hito 275: La Telemetría del Nodo: qué Era y Dónde Vive
+
+### 🎯 El encargo
+«Queda un hueco nombrado en la ficha del inspector: la sección de Telemetría del nodo no llega a montarse, y antes de tocarla hay que decir con pruebas qué es —una superficie que se ofrece y no pinta nada, o una capacidad que el host de escritorio tiene y éste perdió— mirando el panel de escritorio, el catálogo de nodos y las guardias que ya existen, porque de la respuesta depende el arreglo. Resuélvelo sin inventar capacidad: si la fuente de esas medidas ya existe y el camino es de sólo lectura, móntala como la monta el escritorio; si no existe, quita de la ficha la superficie que se ofrece en vacío junto con sus anclas, sin dejar secciones fantasma ni rótulos huérfanos. Pruébalo con el ratón sobre la aplicación abierta —abrir el inspector, recorrer la sección y los controles que ofrezca— y deja la sonda o guardia que habría cazado una sección vacía.»
+
+### 🔬 Qué era (con las pruebas a la vista)
+**Una capacidad que el ESCRITORIO tiene y este host perdió** — y que este host ya tenía construida y sin montar.
+1. **El escritorio sí la monta**: su ficha tiene una pestaña de Telemetría (`Inspector_TabTelemetry`) cuyo cuerpo es una tarjeta de métricas de ejecución leída del MISMO `InspectedNode.CurrentStats` — `FileFlow.App/Views/NodeInspectorPanelView.axaml`, su tercera pestaña.
+2. **La fuente existe y el camino es de sólo lectura**: `NodeViewModel.CurrentStats` es el agregado que escribe el MOTOR (`UpdateTelemetryStats`) y `ExecutionStatusText` es la propiedad localizada del view model portable. La ficha del host ya leía esas dos fuentes en cinco filas… y las rellenaba para nadie.
+3. **Lo que faltaba no era la fuente ni el cálculo: el MONTAJE.** El montaje que tenía en el cuerpo de la ficha (antes de las pestañas) se perdió al entrar éstas: desde entonces `_telemetryHeader`, `_resetMetricsButton` y `_telemetryRows` se construían, se localizaban y se rellenaban sin entrar al árbol. **Ninguna guardia lo decía**: la que existía medía que las filas se construyeran (cableado), no que se ofrecieran.
+4. **El «Vaciar métricas» NO es una capacidad del escritorio**: su pestaña de telemetría no ofrece borrar nada y el reinicio del comando del VM portable (`ResetNodeMetricsCommand`) no lo monta **ninguna** vista del producto. Dibujarlo aquí sería capacidad nueva de ESTE host → **no se monta**, y su clave quedó huérfana: se retiró de los dos diccionarios junto al botón.
+5. **El catálogo de nodos no guarda ninguna superficie de telemetría**: el dato que la ficha enseña lo produce el motor durante una ejecución (`ProcessedCount`, latencia media, tiempo total y pico de memoria del nodo, más su estado).
+
+### 🧱 Lo construido (cada pieza donde viven sus iguales)
+| Pieza | Qué es |
+| :--- | :--- |
+| `FileFlow.App.Uno/Controls/NodeInspectorTelemetrySection.cs` (nuevo, ~175 líneas) | La sección como control propio (hermano de los demás controles del host, no una pila más dentro de la ficha): cinco filas —estado, procesados, latencia media, tiempo total y pico de memoria— leídas del nodo, con la clave del diccionario de cada rótulo y el **ancla del valor** (`InspectorTelemetry_Status`…`_PeakRam`) para que la observación externa lea cada medida; se ata al nodo por `Bind` (suelta el anterior), lo sigue por `PropertyChanged` —las medidas las escribe el motor mientras la ficha está abierta— y **sólo lee**: no cita `UpdateTelemetryStats` ni el comando de reinicio. Las filas se **materializan una vez** (`EnsureRows`) y refrescar es reescribir su texto (`CurrentValues`): el latido del motor reescribe las medidas hasta ~30 veces por segundo mientras hay una ejecución, así que reconstruir la fila en cada fotograma crearía y tiraría quince elementos por latido sin cambiar lo que se ve (el escritorio, con enlaces, tampoco las reconstruye). |
+| `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` (**~90 líneas menos**) | La ficha la MONTA como una sección más: sexta entrada de `InspectorTabs` (`InspectorTabTelemetry`, la última, como en el escritorio) con su envoltorio `InspectorTelemetryScroll`; le pasa el nodo (`_telemetrySection.Bind(_inspected)`) y la relocaliza con el idioma. Y le quitó los fantasmas: `RebuildTelemetry`, `TelemetryRow`, `FormatBytes`, `TelemetryRowCount` y los tres campos que nunca se montaron, más la suscripción al nodo que sólo servía para rellenar filas invisibles. |
+| `FileFlow.App.Uno/RuntimeSelfCheck.cs` | Una comprobación nueva: la sonda recorre la cadena entera (pestaña declarada con su ancla, cuerpo dentro del host de paneles con la sección por contenido, la conmutación que la deja **visible y sola**, las filas pintadas y el **ida y vuelta al nodo** —sin nodo no queda ni una fila y al reatarlo se vuelven a materializar las suyas—), con el detalle de las cinco medidas y **cuántas salieron en blanco** (una fila en blanco no es una medida). 97 `[OK]`. |
+| `FileFlow.Tests/Unit/App/UnoInspectorTelemetryGuardTests.cs` (nuevo, 2 casos) | La sección (de dónde salen sus medidas, sus cinco rótulos, sus cinco anclas, que se queda sin filas sin nodo, que **no vuelve a construir la fila que ya está** y la **aserción negativa** de que no escribe) y el montaje (el panel la declara, la monta, le pasa y le quita el nodo, la relocaliza, la sonda mide el ida y vuelta al nodo, y los fantasmas no vuelven). El caso de telemetría del panel se mudó aquí. |
+| `mutations/seccion-de-telemetria-que-se-ofrece-en-vacio.json` (nueva) | **MUERDE (28,7 s)**: testigo rojo (el montaje) y control verde (la sección). `COVERAGE.md` regenerado por su guardia: **103 declaradas · 15 de 17 subsistemas · 18 de 46 guardias**. |
+| Los dos diccionarios del host | `Uno_InspectorResetMetrics` fuera (su botón no se monta): sin rótulos huérfanos, y la paridad de claves de los dos idiomas intacta. |
+
+### ✅ Validación (medida)
+| Prueba | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **0 errores** (54 avisos preexistentes) |
+| `.\run-uno.ps1 -SelfCheck -NoBuild` | **97 [OK] · 0 [FALLO] · VERIFICADO** (96 + 1), con las **seis** secciones de la ficha con caja propia dentro del panel (300x1081: `InspectorTabTelemetry=120x32@(125,93)`) y la medida `5 filas (0 en blanco), montada=True, mostrada=True, con nodo=5 sin nodo=0` |
+| la sonda **muerde** | montando un cuerpo vacío → `[FALLO] la sección de Telemetría está montada en su pestaña, se muestra sola y PINTA sus filas (filas: 5, en blanco: 0) — montada=False, mostrada=True`, veredicto **FALLOS**; repuesta → 97 `[OK]` |
+| `.\mutate.ps1 -Name seccion-de-telemetria-que-se-ofrece-en-vacio` | **MUERDE** (testigo 1 con error / control 1 superado; árbol restaurado por bytes, recompilado y verificado) |
+| Suite completa | **1969 superadas + 1 omitida de 1970, 0 errores** (2 m 34 s; antes 1968 + 1) |
+| Sondas del host (las otras tres) | control-bar **42**, settings **18**, dialogs **51** `[OK]`, EXIT 0, VERIFICADO |
+| Ratón — **sin nodo** | en el arranque la ficha está abierta sin nodo («Selecciona un nodo para inspeccionarlo.»): las cinco anclas **no están** en el árbol y la tira de secciones tampoco — la sección no se ofrece sin nodo |
+| Ratón — **con nodo y la sección abierta** | seleccionando la tarjeta «Folder Source» y pulsando la pestaña «Telemetría»: aparecen **las cinco anclas** con las medidas del nodo, `En espera | 0 | 0,0 ms | 0,0 ms | —` |
+| Ratón — **las medidas son del MOTOR** | pulsando «▶ Ejecutar Flujo» con la sección a la vista, las filas se actualizan **en vivo**: `Completado | 1 | 10,1 ms | 10,1 ms | 164,7 KB` (otra corrida: `11,1 ms | 146,9 KB`) |
+| Ratón — **sigue al nodo inspeccionado** | seleccionando «Optimizador de Imágenes» el título de la ficha y las filas pasan a ser las SUYAS (sus ceros, sin medidas de nadie más) |
+| Ratón — **qué controles ofrece** | ninguno propio: en el árbol no queda ningún «Vaciar métricas»; los botones del panel son su cabecera (Probar, Cerrar) y su tira de secciones |
+
+### ⚠️ Fronteras declaradas (lo que NO quedó demostrado)
+1. **Cierra el hallazgo 4 del hito 274** (la telemetría construida y sin montar) y su frontera: la ficha del host ya enseña la sección, con su fuente intacta.
+2. **La sección no lleva rótulo propio**: el de su pestaña («Telemetría») es el suyo. El escritorio sí repite un encabezado dentro de su tarjeta («Métricas de ejecución»); copiarlo aquí habría pedido una clave nueva para decir dos veces lo mismo.
+3. **El vaciado de métricas sigue sin puerta en los DOS hosts**: `ResetNodeMetricsCommand` y su clave (`Metrics_ResetNodeMetrics`) existen sin que ninguna vista los monte. Es deuda declarada y no se arregla aquí: montarla sería capacidad nueva de un host que el escritorio no ofrece.
+4. **De las cinco filas, sólo el VALOR va anclado** (el contenedor de la fila no materializa en el árbol de accesibilidad): la observación externa lee las medidas por `InspectorTelemetry_*`; los rótulos se leen por posición.
+5. **La vuelta al nodo anterior no se pudo recorrer con el puntero**: **un clic en el lienzo vacío NO vacía la ficha** (medido: el título sigue nombrando al último nodo inspeccionado), así que el sentido B→A de la selección no se alcanzó con dedos; lo cubre la **sonda en proceso** (`con nodo=5 sin nodo=0`: sin nodo no queda fila y al reatar el suyo se vuelven a materializar).
+6. **El instrumento**: la identidad del nodo inspeccionado se leyó por el **título de la ficha** (es el nombre del nodo, medido); el puntero inyectado entrega pulsaciones pero **algunas no registran** (en la misma corrida seleccionaron «Folder Source» y «Optimizador de Imágenes» y falló el tercer clic, con la tarjeta a la vista), mientras que los clics de la barra, del cajón y de la tira de secciones sí llegaron siempre; y un clic sobre una tarjeta ocluida no selecciona.
+
+## [2026-09-29] - Hito 274: El «Probar» que Mentía: lo que la Ficha Ofrece en Cada Estado
+
+### 🎯 El encargo
+«Arregla el defecto vivo que dejó la auditoría: con la ficha abierta y **ningún nodo seleccionado**, «Probar» se muestra habilitado y al pulsarlo **no ocurre absolutamente nada**; y esa misma clase —control alcanzable sin trabajo que hacer— revísala en los demás estados del panel (sin selección, nodo sin acciones, sin snapshots, sin diff, sin parámetros), porque **el fallo no es del botón sino de la condición que decide qué se ofrece** en cada estado. No añadas capacidad nueva: donde el control no tiene nada que hacer **no debe ofrecerse**, y si ya existe una condición de visibilidad, esa manda y se corrige **donde vive**, no con un parche en el manejador del clic. Pruébalo con el ratón sobre la aplicación abierta en todos esos estados y deja la guardia o sonda que habría cazado un botón inerte.»
+
+### 🔬 Lo que encontró la medida
+1. **El botón no era el defecto: su condición.** `_testButton` se construía siempre y entraba en la cabecera, y `UpdateVisibility()` —el único sitio donde vive el estado de la ficha— conmutaba `Visibility`, `_emptyText` y `_body` y **nunca el botón**. Sin nodo, el comando canónico del núcleo encontraba `InspectedNode == null` y volvía: la pulsación llegaba y el efecto era **ninguno**. La ficha nace abierta y sin selección (`MainWindow`: `NodeInspector. IsOpen = true` en la puesta en marcha), que es justo el estado donde el botón mentía.
+2. **La guardia medía el cableado, no la oferta.** `HasWiredTestButton()` comprueba que el botón exista, cante su `AutomationId` y apunte al comando del núcleo —las tres, ciertas—, así que el botón inerte pasaba la sonda. Es la lección que este hito deja escrita: **una guardia que mide que algo exista no mide que algo sirva**.
+3. **El encabezado de PARÁMETROS no seguía a sus editores.** El bloque de ACCIONES se colapsa sin acciones desde el 269; `_paramsHeader` se dibujaba siempre. (Su caso vacío **no es alcanzable** hoy: los nodos de producción declaran al menos un parámetro y `BuildParameterRow` no descarta ninguno — medido añadiendo cinco tipos desde el cajón con el ratón: 1–2 parámetros cada uno.)
+4. **La TELEMETRÍA del nodo está construida y nunca montada** (hallazgo de este pase, declarado sin arreglar): `_telemetryHeader`, `_resetMetricsButton` y `_telemetryRows` se crean, se localizan y se rellenan (`RebuildTelemetry`: cinco filas desde `CurrentStats`), pero **ninguno entra al árbol**. El montaje que tenían (`bodyStack.Children.Add(_telemetryRows)`) desapareció al entrar las pestañas, así que la ficha no tiene la sección que el escritorio sí pinta (su pestaña de Telemetría). Quedan un guardia que defiende código muerto (`InspectorPanel_ShouldShowTelemetryFromTheNodeViewModel`) y una fila de la tabla de paridad que declara una cobertura que no existe.
+
+### 🧱 Lo que se construyó
+| Pieza | Qué es |
+| :--- | :--- |
+| `NodeInspectorPanel.xaml.cs` — `UpdateVisibility()` | **La condición de estado, en un sitio**: `isOpen` + `hasNode` deciden cuerpo, texto de «sin selección» y **«Probar»**. Con nodo, el botón se dibuja y está habilitado; sin nodo, **no se ofrece**. No se corrige deshabilitando: un botón deshabilitado sigue ofreciéndose. |
+| `NodeInspectorPanel.xaml.cs` — constructor | La ficha arranca en un estado **decidido**, no en el de por defecto: `UpdateVisibility()` antes de que llegue el view model (antes, entre la construcción y el VM se enseñaban a la vez el cuerpo y el texto de vacío, con el botón de la cabecera ya dibujado). |
+| `NodeInspectorPanel.xaml.cs` — `RebuildParameters()` | `_paramsHeader` se colapsa cuando no hay editores (la regla del bloque de acciones) y la rama sin nodo lo colapsa también. |
+| `NodeInspectorPanel.xaml.cs` — superficie de sonda | `ProbeTestButtonOffer(node)`: recorre los dos estados **por la propiedad del VM** (`InspectedNode = null` + `IsOpen = true`, y luego el camino de la selección del lienzo) y lee si el botón se ofrece; restaura lo que había. `ParametersHeaderOffered`. |
+| `RuntimeSelfCheck.cs` | **Tres comprobaciones nuevas**: la oferta sin nodo (falso) y con nodo (verdadero), y el encabezado de Parámetros contra la cuenta de editores materializados. 96 `[OK]` (eran 93). |
+| `UnoInspectorPanelGuardTests` | Dos casos nuevos: la oferta atada a la condición de estado (y la aserción negativa de que no se arregla deshabilitando) y el encabezado de Parámetros atado a sus editores. |
+| `mutations/boton-probar-que-se-ofrece-sin-nodo.json` (nueva) | **MUERDE (39,3 s)**: testigo rojo (`InspectorPanel_ShouldOfferTheTestButton_OnlyWithAnInspectedNode`) y control verde (el caso del cableado). `COVERAGE.md` regenerado por su guardia: **102 declaradas · 15 de 17 subsistemas · 17 de 46 guardias**. |
+
+### ✅ Validación (medida)
+| Prueba | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **0 errores** (54 avisos preexistentes) |
+| `.\run-uno.ps1 -SelfCheck -NoBuild` | **96 [OK] · 0 [FALLO] · VERIFICADO** (93 + 3) |
+| la sonda **muerde** | quitando la condición → `[FALLO] el «Probar» NO se ofrece sin nodo inspeccionado: no hay nada que probar, así que no se dibuja`, veredicto **FALLOS**; repuesta → 96 `[OK]` |
+| `.\mutate.ps1 -Name boton-probar-que-se-ofrece-sin-nodo` | **MUERDE** (testigo 1 con error / control 1 superado; árbol restaurado por bytes, recompilado y verificado) |
+| Suite completa | **1968 superadas + 1 omitida de 1969, 0 errores** (2 m 44 s; antes 1966 + 1) |
+| Ratón sobre la app abierta — **sin selección** | `InspectorTestButton` **no está en el árbol UIA**; el clic en su hueco exacto de la cabecera (2756,348) **no abre nada**, la ficha sigue abierta con su texto de «sin selección» y no hay pestañas (el cuerpo está colapsado) |
+| Ratón — **con nodo** | el botón aparece en la cabecera y pulsarlo **abre el picker** (`#32770 'Abrir'`, hwnd nuevo tras cerrar el anterior): está ofrecido y tiene trabajo; cancelado, no queda diálogo |
+| Ratón — **las cinco secciones** | conmutan dejando visible **sólo** su cuerpo (374 px dentro de la ficha); en los estados vacíos **no hay un solo control** que ofrecer: 0 tarjetas de snapshot, 0 botones «Ver», 0 filas de diff |
+| Ratón — **nodo sin acciones** | los tres nodos del flujo de ejemplo declaran 0 acciones: 0 botones y **sin encabezado «Acciones»** |
+
+### ⚠️ Fronteras declaradas (lo que NO quedó demostrado)
+1. **«Sin parámetros» no es alcanzable** con los nodos de producción (todos declaran al menos un parámetro) → la regla del encabezado se mide por su **invariante** (la sonda compara encabezado con editores; hoy: «10 editores, encabezado ofrecido») y por la guardia de fuente, **no** con el ratón.
+2. **La Telemetría del nodo sigue sin montarse** (hallazgo 4): montarla es UI nueva y este encargo la prohíbe. Queda localizada —el montaje se perdió al entrar las pestañas, y el guardia que la «cubre» defiende código muerto— para el tramo que la reponga.
+3. **Las acciones y los LED de la tarjeta del lienzo no tienen ancla de automatización** (sólo `NodeCardExpandToggle`): lo pulsado en la tarjeta se localizó por nombre/geometría, no por ancla estable. Deuda declarada (no tocada aquí).
+4. **El puntero inyectado entrega pulsaciones, no movimientos** (heredado del 272): la selección de tarjeta y los clics se ejercen con el ratón; ningún gesto de arrastre.
+
+## [2026-09-29] - Hito 273: Las Cinco Secciones de la Ficha con su Caja, y el Picker que Tiene Dueño
+
+> **Nota de registro**: este tramo se cerró **sin entrada**; se escribe aquí al día siguiente del cierre con lo **medido hoy** sobre el mismo árbol (auditoría con ratón) y con lo que declaran su código y sus guardias. No se reescribe nada del 272.
+
+### 🎯 El encargo
+Devolver a la ficha del inspector la **paridad de secciones** con el escritorio sin que ninguna naciera inalcanzable, y dejar que los **pickers** del host (el explorar de una ruta, el diálogo de la prueba aislada) abrieran **con dueño** desde el clic de UI.
+
+### 🔬 Lo que encontró la medida
+1. **El `Pivot` repartía y no envolvía**: con la ficha en sus ~300 px lógicos, los cinco rótulos de sección se repartían el ancho, así que «Salidas» y «Diff» medían **rectángulo vacío** —fuera del alcance del ratón— y «Entradas» nacía recortada, sin scroll ni rueda que las alcanzara. El censo de declaración no lo veía: las cinco existían para el view model.
+2. **El explorar de una ruta era síncrono**: el botón «…» de una fila de ruta llamaba a una vía pensada para hilos de fondo; desde el clic de UI (hilo de UI) el diálogo síncrono devuelve nulo. La variante asíncrona no existía en el view model portable.
+3. **Los pickers se abrían sin dueño**: `COMException: Invalid window handle (0x80070578)` — un diálogo de WinRT abierto sin ventana propietaria.
+
+### 🧱 Lo que se construyó
+| Pieza | Qué es |
+| :--- | :--- |
+| `NodeInspectorPanel.xaml.cs` | El `Pivot` sustituido por `_tabStrip` (**`WrapPanel`**: envuelve) + `_paneHost`, con `_tabButtons`/`_tabPanes`, la tabla `InspectorTabs` (clave, texto de reserva y ancla) y `ShowTab(int)` como único conmutador (lo usan el clic y la sonda). Cada sección con su ancla (`InspectorTabParams`…`InspectorTabDiff`) y su envoltorio de scroll **con nombre** (`InspectorParamsScroll`…`InspectorDiffScroll`). |
+| `NodeParameterViewModel` | `BrowsePathAsync()` y `BrowsePathAsyncCommand` — **a mano**: `[RelayCommand]` recorta el sufijo «Async» y colisionaría con `BrowsePathCommand`. |
+| `UnoFileDialogService` | `RunOnUi` / `EnqueueOnUiAsync` toman un `Func<Window, …>` y `OwnPicker(picker, window)` da dueño al picker (`InitializeWithWindow.Initialize` + `WindowNative.GetWindowHandle`) |
+| Guardias | `UnoPickerOwnershipGuardTests` (3 casos; **muerde** al quitar `OwnPicker`), las tuplas de la tira y `BrowsePathAsyncCommand` en `UnoInspectorPanelGuardTests`, y la sonda de la tira (`TabButtonBoxesForProbe`) exigiendo caja dentro de la ficha. |
+
+### ✅ Validación (medida hoy, sobre este mismo árbol)
+| Prueba | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx` | **0 errores** (54 avisos preexistentes) |
+| `.\run-uno.ps1 -SelfCheck -NoBuild` | **93 [OK] · 0 [FALLO] · VERIFICADO** (antes del 274) |
+| `-SelfCheckControlBar` / `-SelfCheckSettings` / `-SelfCheckDialogs` | **42** · **18** · **51** `[OK]` / 0 `[FALLO]`, EXIT 0 |
+| Suite completa | **1966 superadas + 1 omitida de 1967, 0 errores** (2 m 46 s) — el rojo intermitente de `ExampleFlowsEndToEndTests.EveryExample_ShouldDeliverWhatItPromises` («flow_22_paralelismo_fork_join no entregó 'datos.csv'») **pasa en aislamiento**: carga, no producto |
+| Ratón sobre la app abierta | las **cinco secciones** (cajas reales de **150x40** dentro del panel) conmutan dejando visible **sólo** su cuerpo; **«Guardar Flujo…»** abre su `#32770 'Guardar como'` (nombre por defecto `flujo.json`) y el «…» de una fila de ruta abre **`Seleccionar carpeta`**; el ciclo completo —escribir la ruta, guardar (**2063 bytes**), «Nuevo Flujo» + confirmar (0 tarjetas) y cargar de vuelta (**3 nodos**)— se ejercita entero |
+
+### ⚠️ Fronteras declaradas
+1. **Se cierra la frontera 2 del 272: NO era un defecto.** Elegir «English» en el desplegable de idioma de Ajustes **no reescribe los rótulos** (y no toca el disco); quien decide la cultura es **`Save()`**, y pulsar **«Guardar ajustes»** pasa la UI entera a inglés, escribe `en-US` y **cierra el panel** (medido). El selector del **cajón** sí aplica en caliente, por su propio camino. Queda escrito para que nadie «arregle» lo que funciona: el desplegable es una selección pendiente de guardar, no un conmutador en caliente.
+2. **`_scrollPanes` es una lista muerta** (sólo recibe `.Add`) cuyo comentario dice que la audita la sonda: **no la audita nadie**. Se deja tal cual y se declara.
+3. **La ficha del host Uno tiene cinco secciones y el escritorio cuatro bloques** (Parámetros, Snapshots, Telemetría): la paridad es de **datos y comandos**, no de composición — y la Telemetría del host está sin montar (hito 274, hallazgo 4).
+
+## [2026-09-29] - Hito 272: El editor recupera su fila, las tiras que no cabían y el instrumento que faltaba
+
+### 🎯 El encargo
+«chequea a fondo la aplicacion y corrige los errorers que tiene actualmente sobretodo en la interfaz de usuario. haz todo sin intervencion humana.» — y el paso concreto de este tramo: **atacar primero el defecto crítico** (el `Workspace` sin su fila, pintado encima de la barra de control), devolver a cada zona su fila, y seguir el orden de la auditoría empezando por lo que impide usar la aplicación normalmente, **verificando con el ratón del sistema** y dejando el instrumento que faltaba para que la próxima vez la regresión salte sola.
+
+### 🔬 Lo que encontró la medida
+1. **La regresión crítica del hito 270**: `MainWindow.xaml` declaraba `<Grid x:Name="Workspace">` **sin** `Grid.Row`, así que la barra de control y el editor compartían la fila 0 y el editor —declarado después— se pintaba ENCIMA. La barra quedaba invisible e inalcanzable con el ratón: el menú y los ajustes no se podían abrir, y la franja inferior de la ventana quedaba en negro.
+2. **Por qué nadie lo vio**: las 85 comprobaciones del sondeo en runtime pasaban en verde. Todas pulsan la barra **por método** (`ControlBar.Press`), no por puntero, y **ninguna medía dónde cae cada zona del marco**: se comprobaba que los controles existen, no que se puedan pulsar.
+3. **Once de las quince categorías del cajón no se podían pulsar**: la tira de chips era un `StackPanel` horizontal dentro de una columna de 280 px; las que no cabían quedaban recortadas contra el borde (rectángulo vacío en el árbol de accesibilidad), sin scroll y con la rueda sin efecto.
+4. **La pestaña «Actualizaciones» de Ajustes tampoco**: los seis rótulos pedían ~886 px lógicos contra los 772 del panel de 800, así que la última nacía recortada —y el censo de la sonda, que sólo miraba la declaración, seguía diciendo «seis secciones».
+5. **El arrastre de las asas era una afirmación sin medida**: `PanelSplitter.DragBy` y `RememberedWidth` existían y **no los llamaba nadie** —ni la sonda ni el ratón—, aunque el comentario del propio archivo decía que los usaba el sondeo.
+6. **El puntero inyectable: los botones sí, los movimientos no** (medido en este entorno): `SetCursorPos` + `mouse_event` entregan pulsación y suelta (los botones de zoom pasan de 100 % a 110 % y a 121 %; el engranaje abre Ajustes) pero **ningún movimiento**: 0 px de cambio por hover en seis controles (Ejecutar, Ajustes, Menú, buscador, asa e Inspector) a la vez que el pulsado sí pinta. El control lo confirma: la Calculadora de Windows se comporta igual (hover 0 px; el pulsado escribe el «7»), mientras que la **barra de tareas sí acusa el hover** (1.322 px). Es el reparto de Windows: la shell lee `WM_MOUSEMOVE` y las aplicaciones XAML leen `WM_POINTER`, que `SetCursorPos` no sintetiza.
+
+### 🧱 Lo que se construyó
+- **`FileFlow.App.Uno/MainWindow.xaml`**: `<Grid x:Name="Workspace" Grid.Row="1">` — la barra recupera su fila, el editor la suya y la franja de estado la tercera.
+- **`FileFlow.App.Uno/Controls/WrapPanel.cs`** (nuevo, ~85 líneas): el panel que **parte la línea** con el ancho disponible y la separación declarada. Panel propio y no `ItemsWrapGrid` porque aquél es un panel de elementos virtualizados (para contenedores de `ListViewBase`) y aquí los hijos ya están materializados.
+- **`NodeToolboxPanel.xaml`**: la tira de chips pasa a `WrapPanel` → las quince categorías se dibujan (medido: 15 de 15 con caja, cinco filas).
+- **`SettingsPanel.xaml`**: la tira de secciones pasa a `WrapPanel` → las seis pestañas se dibujan (cinco en la primera fila, «Actualizaciones» en la segunda).
+- **`MainWindow.xaml.cs`**: la superficie interna que la sonda mide —las tres zonas del marco y las dos asas con sus columnas— para poder medir la geometría sin abrir la ventana a nadie más.
+- **`RuntimeSelfCheck.cs`** (4 guardias nuevas en el modo base, 1 en el censo de Ajustes, 1 en el cajón):
+  - **el marco**: las tres zonas con caja propia, la barra ARRIBA y el editor DEBAJO, las cajas disjuntas;
+  - **las asas**: el arrastre por su mismo camino (`DragBy`), el tope que no deja al lienzo por debajo de su mínimo y la vuelta al ancho de partida;
+  - **las chips**: cada categoría que declara el view model con caja DENTRO del cajón;
+  - **el censo de secciones** de Ajustes exige ahora la caja de cada pestaña dentro del panel.
+
+### ✅ Validación (medida)
+| Prueba | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.Uno.slnx -p:FileFlowUnoHost=true` | **0 errores** (54 avisos preexistentes) |
+| `.\run-uno.ps1 -SelfCheck -NoBuild` | **92 [OK] · 0 [FALLO] · VERIFICADO** (85 + 7 nuevas) |
+| La guardia del marco **muerde** | quitando `Grid.Row="1"` → `[FALLO] la barra queda ARRIBA y el editor no la tapa (barra hasta y=603, editor desde y=0)` y veredicto **FALLOS**; repuesta → 92 [OK] |
+| `-SelfCheckSettings` | **EXIT 0**; censo con cajas: `174x32@(15,77) … 120x32@(15,115) 124x32@(141,115)` |
+| `-SelfCheckControlBar` / `-SelfCheckDialogs` | **42 [OK] / 0 [FALLO]** · **51 [OK] / 0 [FALLO]** |
+| Suite completa | **1963 superadas + 1 omitida de 1964, 0 errores** (2 m 58 s) |
+| Ratón del sistema (sobre la app abierta) | el engranaje **abre Ajustes**; «Menú» **abre el cajón** (28 entradas: Nuevo, Cargar, Guardar, Personalizar Tema, Ajustes, Inspector); el botón del Inspector **conmuta** la ficha; el zoom va **100 % → 110 % → 121 %**; pulsar las chips antes recortadas **«Documents» y «Logic»** filtra el catálogo; pulsar la pestaña antes recortada **«Actualizaciones»** enseña sus controles |
+
+### ⚠️ Fronteras declaradas (lo que NO quedó demostrado)
+1. **El arrastre de las asas con el ratón del sistema sigue sin poder ejercerse aquí** y no por el producto: en este entorno el puntero inyectado entrega pulsaciones pero no movimientos (medido arriba, con su control). El camino del arrastre queda cubierto **por la sonda** (`DragBy`), no por dedos reales; si un día el entorno puede inyectar movimientos, la guardia que ya existe medirá el mismo camino con puntero.
+2. **Candidato abierto en los desplegables de Ajustes** (no confirmado, ninguna pieza tocada por él): en *Ajustes → Apariencia*, elegir «English» en el desplegable de idioma —con puntero (cuatro intentos) y con el patrón de automatización— dejó **todos los rótulos en español** (el botón «Guardar ajustes» y la barra), mientras el sondeo de Ajustes —que mueve el mismo desplegable por método, en su propio proceso— mide que esa selección **sí** cambia la cultura y reescribe los textos. No se pudo leer la selección del control por UIA (no expone el patrón de selección), así que queda como medir con el view model a la vista.
+3. **El coste de partir las tiras**: las quince chips ocupan cinco filas (~155 px de alto del cajón, medido: de y=460 a y=611 en la ventana). Es el precio de que las quince se puedan pulsar en una columna de 280 px; el usuario puede ensanchar el cajón (asa 180–480) para reducir filas.
+4. **Los punteros del archivo frío a las capturas manuales borradas** (petición anterior): el texto de cada medida se conserva entero, la captura no.
+
 ## [2026-09-28] - Hito 271: Configuración Integral del IDE y Entorno de Desarrollo para Uno Platform
 
 ### 🎯 El encargo

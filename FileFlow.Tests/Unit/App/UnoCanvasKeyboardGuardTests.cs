@@ -31,7 +31,7 @@ public class UnoCanvasKeyboardGuardTests
     private const string CanvasCodePath = "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs";
     private const string CanvasXamlPath = "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml";
     private const string WindowCodePath = "FileFlow.App.Uno/MainWindow.xaml.cs";
-    private const string SelfCheckPath = "FileFlow.App.Uno/RuntimeSelfCheck.cs";
+    private const string SelfCheckPath = "FileFlow.App.Uno/SelfCheckPointerless.cs";
     private const string MutationPath = "mutations/atajo-que-no-llega-sin-foco.json";
     private const string ReclaimMutationPath = "mutations/reclamacion-que-roba-al-cuadro-de-texto.json";
 

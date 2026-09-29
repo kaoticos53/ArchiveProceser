@@ -1,44 +1,52 @@
-using System.IO;
+using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using FileFlow.Sdk.Services;
+using FileFlow.Plugin.Archives.UI.ViewModels;
 
 namespace FileFlow.Plugin.Archives.UI.Views;
 
+/// <summary>
+/// El GESTOR DE CONTRASEÑAS del escritorio: la VISTA de <see cref="PasswordManagerViewModel"/>, el view model
+/// portable del plugin.
+///
+/// <para><b>Qué es y qué no.</b> El texto de la lista, el recuento de claves, lo que se guarda en el parámetro
+/// del nodo y la lectura/escritura del .txt viven en el view model, que es el mismo que pinta el host Uno sobre
+/// su propio cuerpo. Esta ventana sólo lo enseña y le pasa lo que el usuario escribe: antes tenía esa lógica en
+/// su code-behind, y por eso ningún otro host podía ofrecer el gestor sin reescribirla.</para>
+///
+/// <para><b>Lo que la vista sí decide</b>, porque es del host: dónde está el archivo (su selector de archivos)
+/// y cuándo se cierra la ventana —aceptar y cancelar son de la ventana que los pinta—.</para>
+/// </summary>
 public partial class PasswordManagerWindow : Window
 {
-    private readonly IDialogService _dialogService;
-    public string PasswordsText { get; private set; } = string.Empty;
+    private readonly PasswordManagerViewModel _vm;
 
-    public PasswordManagerWindow() : this(string.Empty)
+    public PasswordManagerWindow() : this(null)
     {
     }
 
-    public PasswordManagerWindow(string currentPasswords, IDialogService? dialogService = null)
+    /// <summary>
+    /// La ventana del gestor. Sin view model se construye uno vacío: es el camino del diseñador de XAML y de las
+    /// capturas visuales, no el del producto —el producto entra por la superficie que declara el nodo y le pasa
+    /// su view model con la lista del nodo y la vuelta al parámetro—.
+    /// </summary>
+    public PasswordManagerWindow(PasswordManagerViewModel? viewModel = null)
     {
-        _dialogService = dialogService ?? NullDialogService.Instance;
+        _vm = viewModel ?? new PasswordManagerViewModel();
+
         InitializeComponent();
-        if (!string.IsNullOrWhiteSpace(currentPasswords))
-        {
-            var lines = currentPasswords.Split([';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            TxtPasswordEditor.Text = string.Join(Environment.NewLine, lines);
-        }
-        UpdateCount();
+        DataContext = _vm;
     }
 
-    private void TxtPasswordEditor_TextChanged(object? sender, TextChangedEventArgs e)
-    {
-        UpdateCount();
-    }
+    /// <summary>El view model portable en uso (lo leen las capturas y las pruebas del plugin).</summary>
+    public PasswordManagerViewModel ViewModel => _vm;
 
-    private void UpdateCount()
-    {
-        if (TxtPasswordEditor == null || TxtPasswordCount == null) return;
-        var text = TxtPasswordEditor.Text ?? string.Empty;
-        var lines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries);
-        TxtPasswordCount.Text = $"{lines.Length} clave(s) cargada(s)";
-    }
+    /// <summary>
+    /// La lista en la forma en que la guarda el nodo. La lee el camino del toolkit —el host que monta ESTA
+    /// ventana desde la acción del nodo—, no la ventana por su cuenta: el valor sale del view model.
+    /// </summary>
+    public string PasswordsText => _vm.PasswordsText;
 
     private async void ImportFromTxt_Click(object? sender, RoutedEventArgs e)
     {
@@ -47,7 +55,7 @@ public partial class PasswordManagerWindow : Window
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Importar lista de contraseñas",
+            Title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_ImportTxt", "Importar (.txt)"),
             AllowMultiple = false,
             FileTypeFilter =
             [
@@ -56,29 +64,9 @@ public partial class PasswordManagerWindow : Window
             ]
         });
 
-        if (files.Count > 0)
+        if (files.Count > 0 && files[0].TryGetLocalPath() is { } path)
         {
-            try
-            {
-                await using var stream = await files[0].OpenReadAsync();
-                using var reader = new StreamReader(stream);
-                var content = await reader.ReadToEndAsync();
-
-                if (!string.IsNullOrWhiteSpace(TxtPasswordEditor.Text))
-                {
-                    TxtPasswordEditor.Text += Environment.NewLine + content;
-                }
-                else
-                {
-                    TxtPasswordEditor.Text = content;
-                }
-            }
-            catch (Exception ex)
-            {
-                string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgImportError", "Error al importar archivo: {0}"), ex.Message);
-                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-                _dialogService.ShowError(errorMsg, title);
-            }
+            await _vm.ImportFromAsync(path);
         }
     }
 
@@ -89,7 +77,7 @@ public partial class PasswordManagerWindow : Window
 
         var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Exportar lista de contraseñas",
+            Title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_ExportTxt", "Exportar (.txt)"),
             SuggestedFileName = "passwords.txt",
             DefaultExtension = "txt",
             FileTypeChoices =
@@ -98,32 +86,15 @@ public partial class PasswordManagerWindow : Window
             ]
         });
 
-        if (file != null)
+        if (file?.TryGetLocalPath() is { } path)
         {
-            try
-            {
-                await using var stream = await file.OpenWriteAsync();
-                await using var writer = new StreamWriter(stream);
-                await writer.WriteAsync(TxtPasswordEditor.Text ?? string.Empty);
-
-                string successMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgExportSuccess", "Contraseñas exportadas con éxito a:\n{0}"), file.Path.LocalPath);
-                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Success", "Éxito");
-                _dialogService.ShowInformation(successMsg, title);
-            }
-            catch (Exception ex)
-            {
-                string errorMsg = string.Format(FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("PasswordManager_MsgExportError", "Error al exportar archivo: {0}"), ex.Message);
-                string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Error", "Error");
-                _dialogService.ShowError(errorMsg, title);
-            }
+            await _vm.ExportToAsync(path);
         }
     }
 
     private void Save_Click(object? sender, RoutedEventArgs e)
     {
-        var text = TxtPasswordEditor.Text ?? string.Empty;
-        var lines = text.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        PasswordsText = string.Join("; ", lines);
+        _vm.Save();
         Close(true);
     }
 

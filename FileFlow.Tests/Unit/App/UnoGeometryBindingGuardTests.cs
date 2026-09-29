@@ -79,10 +79,18 @@ public class UnoGeometryBindingGuardTests
         // Donde WinUI no puede enlazar (Setter con Binding no evalúa), la posición la aplica el código:
         // ese sitio debe leer la posición YA proyectada (NodeCardViewModel.Position, que pasa por el
         // conversor). Una lectura directa de node.Location.X es el defecto del 211 en código.
-        string codeBehind = Path.Combine(RepoRoot(), "FileFlow.App.Uno", "Controls", "EditorCanvasControl.xaml.cs");
-        File.Exists(codeBehind).Should().BeTrue("el lienzo de la fase 3.1 debe existir");
+        // El lienzo son DOS mitades (el control y su mitad de cables, hito 282): se barren las dos — una
+        // mitad nueva no puede quedar fuera de una regla que no admite excepciones históricas.
+        string[] halves =
+        [
+            Path.Combine(RepoRoot(), "FileFlow.App.Uno", "Controls", "EditorCanvasControl.xaml.cs"),
+            Path.Combine(RepoRoot(), "FileFlow.App.Uno", "Controls", "EditorCanvasControl.Wires.cs")
+        ];
 
-        var violations = FindCodeBehindViolations(File.ReadAllText(codeBehind));
+        halves.Should().OnlyContain(half => File.Exists(half),
+            "el lienzo de la fase 3.1 y su mitad de cables (hito 282) deben existir");
+
+        var violations = halves.SelectMany(half => FindCodeBehindViolations(File.ReadAllText(half))).ToList();
 
         violations.Should().BeEmpty(
             "la proyección explícita es una regla del plan (riesgo #1) y se aplica también donde el enlace no llega: en el código");

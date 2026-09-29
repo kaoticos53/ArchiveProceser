@@ -7,6 +7,8 @@ using Avalonia.Markup.Xaml;
 using FileFlow.App.Models;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Engine;
+using FileFlow.Plugin.Archives.UI.ViewModels;
+using FileFlow.Plugin.Archives.UI.Views;
 using FileFlow.Plugin.Integrations.UI.ViewModels;
 using FileFlow.Plugin.Integrations.UI.Views;
 using FileFlow.Sdk;
@@ -43,6 +45,12 @@ public sealed class AvaloniaWindowService : IWindowService
             // misma superficie por el mismo contrato y sólo cambia la vista.
             DialogKeys.MediaPresetManager => new MediaPresetManagerWindow(
                 RequirePayload<MediaPresetManagerViewModel>(dialogKey, payload)),
+            // El GESTOR DE CONTRASEÑAS: los nodos de descompresión del plugin de archivos declaran la superficie
+            // al SDK —con la lista del nodo y la vuelta a su parámetro dentro del view model portable— y este
+            // catálogo la sirve con la ventana del propio plugin. Antes la montaba el nodo dentro de su acción
+            // personalizada; ahora los dos hosts sirven la misma superficie por el mismo contrato.
+            DialogKeys.PasswordManager => new PasswordManagerWindow(
+                RequirePayload<PasswordManagerViewModel>(dialogKey, payload)),
             _ => throw new ArgumentOutOfRangeException(nameof(dialogKey), dialogKey, "El host Avalonia no conoce este diálogo."),
         };
 

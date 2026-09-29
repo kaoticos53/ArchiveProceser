@@ -93,9 +93,24 @@ public sealed partial class NodeCardView : UserControl
 
         if ((element.DataContext ?? (element.Parent as FrameworkElement)?.DataContext) is PortViewModel port)
         {
+            // La fila del puerto se queda con el PUNTERO mientras dura el gesto (hito 278). Sin captura los
+            // movimientos con el botón pulsado no llegaban al lienzo —medido con el ratón inyectado: llegaba
+            // UNO solo, en la posición de la pulsación— y el cable no seguía al cursor; el soltar tampoco
+            // llegaba si el destino caía fuera del lienzo.
+            element.CapturePointer(e.Pointer);
             SocketRequested?.Invoke(this, port);
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Suelta la captura del puerto. Llega por dos caminos —el soltar del botón y la pérdida de captura—
+    /// porque el gesto puede acabar de cualquiera de las dos formas (hito 278): sin esto, una captura
+    /// colgada se comería los punteros siguientes.
+    /// </summary>
+    private void OnSocketReleased(object sender, PointerRoutedEventArgs e)
+    {
+        (sender as UIElement)?.ReleasePointerCapture(e.Pointer);
     }
 
     private void OnSocketRightTapped(object sender, RightTappedRoutedEventArgs e)

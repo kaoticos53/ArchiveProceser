@@ -25,6 +25,23 @@ public class UnoInspectorPanelGuardTests
 
     private static string PanelCode() => SourceText.CodeWithoutComments(PanelPath);
 
+    /// <summary>
+    /// La superficie de observación de la ficha, en su archivo propio (<c>NodeInspectorPanel.Probes.cs</c>):
+    /// los accesos por ancla, los censos de lo materializado y las sondas <c>Probe*</c> viven ahí, no en el
+    /// fichero que construye la ficha. Se lee aparte porque son dos preocupaciones distintas: lo que pinta la
+    /// vista y el instrumento que la mide.
+    /// </summary>
+    private static string ProbesCode() => SourceText.CodeWithoutComments(
+        "FileFlow.App.Uno/Controls/NodeInspectorPanel.Probes.cs");
+
+    /// <summary>
+    /// La sonda del sondeo en runtime que mide los dos paneles del host: vive en su propio archivo
+    /// (<c>SelfCheckPanels.cs</c>) desde el reorden del hito 276, no en el orquestador del sondeo. Ésta es la
+    /// casa de las líneas <c>insp.*</c>/<c>check(...)</c> que este caso cita como medida de runtime.
+    /// </summary>
+    private static string PanelsSelfCheckCode() => SourceText.CodeWithoutComments(
+        "FileFlow.App.Uno/SelfCheckPanels.cs");
+
     [Fact]
     public void InspectorPanel_ShouldConsumeThePortableInspectorViewModel()
     {
@@ -57,7 +74,8 @@ public class UnoInspectorPanelGuardTests
             "el desplegable es ComboBox atado a Value con Options del VM, como la fila 4 del escritorio");
 
         code.Should().Contain("else if (p.HasBrowseButton)",
-            "la ruta lleva el botón explorar (BrowsePathCommand), como la fila del escritorio");
+            "la ruta lleva el botón explorar (BrowsePathAsyncCommand: la variante asíncrona, porque este host "
+            + "abre sus pickers desde el clic de UI), como la fila del escritorio");
 
         code.Should().Contain("else if (p.IsMultiLine)",
             "el multilínea es TextBox con AcceptsReturn, como la fila del escritorio");
@@ -114,6 +132,76 @@ public class UnoInspectorPanelGuardTests
     }
 
     /// <summary>
+    /// El «Probar» se OFRECE sólo con un nodo inspeccionado (hito 274). Antes se dibujaba siempre y su condición era
+    /// sólo la de <c>Visibility</c> de la ficha, así que con la ficha abierta y ninguna tarjeta seleccionada quedaba
+    /// <b>ofrecido, habilitado y sin efecto</b>: el clic ejecutaba el comando, el comando encontraba
+    /// <c>InspectedNode == null</c> y volvía sin hacer nada. El defecto no era del botón sino de la condición que
+    /// decide qué se ofrece.
+    ///
+    /// <para><b>Qué se vigila</b>: que la oferta se decida en el estado de la ficha —<see cref="UpdateVisibility"/>—
+    /// junto al cuerpo y al texto de «sin selección», con la MISMA condición; que no se corrija deshabilitando (el
+    /// botón no debe ofrecerse, y un botón deshabilitado sigue ofreciéndose); y que el selfcheck recorra los dos
+    /// estados y mida la oferta, no sólo el cableado (la guardia que dejó pasar el botón inerte medía
+    /// <c>HasWiredTestButton</c>: que existiera y apuntara al comando del núcleo).</para>
+    /// </summary>
+    [Fact]
+    public void InspectorPanel_ShouldOfferTheTestButton_OnlyWithAnInspectedNode()
+    {
+        string code = PanelCode();
+
+        code.Should().Contain(
+            "bool hasNode = _inspected is not null;",
+            "la condición de estado se calcula una vez y manda sobre todo lo que se ofrece o no");
+
+        code.Should().Contain(
+            "_testButton.Visibility = isOpen && hasNode ? Visibility.Visible : Visibility.Collapsed;",
+            "el «Probar» sigue la MISMA condición que el cuerpo de la ficha: sin nodo no hay nada que probar, así "
+            + "que no se dibuja (la condición vive con las demás, no en el manejador del clic)");
+
+        code.Should().NotContain(
+            "_testButton.IsEnabled = false",
+            "no se corrige deshabilitando: un botón deshabilitado sigue ofreciéndose y el usuario no sabe por qué");
+
+        // Y la medición en runtime: la sonda recorre los dos estados por la propiedad del VM (el camino del arranque
+        // y el de la selección del lienzo) y mide si el botón se ofrece en cada uno. Sin esa medida, la guardia de
+        // cableado volvería a pasar con el botón mintiendo.
+        string selfcheck = PanelsSelfCheckCode();
+
+        selfcheck.Should().Contain(
+            "insp.ProbeTestButtonOffer(firstNode)",
+            "el selfcheck recorre los dos estados del «Probar»: sin nodo y con el nodo inspeccionado");
+
+        selfcheck.Should().Contain(
+            "!testOffer.OfferedWithoutNode",
+            "y afirma lo que faltaba: sin nodo el botón NO se ofrece (era el botón inerte del arranque)");
+    }
+
+    /// <summary>
+    /// El encabezado de la sección de PARÁMETROS sigue a sus editores (hito 274), la misma regla que el bloque de
+    /// acciones del hito 269: un encabezado sobre una lista vacía promete algo que no hay. Un nodo sin parámetros
+    /// —y sin nodo inspeccionado— deja el encabezado colapsado.
+    /// </summary>
+    [Fact]
+    public void InspectorPanel_ShouldCollapseTheParametersHeader_WhenTheNodeDeclaresNoParameters()
+    {
+        string code = PanelCode();
+
+        code.Should().Contain(
+            "_paramsHeader.Visibility = _paramsHost.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;",
+            "el encabezado se ata a los editores materializados: sin parámetros no promete una lista que no existe");
+
+        code.Should().Contain(
+            "_paramsHeader.Visibility = Visibility.Collapsed;",
+            "sin nodo inspeccionado el encabezado también se colapsa (el nodo anterior dejó de estar)");
+
+        string selfcheck = PanelsSelfCheckCode();
+
+        selfcheck.Should().Contain(
+            "insp.ParametersHeaderOffered == (paramEditors > 0)",
+            "el selfcheck compara el encabezado con la cuenta de editores del nodo inspeccionado");
+    }
+
+    /// <summary>
     /// Las ACCIONES del nodo en la ficha (hito 269): son la puerta a las superficies que declara el nodo —el
     /// gestor de presets, la configuración del VLM, el estudio de scripts, el diseñador de datasets— y hasta
     /// aquí vivían SÓLO en el panel plegable de la tarjeta del lienzo. La acción existía, el comando existía y
@@ -152,38 +240,22 @@ public class UnoInspectorPanelGuardTests
             "_actionsHost.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed",
             "el bloque se colapsa entero sin acciones: un encabezado sobre una lista vacía promete algo que no hay");
 
-        // Y la medición en runtime: la sonda cuenta los botones contra las acciones del nodo inspeccionado y
-        // localiza el primero por su ancla, que es lo que distingue «pintado» de «pintado y alcanzable».
-        string selfcheck = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
-
-        selfcheck.Should().Contain(
+        // Y la medición en runtime, cada mitad en su casa: el CENSO de botones lo mide el sondeo de los
+        // paneles (`SelfCheckPanels`), y la puerta de un nodo CON acciones —el botón localizado por su
+        // ancla— la mide el sondeo de los diálogos, sobre el transcodificador, en el orquestador.
+        PanelsSelfCheckCode().Should().Contain(
             "insp.ActionButtonCount",
             "el selfcheck compara los botones de acción materializados con las acciones del nodo: sin esa " +
             "medida, una ficha que no pintara ninguna acción pasaría desapercibida");
 
-        selfcheck.Should().Contain(
+        SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckDialogs.cs").Should().Contain(
             "inspector.ActionControl(\"ManageMediaPresets\")",
             "y comprueba, sobre el nodo que SÍ declara acciones, que el botón existe por su ancla " +
-            "(la puerta, no sólo el rótulo)");
+            "(la puerta, no sólo el rótulo): esa medida vive en el sondeo de los diálogos");
     }
 
-    [Fact]
-    public void InspectorPanel_ShouldShowTelemetryFromTheNodeViewModel()
-    {
-        string code = PanelCode();
-
-        code.Should().Contain(
-            "_inspected.CurrentStats",
-            "la telemetría sale de las estadísticas del NodeViewModel (el agregado del motor), no de un contador local");
-
-        code.Should().Contain(
-            "NodeTelemetryStats.Empty(_inspected.Id)",
-            "vaciar métricas pasa por la misma orden que el botón del escritorio (UpdateTelemetryStats con Empty)");
-
-        code.Should().Contain(
-            "_inspected.ExecutionStatusText",
-            "el estado del nodo es la propiedad localizada del VM");
-    }
+    // La TELEMETRÍA salió de este fichero en el hito 275: sus medidas y su montaje los vigila
+    // `UnoInspectorTelemetryGuardTests`, junto a la sección que los sirve (`NodeInspectorTelemetrySection`).
 
     [Fact]
     public void InspectorPanel_ShouldBuildSnapshotTabsFromTheNodeCollectionsAndTheCoreDiff()
@@ -216,7 +288,7 @@ public class UnoInspectorPanelGuardTests
             "las pestañas de snapshots siguen las colecciones del nodo por CollectionChanged (simetría " +
             "del contrato de vida, la lección del 227/232)");
 
-        string selfcheck = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
+        string selfcheck = PanelsSelfCheckCode();
 
         selfcheck.Should().Contain(
             "insp.ProbeSnapshotTabs()",
@@ -229,58 +301,34 @@ public class UnoInspectorPanelGuardTests
     {
         string code = PanelCode();
 
-        code.Should().Contain(
-            "foreach (var snapshot in _inspected.InputSnapshots)",
-            "la pestaña de ENTRADAS consume la colección de entradas del nodo: la separación es de " +
-            "vista, no de datos — no hay copia ni filtro del host que pueda divergir");
-
-        code.Should().Contain(
-            "foreach (var snapshot in _inspected.OutputSnapshots)",
-            "la pestaña de SALIDAS consume la colección de salidas del nodo (la MISMA tarjeta del " +
-            "241: paridad de presentación entre la combinada y las separadas)");
-
+        // Que las dos pestañas se alimenten de las colecciones del nodo (`foreach (var snapshot in
+        // _inspected.InputSnapshots/OutputSnapshots)`) lo vigila el caso de las pestañas de snapshots: decirlo
+        // otra vez aquí no añadía ninguna forma de romperse. Lo de ESTE caso es la paridad entre las tres
+        // vistas (la combinada y las separadas) y las anclas de la tira.
         code.Should().Contain(
             "RebuildAllSnapshotViews()",
             "un cambio en las colecciones reconstruye las TRES vistas: la combinada y las " +
             "separadas comparten dato y ninguna puede quedar congelada respecto de otra");
 
+        // Las anclas de las secciones (hito 273): Entradas y Salidas son dos de las cinco de la tira, cada
+        // una declarada con su ancla en la tabla y aplicada al botón que la conmuta — el censo de la tira
+        // (y su caja dentro de la ficha) es lo que la guardia del selfcheck mide.
         code.Should().Contain(
-            "AutomationProperties.SetAutomationId(inputsTab, \"InspectorTabInputs\")",
+            "(\"Uno_InspectorTabInputs\", \"Entradas\", \"InspectorTabInputs\")",
             "las pestañas separadas cantan su ancla para la observación UIA externa (InspectorTabInputs)");
 
         code.Should().Contain(
-            "AutomationProperties.SetAutomationId(outputsTab, \"InspectorTabOutputs\")",
+            "(\"Uno_InspectorTabOutputs\", \"Salidas\", \"InspectorTabOutputs\")",
             "la pestaña de Salidas con su ancla (InspectorTabOutputs)");
+
+        code.Should().Contain(
+            "AutomationProperties.SetAutomationId(button, aid)",
+            "cada sección recibe el AutomationId que declara la tabla: sin ese canal, la observación "
+            + "externa no alcanza ninguna de las cinco");
     }
 
-    [Fact]
-    public void TheUnoHost_ShouldExposeTheCanonicalExecuteCommand_AsAnObservableChannel()
-    {
-        string window = SourceText.CodeWithoutComments("FileFlow.App.Uno/MainWindow.xaml.cs");
-
-        window.Should().Contain(
-            "controlBar.ExecuteWorkflowCommand.ExecuteAsync(null)",
-            "el Ejecutar del host Uno es el MISMO comando del ControlBar del núcleo que el botón " +
-            "del escritorio: una segunda vía de ejecución duplicaría la orquestación (coordinador, " +
-            "dry-run, checkpoint) que la suite ya defiende");
-
-        window.Should().Contain(
-            "AutomationProperties.SetAutomationId(runButton, \"ExecuteButton\")",
-            "el botón canta su AutomationId para la observación UIA externa (el guion del ciclo " +
-            "completo lo localiza por ancla estable, no por título)");
-
-        window.Should().Contain(
-            "StatusLineWriter.Padded(line)",
-            "la línea de ejecución vive en el canal del writer (renglón padded, escritura " +
-            "atómica): el estado de la ejecución es legible desde fuera sin fragmentado");
-
-        string writer = SourceText.CodeWithoutComments("FileFlow.App.Uno/StatusLineWriter.cs");
-
-        writer.Should().Contain(
-            "File.WriteAllText(CurrentExecutionStatusFile, line)",
-            "el fichero espejo es la segunda vía de lectura del ciclo para un observador externo " +
-            "(la que no depende del fragmentado del TextBlock en el árbol UIA)");
-    }
+    // El «Ejecutar» del host y su canal observable salieron de este fichero en el reorden del hito 276: su
+    // sujeto es la barra de control y la franja de estado, y viven en `UnoControlBarParityGuardTests`.
 
     [Fact]
     public void TheInspectorParityTable_ShouldCiteRealSuiteTests()
@@ -316,7 +364,7 @@ public class UnoInspectorPanelGuardTests
             "selfcheck: la edición escribe al NodeInstance ('Width' = '__probe__')"),
         ("La telemetría del nodo llega al panel",
             "InspectNode_ShouldComputeMetadataDiff_WhenInputAndOutputSnapshotsExist",
-            "selfcheck: bloque de telemetría con CurrentStats y estado del VM"),
+            "selfcheck: la sección de Telemetría —montada en su pestaña— pinta sus filas desde CurrentStats y el estado del VM"),
         ("El «Probar» ejecuta la prueba aislada con fichero",
             "TestNodeWithCustomFileAsync_ShouldPickThroughTheAsyncDialogVariant",
             "selfcheck: el botón existe, con su AutomationId, atado al comando canónico del núcleo"),

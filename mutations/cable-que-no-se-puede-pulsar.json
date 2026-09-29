@@ -1,0 +1,26 @@
+{
+  "id": "cable-que-no-se-puede-pulsar",
+  "hito": 280,
+  "claim": "El CABLE del lienzo se puede SELECCIONAR para borrar su conexión: cada cable lleva su diana (la misma Bézier con un trazo grueso e invisible) en una capa alcanzable por el puntero, y el menú que esa diana abre lleva la orden del NÚCLEO (DeleteCommand) con su rótulo del diccionario — la misma que cumple el menú del cable del escritorio, con su undo.",
+  "why": "Es el defecto que reportó el usuario: «no puedo seleccionar las conexiones para borrarlas». El cable era un Path de 3,5 px dentro de una capa IsHitTestVisible=False, así que no existía para el ratón y el clic derecho caía al fondo del lienzo y PANEABA. El mutante quita la DIANA (deja el cable dibujado y sin nada que pulsar): el usuario vuelve a ver el cable y a no poder borrarlo, que es exactamente el síntoma del informe.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.Wires.cs",
+      "replacements": [
+        {
+          "old": "            // La DIANA del cable: la MISMA Bézier con un trazo grueso e invisible. Sin ella el cable no\n            // existe para el puntero (un trazo de 3,5 px no es una diana, y la capa no era alcanzable),\n            // y el usuario que quería borrar la conexión no tenía sobre qué pulsar: el clic derecho caía\n            // al fondo del lienzo y **paneaba**. Es la mitad que hace seleccionable lo que se ve.\n            // La figura se construye DOS veces a propósito: una `Geometry` de WinUI no se puede compartir\n            // entre dos `Path` —medido: la segunda asignación levanta `ArgumentException` y la capa se queda\n            // dibujada a medias—, así que la diana traza su propia Bézier desde el MISMO `wire` del núcleo.\n            var hit = new Microsoft.UI.Xaml.Shapes.Path\n            {\n                Stroke = new SolidColorBrush(Microsoft.UI.Colors.Transparent),\n                StrokeThickness = WireHitThickness,\n                Data = CreateWireGeometry(wire)\n            };\n            AutomationProperties.SetAutomationId(hit, WireHitAnchor);\n            AutomationProperties.SetName(hit, WireLabel(connection));\n\n            // El botón derecho sobre el cable NO es un pan: el menú del cable manda (igual que en el\n            // escritorio, donde el clic derecho abre el suyo antes que el desplazamiento del lienzo). El\n            // IZQUIERDO marca el cable —y con Ctrl lo AÑADE a los que ya estén marcados—: eso es lo que hace\n            // visible, y borrable con Supr, una conexión.\n            hit.PointerPressed += (_, e) => OnWirePressed(connection, e);\n            hit.RightTapped += (_, e) =>\n            {\n                ShowWireMenuAt(connection, e.GetPosition(RootGrid));\n                e.Handled = true;\n            };\n\n            WireLayer.Children.Add(hit);\n",
+          "new": "            // mutante: el cable se ve y no se puede pulsar\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheWire_ShouldBeSelectableToBeDeleted_ThroughTheCoreOrder",
+    "why": "El caso exige la capa hit-testeable, la diana (trazo grueso y transparente, con la MISMA figura que el cable) y la orden del núcleo con su rótulo del diccionario: con el mutante la diana desaparece del fuente y el caso cae nombrando la pieza que hace seleccionable lo que se ve."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheAnchorMeasurement_ShouldTransformTheCenter_NotSumIt",
+    "why": "La MEDIDA de la ancla del cable (que el centro del socket se transforme con el plano, y no que se le sume) no comparte camino con la diana: el mutante quita la pieza que se pulsa y deja intacto el cálculo de las anclas con el que se traza el cable. (El caso de la FIGURA no vale como control: cuenta los trazados del núcleo y la diana añade uno, así que cae con el mutante por una razón que no es la suya —medido, y así se rechazó la primera versión de esta declaración—.)"
+  }
+}

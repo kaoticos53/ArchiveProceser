@@ -28,7 +28,7 @@ namespace FileFlow.Tests.Unit.App;
 public class UnoHitTestSpaceGuardTests
 {
     private const string CanvasCodePath = "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs";
-    private const string SelfCheckPath = "FileFlow.App.Uno/RuntimeSelfCheck.cs";
+    private const string SelfCheckPath = "FileFlow.App.Uno/SelfCheckCanvas.cs";
     private const string MutationPath = "mutations/hit-test-en-el-espacio-equivocado.json";
     private const string HitTestApi = "FindElementsInHostCoordinates(";
 

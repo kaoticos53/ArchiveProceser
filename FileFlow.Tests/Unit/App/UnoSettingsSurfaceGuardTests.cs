@@ -33,7 +33,7 @@ public class UnoSettingsSurfaceGuardTests
     private const string PanelCode = "FileFlow.App.Uno/Controls/SettingsPanel.xaml.cs";
     private const string WindowService = "FileFlow.App.Uno/Platform/UnoWindowService.cs";
     private const string BodyCode = "FileFlow.App.Uno/Controls/AiModelUrlsConfigBody.xaml.cs";
-    private const string SelfCheckCode = "FileFlow.App.Uno/RuntimeSelfCheck.cs";
+    private const string SelfCheckCode = "FileFlow.App.Uno/SelfCheckSettings.cs";
     private const string AppCode = "FileFlow.App.Uno/App.xaml.cs";
     private const string StringsEnglish = "FileFlow.App.Uno/Resources/Strings.resx";
     private const string StringsSpanish = "FileFlow.App.Uno/Resources/Strings.es.resx";
@@ -474,12 +474,12 @@ public class UnoSettingsSurfaceGuardTests
         Code(AppCode).Should().Contain("\"--selfcheck-settings\"",
             "la superficie de ajustes se mide en su propio modo: su medición cambia tema e idioma (estado global) " +
             "y los sondeos del lienzo no toleran esa mudanza a mitad");
-        Code(AppCode).Should().Contain("RuntimeSelfCheck.RunSettingsProbe(",
+        Code(AppCode).Should().Contain("SelfCheckSettings.Run(",
             "el modo propio llama al corredor del sondeo de ajustes");
 
         string selfCheck = Code(SelfCheckCode);
-        selfCheck.Should().Contain("public static int RunSettingsProbe(Window window, DispatcherQueue dispatcher)",
-            "el corredor del sondeo de ajustes existe y es el único dueño de sus dos tiempos");
+        selfCheck.Should().Contain("public static int Run(Window window, DispatcherQueue dispatcher)",
+            "el corredor del sondeo de ajustes existe en SU archivo y es el único dueño de sus dos tiempos");
         selfCheck.Should().Contain("panel.OpenForMeasurement()",
             "primer tiempo: desplegar y dejar a la vista la sección que se va a medir");
         selfCheck.Should().Contain("result = panel.ProbeSettingsSurface();",
@@ -489,18 +489,11 @@ public class UnoSettingsSurfaceGuardTests
             "está vivo en el mismo callback (medido)");
 
         // El sondeo del lienzo NO corre la sonda de ajustes (medido: conviviendo se caen la sonda de selección,
-        // la de paneles y la de foco, que no tienen nada que ver con los ajustes). Se mira el CUERPO de Inspect
-        // —de su firma al miembro siguiente— y no el fichero entero: el corredor del sondeo de ajustes vive en
-        // este mismo fichero, así que buscarlo en todo el texto confundiría «otro método del fichero» con «el
-        // sondeo del lienzo», y el lint dejaría de significar lo que dice.
-        const string inspectSignature = "private static bool Inspect(Window window, StringBuilder report)";
-        int inspectStart = selfCheck.IndexOf(inspectSignature, StringComparison.Ordinal);
-        int inspectEnd = selfCheck.IndexOf("private static int CountWirePaths", inspectStart, StringComparison.Ordinal);
-        inspectStart.Should().BeGreaterThan(0, "el sondeo del lienzo tiene que existir para poder mirarlo");
-        inspectEnd.Should().BeGreaterThan(inspectStart, "y su cuerpo acaba donde empieza el miembro siguiente");
-
-        selfCheck[inspectStart..inspectEnd].Should().NotContain("ProbeSettingsSurface",
-            "el sondeo del lienzo NO corre la sonda de ajustes: su medición mueve tema e idioma, que es estado " +
+        // la de paneles y la de foco, que no tienen nada que ver con los ajustes). Antes de la partición del
+        // hito 276 los dos corredores convivían en un mismo fichero y había que mirar el CUERPO de Inspect para
+        // verlo; ahora cada modo vive en su archivo, así que la separación se lee de un vistazo.
+        SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckCanvas.cs").Should().NotContain("SelfCheckSettings",
+            "el sondeo del lienzo NO llama al de ajustes: su medición mueve tema e idioma, que es estado " +
             "global, y las sondas del lienzo no toleran esa mudanza a mitad");
 
         Code(PanelCode).Should().Contain("internal bool OpenForMeasurement()",

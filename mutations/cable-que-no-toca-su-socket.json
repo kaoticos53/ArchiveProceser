@@ -5,7 +5,7 @@
   "why": "El usuario reportó que al mover o ajustar el zoom las líneas de conexión se desplazaban quedando fuera de su sitio, con rulos con forma de «2» entre tarjetas. La sonda ProbeWireTracking lo midió en la app viva: el extremo dibujado del cable estaba a 45,0 px del centro de su socket. La causa es la forma del trazo: el control de Nodify retira las puntas spacing y une las anclas con dos tramos rectos, y la primera versión del host sólo copió la Bézier —queda separada del socket—; la segunda copió también los tramos y el resultado se leía como una Z. El arreglo deja la curva naciendo en el ancla y sin tramos rectos. El mutante devuelve el defecto original: la figura abre en el cuello de salida y cierra en el de llegada. Es un defecto que el suite no puede ver por comportamiento —el lienzo es WinUI y no se materializa—, así que el testigo censa cómo se construye la figura, la sonda lo mide en la app viva y la prueba de comportamiento vive en el núcleo portable (ConnectionGeometry.WirePath).",
   "edits": [
     {
-      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.Wires.cs",
       "replacements": [
         {
           "old": "            StartPoint = ToWindowsPoint(wire.Source),",

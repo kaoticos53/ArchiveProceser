@@ -1,0 +1,26 @@
+{
+  "id": "borrado-que-deja-los-nodos",
+  "hito": 287,
+  "claim": "Supr borra LA SELECCIÓN ENTERA como UNA operación: los cables marcados y los nodos elegidos, con los cables que caen por ellos, y un solo Ctrl+Z la devuelve entera. Es lo que necesita una selección hecha de una vez (el rectángulo de selección marca nodos y cables a la vez).",
+  "why": "Antes eran dos caminos excluyentes: si había un cable marcado, el Supr se llevaba los cables y DEJABA los nodos. Con una selección mixta —lo que deja el rectángulo— el usuario tenía que borrar en dos tandas (y deshacer otras dos). El mutante devuelve esa condición (los nodos sólo caen cuando no hay ningún cable marcado): el cable se borra y el nodo se queda, que es el defecto declarado al revés.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/EditorViewModel.cs",
+      "replacements": [
+        {
+          "old": "        if (nodes.Count > 0)\n        {\n            DeleteNodesWithTheirConnections(nodes);\n            wires = wires.Where(Connections.Contains).ToList();\n        }\n",
+          "new": "        if (nodes.Count > 0 && wires.Count == 0)\n        {\n            DeleteNodesWithTheirConnections(nodes);\n            wires = wires.Where(Connections.Contains).ToList();\n        }\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~SuprConSeleccionMixta_ShouldTakeNodesAndWires_WithOneUndo",
+    "why": "El caso elige un nodo y marca su cable, ejecuta el Supr y exige que los dos caigan (y que un solo deshacer los devuelva): con el mutante el nodo se queda en el grafo y el caso cae nombrando lo que el borrado tenía que llevarse."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~SuprSobreLosCablesMarcados_ShouldDeleteThemAll_AndOneUndoShouldBringThemBack",
+    "why": "El borrado de SÓLO cables marcados (sin ningún nodo elegido) no pasa por la rama que el mutante apaga: la condición que el mutante añade (`wires.Count == 0`) es justo el caso en el que no hay cables, así que este control sigue verde y la mutación rompe lo que dice romper y nada más."
+  }
+}

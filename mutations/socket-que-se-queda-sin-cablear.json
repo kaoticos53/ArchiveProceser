@@ -1,0 +1,26 @@
+{
+  "id": "socket-que-se-queda-sin-cablear",
+  "hito": 278,
+  "claim": "Cada tarjeta materializada del lienzo Uno queda CABLEADA: el gesto de sus puertos se sube al lienzo por SocketRequested. La vista se busca en el ÁRBOL VISUAL del contenedor y el cableado se hace en el pase de layout que ya tiene contenedores, no en Rebuild —donde el ItemsSource acaba de asignarse y todavía no hay ninguna vista—.",
+  "why": "Es el defecto que reportó el usuario como «no pasa nada»: al pulsar un puerto la tarjeta entraba en su handler y el evento moría sin suscriptor, así que no arrancaba ningún cable. El mutante vuelve al camino viejo —buscar la vista en el Content del contenedor, que es el NodeCardViewModel— y con eso la comparación no puede dar true nunca: ninguna tarjeta queda cableada.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "            if (FirstDescendant<NodeCardView>(pair.Value) is not { } view",
+          "new": "            if (pair.Value.Content is not NodeCardView view",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheSocketGesture_ShouldStartFollowAndDropTheCable_AndCancelWhatDoesNotLand",
+    "why": "El caso exige que la vista se busque en el árbol visual del contenedor (y que el cableado ocurra en el pase de layout): con el mutante esa línea desaparece del fuente y el caso cae nombrando el camino que dejaba el evento sin suscriptor."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor",
+    "why": "La figura del cable no comparte camino con el cableado de los sockets: el mutante cambia cómo se localiza la vista de la tarjeta y deja la construcción de la Bézier intacta, así que este control tiene que seguir verde."
+  }
+}

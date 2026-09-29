@@ -13,7 +13,7 @@
           "count": 1
         },
         {
-          "old": "        bool wantsPresets = p.IsMediaPreset;\n        if (!wantsEditor && !wantsVariables && !wantsPresets)",
+          "old": "        bool wantsPresets = p.IsMediaPreset;\n        bool wantsPassword = p.IsPasswordList;\n        if (!wantsEditor && !wantsVariables && !wantsPresets && !wantsPassword)",
           "new": "        if (!wantsEditor && !wantsVariables)",
           "count": 1
         }

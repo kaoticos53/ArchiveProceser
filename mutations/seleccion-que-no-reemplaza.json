@@ -1,0 +1,26 @@
+{
+  "id": "seleccion-que-no-reemplaza",
+  "hito": 285,
+  "claim": "Pulsar en el lienzo REEMPLAZA la selección: el clic sin Ctrl suelta lo que estuviera elegido —los demás nodos y los cables marcados— antes de marcar lo pulsado, y sólo el Ctrl AÑADE. Es la regla que el usuario pidió («que al seleccionar con el botón izquierdo sólo se seleccione un elemento, es decir que se deseleccionen los demás, excepto pulsando Control que se añadirían las selecciones»), decidida en el núcleo (EditorViewModel.SelectNode) para que la cumplan el clic y el rectángulo de selección.",
+  "why": "El defecto que la pide es de gesto: el clic en una tarjeta AÑADÍA a la selección en vez de reemplazarla, así que el Supr se llevaba de más. El mutante quita el bloque que suelta lo anterior (SelectNode pasa a ser siempre aditivo): el clic vuelve a acumular selección y el usuario no puede quedarse con un solo elemento elegido sin recurrir al Ctrl, que es el síntoma reportado al revés.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Core/ViewModels/EditorViewModel.cs",
+      "replacements": [
+        {
+          "old": "    public void SelectNode(NodeViewModel node, bool add = false)\n    {\n        if (!add)\n        {\n            SelectedConnections.Clear();\n\n            foreach (var other in Nodes.Where(n => n.IsSelected && !ReferenceEquals(n, node)))\n            {\n                other.IsSelected = false;\n            }\n        }\n\n        node.IsSelected = true;\n",
+          "new": "    public void SelectNode(NodeViewModel node, bool add = false)\n    {\n        node.IsSelected = true;\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~PulsarUnNodo_ShouldReplaceTheSelection_AndControlShouldAddToIt",
+    "why": "El caso mide las dos mitades de la regla en el núcleo: pulsar el segundo nodo tiene que dejar UNO elegido (y el segundo, no el primero), y el Ctrl tiene que dejar los dos. Con el mutante el primer nodo se queda elegido y el caso cae nombrando lo que la regla tenía que soltar."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~SuprSobreLosCablesMarcados_ShouldDeleteThemAll_AndOneUndoShouldBringThemBack",
+    "why": "El borrado en lote de los cables marcados (con su undo) no pasa por SelectNode: los cables se marcan con SelectConnection, que tiene su propio reemplazo, así que el mutante del nodo lo deja intacto y la mutación rompe lo que dice romper y nada más."
+  }
+}

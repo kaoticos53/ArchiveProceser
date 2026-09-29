@@ -184,7 +184,10 @@ public static class EditorKeyboardShortcuts
                 editor.DuplicateSelectedNodesCommand.Execute(null);
             return true;
             case ShortcutKey.Delete:
-                editor.DeleteSelectedNodesCommand.Execute(null);
+                // Supr borra LA SELECCIÓN ENTERA —los cables marcados y los nodos elegidos, con lo que cuelga
+                // de ellos— como UNA operación: una selección hecha de una vez (el rectángulo marca las dos
+                // cosas) se borra de una vez y se deshace de una vez. Sin nada elegido, no hace nada.
+                editor.DeleteSelectionCommand.Execute(null);
                 return true;
             case ShortcutKey.Rename:
                 var selected = editor.Nodes.FirstOrDefault(n => n.IsSelected);

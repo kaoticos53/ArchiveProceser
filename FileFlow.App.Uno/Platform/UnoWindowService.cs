@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using FileFlow.App.Services;
 using FileFlow.App.Uno.Controls;
 using FileFlow.App.ViewModels;
+using FileFlow.Plugin.Archives.UI.ViewModels;
 using FileFlow.Plugin.FileSystem.UI.ViewModels;
 using FileFlow.Plugin.Integrations.UI.ViewModels;
 using FileFlow.Sdk.Localization;
@@ -60,6 +61,7 @@ public sealed class UnoWindowService : IWindowService
         (DialogKeys.DataSetDesigner, nameof(DataSetDesignerBody)),
         (DialogKeys.AiModelUrlsConfig, nameof(AiModelUrlsConfigBody)),
         (DialogKeys.MediaPresetManager, nameof(MediaPresetManagerBody)),
+        (DialogKeys.PasswordManager, nameof(PasswordManagerBody)),
     ];
 
     /// <summary>
@@ -89,6 +91,9 @@ public sealed class UnoWindowService : IWindowService
 
     /// <summary>El cuerpo del gestor de presets abierto (null si el diálogo abierto no es ese).</summary>
     internal static MediaPresetManagerBody? ActivePresetManager => Body<MediaPresetManagerBody>();
+
+    /// <summary>El cuerpo del gestor de contraseñas abierto (null si el diálogo abierto no es ese).</summary>
+    internal static PasswordManagerBody? ActivePasswordManager => Body<PasswordManagerBody>();
 
     /// <summary>
     /// El cuerpo del tipo pedido, dentro del modal abierto. Mientras hay una PREGUNTA en pantalla el cuerpo vive
@@ -149,6 +154,18 @@ public sealed class UnoWindowService : IWindowService
             case DialogKeys.MediaPresetManager:
                 Decline(dialogKey, "el gestor de presets necesita el view model portable que declara el nodo "
                     + "(MediaPresetManagerViewModel) como carga útil y llegó "
+                    + (payload?.GetType().Name ?? "null"));
+                return new DialogResultPayload { Confirmed = false };
+
+            // El GESTOR DE CONTRASEÑAS: la orden de la fila del parámetro y la acción personalizada de la
+            // tarjeta del nodo lo piden por AQUÍ —esperan la vuelta para resincronizar los parámetros— con el
+            // view model PORTABLE que declaran los nodos de descompresión del plugin de archivos.
+            case DialogKeys.PasswordManager when payload is PasswordManagerViewModel passwordManager:
+                return await ShowPasswordManagerAsync(passwordManager, root);
+
+            case DialogKeys.PasswordManager:
+                Decline(dialogKey, "el gestor de contraseñas necesita el view model portable que declara el nodo "
+                    + "(PasswordManagerViewModel) como carga útil y llegó "
                     + (payload?.GetType().Name ?? "null"));
                 return new DialogResultPayload { Confirmed = false };
 
@@ -397,6 +414,45 @@ public sealed class UnoWindowService : IWindowService
 
         await RunAsync(dialog, DialogKeys.MediaPresetManager);
         return new DialogResultPayload { Confirmed = true };
+    }
+
+    /// <summary>
+    /// El GESTOR DE CONTRASEÑAS: la vista del <see cref="PasswordManagerViewModel"/> portable —el MISMO view model
+    /// con el que el escritorio monta su ventana—, pedida por la MISMA acción que el botón de la fila del
+    /// parámetro y el de la tarjeta del nodo (<c>ManagePasswords</c>).
+    ///
+    /// <para><b>Dónde queda escrito el cambio</b>: en el parámetro <c>PasswordList</c> del nodo, porque lo escribe
+    /// el view model portable —su vuelta llama al nodo que lo declaró—. Esta vista no toca el nodo: sólo enseña lo
+    /// que el view model publica.</para>
+    ///
+    /// <para><b>Qué cierra el modal</b>: su botón primario guarda la lista y el de cerrar (o Escape) descarta, que
+    /// son las dos salidas del escritorio; el guardado es del view model y no de esta vista.</para>
+    /// </summary>
+    private static async Task<DialogResultPayload?> ShowPasswordManagerAsync(PasswordManagerViewModel manager, XamlRoot root)
+    {
+        var loc = LocalizationManager.Instance;
+        var body = new PasswordManagerBody(manager);
+
+        var dialog = new ContentDialog
+        {
+            Title = loc.GetString("PasswordManager_WindowTitle", "Gestor de Claves y Contraseñas"),
+            Content = body,
+            PrimaryButtonText = loc.GetString("PasswordManager_SaveKeys", "✅ Guardar Claves"),
+            CloseButtonText = loc.GetString("Common_Cancel", "✕ Cancelar"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = root,
+        };
+
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(dialog, DialogKeys.PasswordManager);
+
+        ContentDialogResult result = await RunAsync(dialog, DialogKeys.PasswordManager);
+        if (result != ContentDialogResult.Primary)
+        {
+            return new DialogResultPayload { Confirmed = false };
+        }
+
+        manager.Save();
+        return new DialogResultPayload { Confirmed = true, Value = manager.PasswordsText };
     }
 
     /// <summary>

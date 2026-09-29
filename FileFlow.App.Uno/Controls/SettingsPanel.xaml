@@ -1,7 +1,8 @@
 <UserControl
     x:Class="FileFlow.App.Uno.Controls.SettingsPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:FileFlow.App.Uno.Controls">
 
   <!--
     La superficie de AJUSTES del host Uno: las mismas cuatro secciones que la ventana de ajustes del
@@ -66,8 +67,11 @@
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
 
-          <!-- Conmutador de secciones -->
-          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6">
+          <!-- Conmutador de secciones: se PARTE en filas (hito 272). En una sola línea, los seis
+               rótulos pedían ~886 px lógicos contra los 772 del panel de 800, así que la pestaña
+               «Actualizaciones» quedaba recortada contra el borde —rectángulo vacío, sin scroll y
+               con la rueda sin efecto—: la sección existía para el view model y no para el ratón. -->
+          <controls:WrapPanel Grid.Row="0" Spacing="6">
             <RadioButton x:Name="StorageTabButton" GroupName="SettingsSections" IsChecked="True"
                          FontSize="12" Padding="10,4" Tag="Storage"
                          Click="OnSectionClicked"
@@ -92,7 +96,7 @@
                          FontSize="12" Padding="10,4" Tag="Updates"
                          Click="OnSectionClicked"
                          AutomationProperties.AutomationId="SettingsTabUpdates" />
-          </StackPanel>
+          </controls:WrapPanel>
 
           <!-- Los seis cuerpos, todos materializados (sólo cambia la visibilidad) -->
           <Grid Grid.Row="1">

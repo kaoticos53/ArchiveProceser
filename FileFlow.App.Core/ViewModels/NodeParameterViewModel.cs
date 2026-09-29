@@ -453,21 +453,47 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         // Opciones gestionadas por el descriptor del nodo
     }
 
+    /// <summary>
+    /// Abre el GESTOR DE CONTRASEÑAS del nodo por el camino que este host pueda cumplir.
+    ///
+    /// <para><b>Por qué hay dos caminos.</b> El botón «🔑» de la fila del parámetro y el de la tarjeta del nodo
+    /// llaman a la MISMA acción (<c>ManagePasswords</c>), y esa acción, en el host que tiene el toolkit del
+    /// plugin, monta la ventana del plugin. Un host que no lo tiene no puede montarla: por eso el nodo declara la
+    /// superficie al SDK (<see cref="INodeDialogSurfaceProvider"/>, con su clave del catálogo y su view model
+    /// portable) y dice qué acción sustituye. Cuando la declara, la sirve el servicio de ventanas del host —el
+    /// ÚNICO que sabe pintar en este host— sobre ese mismo view model; cuando no, se cae al camino del toolkit,
+    /// que es el del escritorio. La lógica del gestor no se duplica: cambia quién la pinta.</para>
+    ///
+    /// <para>La vuelta también importa: al cerrarse la superficie se resincronizan los parámetros del nodo,
+    /// porque la lista de claves es del nodo —la escribe el view model por la vuelta que le dio quien lo abrió—
+    /// y la fila tiene que enseñarla.</para>
+    /// </summary>
     [RelayCommand]
-    public void OpenPasswordManager()
+    public async Task OpenPasswordManagerAsync()
     {
+        const string ActionId = "ManagePasswords";
+
         try
         {
+            // Los avisos del contenido salen por el servicio de diálogos de ESTE host, no por el nulo: el nodo
+            // no puede resolverlo (no conoce la UI del host) y se lo pasa quien abre.
+            var context = new NodeCustomActionContext(
+                _windows.MainWindowOwner,
+                () => NodeOwner?.SyncParametersFromNodeInstance(),
+                _dialogService);
+
+            if (NodeOwner?.NodeInstance is INodeDialogSurfaceProvider surface
+                && surface.ReplacesCustomActionId is { } replaced
+                && string.Equals(replaced, ActionId, StringComparison.OrdinalIgnoreCase))
+            {
+                await _windows.ShowDialogAsync(surface.DialogKey, surface.CreateDialogPayload(context));
+                NodeOwner?.SyncParametersFromNodeInstance();
+                return;
+            }
+
             if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
             {
-                // El gestor de contraseñas es una VENTANA DEL ESCRITORIO: en un host sin su toolkit el nodo no la
-                // monta y lo DECLARA por los diálogos de quien lo abrió (hito 268). El contexto tiene que llevar
-                // el servicio del host —el mismo `_dialogService` de esta fila— o la declaración cae al nulo
-                // declarado: el botón «🔑» no abre nada y no avisa (el defecto del hito 270).
-                provider.ExecuteCustomAction("ManagePasswords", new NodeCustomActionContext(
-                    _windows.MainWindowOwner,
-                    () => NodeOwner?.SyncParametersFromNodeInstance(),
-                    _dialogService));
+                provider.ExecuteCustomAction(ActionId, context);
                 if (NodeOwner.NodeInstance.Parameters.TryGetValue(Key, out var updatedVal))
                 {
                     Value = updatedVal;
@@ -849,15 +875,51 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void BrowsePath()
     {
-        var title = $"Seleccionar {(IsFolderPath ? "directorio" : "archivo")} para '{Key}'";
+        var (title, filter) = BrowsePathRequest();
         var picked = IsFolderPath
             ? _files.ShowFolderBrowserDialog(title)
-            : _files.ShowOpenFileDialog(title, "Todos los archivos|*.*");
+            : _files.ShowOpenFileDialog(title, filter);
         if (!string.IsNullOrEmpty(picked))
         {
             Value = picked;
         }
     }
+
+    /// <summary>
+    /// La variante ASÍNCRONA del explorador de rutas: el mismo título, el mismo filtro y la misma decisión
+    /// carpeta/fichero que <see cref="BrowsePath"/>, sin bloquear el hilo llamador.
+    ///
+    /// <para><b>Por qué existe</b>: el host Uno abre sus pickers DESDE el clic de UI, y allí la variante
+    /// síncrona no puede funcionar — los pickers de WinRT exigen el hilo de UI y bloquearlo interbloquearía, así
+    /// que el servicio de ese host devuelve null (declarado)—: el botón «…» de una fila de ruta quedaba
+    /// dibujado, cableado y <b>sin efecto</b> (medido con el ratón). La variante asíncrona es la que ese host ya
+    /// usa para el «Probar» del inspector, y la puerta la abre aquí el núcleo, no una copia de la lógica en el
+    /// host. El escritorio sigue usando la síncrona.</para>
+    /// </summary>
+    public async Task BrowsePathAsync()
+    {
+        var (title, filter) = BrowsePathRequest();
+        var picked = IsFolderPath
+            ? await _files.ShowFolderBrowserDialogAsync(title)
+            : await _files.ShowOpenFileDialogAsync(title, filter);
+        if (!string.IsNullOrEmpty(picked))
+        {
+            Value = picked;
+        }
+    }
+
+    /// <summary>
+    /// El comando de la variante asíncrona. Se publica a mano porque el generador de <c>[RelayCommand]</c>
+    /// recorta el sufijo «Async» del nombre del método y generaría <c>BrowsePathCommand</c> otra vez —el
+    /// mismo nombre que el síncrono—: aquí la variante asíncrona tiene que ser distinguible por quien la ata.
+    /// </summary>
+    private AsyncRelayCommand? _browsePathAsync;
+
+    public IAsyncRelayCommand BrowsePathAsyncCommand => _browsePathAsync ??= new AsyncRelayCommand(BrowsePathAsync);
+
+    /// <summary>El título y el filtro del explorador de rutas: una sola decisión para las dos variantes.</summary>
+    private (string Title, string Filter) BrowsePathRequest() =>
+        ($"Seleccionar {(IsFolderPath ? "directorio" : "archivo")} para '{Key}'", "Todos los archivos|*.*");
 
     public void Dispose()
     {

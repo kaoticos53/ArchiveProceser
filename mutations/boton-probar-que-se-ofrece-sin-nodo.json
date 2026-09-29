@@ -1,0 +1,26 @@
+{
+  "id": "boton-probar-que-se-ofrece-sin-nodo",
+  "hito": 274,
+  "claim": "El «Probar» de la ficha del inspector se OFRECE sólo con un nodo inspeccionado: la oferta se decide en el estado de la ficha —junto al cuerpo y al texto de «sin selección», con la misma condición—, así que sin nodo no se dibuja y con nodo queda dibujado y habilitado.",
+  "why": "El defecto se midió con el ratón sobre la app abierta: en el estado del arranque (ficha abierta, ninguna tarjeta seleccionada) el botón estaba dibujado y habilitado, y al pulsarlo no ocurría absolutamente nada — el comando canónico del núcleo encontraba InspectedNode == null y volvía sin hacer nada. El botón mentía porque su oferta no dependía del estado: la guardia del cableado (que existiera y apuntara al comando) pasaba igual. El mutante devuelve la oferta incondicional: el botón se dibuja siempre y el caso que vigila la oferta cae.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "        _testButton.Visibility = isOpen && hasNode ? Visibility.Visible : Visibility.Collapsed;\n",
+          "new": "        // mutante: el «Probar» se ofrece con la ficha, tenga o no nodo inspeccionado\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~InspectorPanel_ShouldOfferTheTestButton_OnlyWithAnInspectedNode",
+    "why": "El caso exige que la oferta del botón siga la MISMA condición del cuerpo de la ficha (isOpen && hasNode) y que el selfcheck recorra los dos estados midiendo la oferta; con el mutante la asignación desaparece y el caso cae nombrando la condición que falta. Es el caso que faltaba: el botón inerte pasaba la guardia del cableado."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~InspectorPanel_ShouldWireTheTestButtonThroughTheCanonicalCoreCommand",
+    "why": "El caso hermano vigila el CABLEADO (el comando canónico del núcleo, el AutomationId y la variante asíncrona del diálogo), que el mutante no toca: quita la condición de la oferta, no la orden. Si cayera, el mutante estaría rompiendo el botón y no su condición de estado."
+  }
+}

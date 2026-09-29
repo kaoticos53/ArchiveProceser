@@ -35,6 +35,15 @@ public static class DialogKeys
     /// mismo almacén de presets (el que lee el motor de transcodificación).
     /// </summary>
     public const string MediaPresetManager = "MediaPresetManager";
+
+    /// <summary>
+    /// El Gestor de Contraseñas: la superficie que declaran los nodos de descompresión del plugin de archivos
+    /// (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). En el escritorio la monta el
+    /// propio plugin con su toolkit; en un host sin el toolkit del escritorio se sirve con la vista de ESE host
+    /// sobre el mismo view model portable que declara el nodo, que es quien escribe la lista de claves en el
+    /// parámetro del nodo.
+    /// </summary>
+    public const string PasswordManager = "PasswordManager";
 }
 
 /// <summary>

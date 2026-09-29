@@ -1,0 +1,26 @@
+{
+  "id": "gesto-de-puerto-que-no-conecta",
+  "hito": 278,
+  "claim": "El GESTO DEL CABLE tiene tres tiempos con una casa cada uno —pulsar un puerto arranca el cable atado a su ancla, mover el puntero lo dibuja y resuelve el destino, y soltar lo cierra—: soltarlo sobre un puerto COMPATIBLE crea la conexión por el comando del núcleo, y sin destino (vacío, incompatible o Escape) la cancela dejando la capa y el pendiente limpios.",
+  "why": "Es el desenlace que el usuario no tenía: al pulsar un puerto o se arrastraba la tarjeta o no pasaba nada, así que no podía cablear ningún flujo. El mutante cambia UNA línea —el soltar deja de conectar y cancela siempre— y con eso el gesto vuelve a ser el que el usuario reportó: pulsar arranca el cable y mover lo dibuja, pero soltar sobre el destino compatible no crea nada. El host Uno es WinUI y no se materializa en la sesión de pruebas (su fuente es lo que se censa), y el puntero inyectado entrega pulsaciones pero no movimientos, así que el testigo censa el camino del gesto y la sonda ProbeSocketGesture lo mide en la app viva con las anclas reales.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs",
+      "replacements": [
+        {
+          "old": "            _editor?.FinishConnectionCommand.Execute(target);",
+          "new": "            _editor?.CancelConnectionCommand.Execute(null);",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheSocketGesture_ShouldStartFollowAndDropTheCable_AndCancelWhatDoesNotLand",
+    "why": "El caso exige que el tiempo de soltar cierre el gesto con FinishConnectionCommand cuando el destino es compatible (y que los otros dos tiempos existan, con la pulsación sin poder armar el arrastre de la tarjeta y la diana declarada una vez): con el mutante esa línea desaparece del fuente y el caso cae nombrando el desenlace que falta."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor",
+    "why": "La figura del cable (la Bézier que abre y muere en las anclas) no comparte camino con el gesto: el mutante cambia el desenlace de soltar y deja la construcción de la figura intacta, así que este control tiene que seguir verde."
+  }
+}

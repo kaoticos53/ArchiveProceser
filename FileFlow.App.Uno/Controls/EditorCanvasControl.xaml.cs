@@ -7,6 +7,7 @@ using FileFlow.App.Services.UndoRedo;
 using FileFlow.App.Uno.Platform;
 using FileFlow.App.ViewModels;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Localization;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -83,6 +84,26 @@ public sealed partial class EditorCanvasControl : UserControl
                 ReclaimKeyboardIfStolenByFramework();
             });
         };
+    }
+
+    /// <summary>
+    /// La cadena del origen de un evento, con el <c>DataContext</c> de cada eslabón (hito 278): es lo que
+    /// identifica al elemento que se quedó con una pulsación cuando la conducta no es la esperada — así se
+    /// midió que el pulsado del puerto caía en la cara de la tarjeta o en el fondo del lienzo. Va al rastro de
+    /// sesión, junto al resto del instrumento del foco.
+    /// </summary>
+    private static string DescribeChain(object? source)
+    {
+        var parts = new List<string>();
+        DependencyObject? node = source as DependencyObject;
+        for (int i = 0; node is not null && i < 14; i++)
+        {
+            var fe = node as FrameworkElement;
+            parts.Add($"{node.GetType().Name}#{fe?.Name ?? "-"}[dc={fe?.DataContext?.GetType().Name ?? "null"}]");
+            node = node is UIElement ui ? VisualTreeHelper.GetParent(ui) : null;
+        }
+
+        return string.Join(" <- ", parts);
     }
 
     /// <summary>Quién tiene el foco, en palabras (tipo, nombre y cadena de ancestros), para el rastro del
@@ -182,14 +203,19 @@ public sealed partial class EditorCanvasControl : UserControl
         {
             _positionsPending = false;
 
+            // Las tarjetas ya existen (hito 278): el cableado de sus sockets se hace AQUÍ, no en Rebuild.
+            // Al asignar el ItemsSource los contenedores todavía no se han materializado, así que Rebuild
+            // no encontraba ninguna vista y el evento se quedaba SIN suscriptor: pulsar un puerto entraba
+            // al handler de la tarjeta y moría ahí — «no pasa nada», el síntoma que reportó el usuario.
+            WireCardEvents();
+
             // Con contenedores y tarjetas materializados, las anclas de los puertos ya son reales: el
             // write-back inicial y el primer trazado de cables con las anclas del árbol (fase 3.3).
             if (_editor is not null && _editor.Connections.Count > 0)
             {
-                WriteBackAnchors();
-                DrawWires();
-            }
+                WriteBackAnchors();            DrawWires();
         }
+    }
     }
 
     /// <summary>
@@ -231,6 +257,8 @@ public sealed partial class EditorCanvasControl : UserControl
 
                 // La misma simetría para la capa de decoradores de la fase 3.4.
                 ((INotifyCollectionChanged)_editor.CanvasDecorators).CollectionChanged -= OnDecoratorsChanged;
+
+                _editor.SelectedConnections.CollectionChanged -= OnSelectedConnectionsChanged;
             }
 
             _editor = value;
@@ -244,6 +272,10 @@ public sealed partial class EditorCanvasControl : UserControl
 
                 ((INotifyCollectionChanged)_editor.Nodes).CollectionChanged += OnNodesChanged;
                 ((INotifyCollectionChanged)_editor.Connections).CollectionChanged += OnConnectionsChanged;
+
+                // La MARCA de los cables vive en una colección (con Ctrl se añaden): su cambio es lo que
+                // repinta el resalte, así que se escucha como las demás colecciones del editor.
+                _editor.SelectedConnections.CollectionChanged += OnSelectedConnectionsChanged;
             }
 
             // El aviso de cables perdidos (y cualquier texto del VM) llega por PropertyChanged: suscrito
@@ -318,6 +350,9 @@ public sealed partial class EditorCanvasControl : UserControl
     /// suscripción, un flujo cargado desde disco dibujaba tarjetas pero cero cables.
     /// </summary>
     private void OnConnectionsChanged(object? sender, NotifyCollectionChangedEventArgs e) => DrawWires();
+
+    /// <summary>La marca de los cables cambió (el clic, el Ctrl que añade, el Supr que los borra, el undo).</summary>
+    private void OnSelectedConnectionsChanged(object? sender, NotifyCollectionChangedEventArgs e) => DrawWires();
 
     /// <summary>
     /// Notas y grupos (fase 3.4): AddAnnotation/AddGroup/DeleteAnnotation/DeleteGroup del núcleo
@@ -394,6 +429,194 @@ public sealed partial class EditorCanvasControl : UserControl
         target.IsSelected = false;
 
         return (nodesBefore, nodesAfterDelete, nodesAfterUndo, selectionStuck, glowContainerExists);
+    }
+
+    /// <summary>
+    /// La REGLA DE SELECCIÓN del lienzo, medida en la app viva por los MISMOS métodos que los gestos:
+    /// <b>pulsar REEMPLAZA</b> (lo de antes se suelta, nodos y cables) y <b>Ctrl AÑADE</b> a lo que ya estaba.
+    /// Uno elegido, luego otro → queda UNO; y con Ctrl → quedan los dos. Un cable suelta los nodos (la
+    /// selección del lienzo es UNA) y dos cables marcados con Ctrl se borran con **un solo** deshacer.
+    /// </summary>
+    /// <returns>Las cuatro mitades de la regla y si el borrado del conjunto se deshace de una vez.</returns>
+    internal (bool NodeReplaces, bool NodeAdds, bool WireReplaces, bool WireAdds, bool BatchOneUndo, string Detail)
+        ProbeSelectionRule()
+    {
+        if (_editor is null || _editor.Nodes.Count < 2 || _editor.Connections.Count < 2)
+        {
+            return (false, false, false, false, false, "el grafo de la sonda no tiene dos nodos y dos cables");
+        }
+
+        var first = _editor.Nodes[0];
+        var second = _editor.Nodes[1];
+        var wireA = _editor.Connections[0];
+        var wireB = _editor.Connections[1];
+        int connectionsBefore = _editor.Connections.Count;
+
+        // Pulsar la segunda SUELTA la primera, y con Ctrl las dos quedan elegidas.
+        _editor.SelectNode(first);
+        _editor.SelectNode(second);
+        bool nodeReplaces = second.IsSelected && !first.IsSelected
+            && _editor.Nodes.Count(n => n.IsSelected) == 1;
+
+        _editor.SelectNode(first, add: true);
+        bool nodeAdds = first.IsSelected && second.IsSelected;
+
+        // Un cable reemplaza (los nodos se sueltan) y el segundo se AÑADE con Ctrl.
+        _editor.SelectConnection(wireA);
+        bool wireReplaces = _editor.SelectedConnections.Count == 1 && _editor.Nodes.All(n => !n.IsSelected);
+
+        _editor.SelectConnection(wireB, add: true);
+        bool wireAdds = _editor.SelectedConnections.Count == 2
+            && WireLayerIsPainting(2);
+
+        // El Supr (la tabla del núcleo) borra el CONJUNTO, y UN deshacer lo devuelve entero.
+        bool deleted = EditorKeyboardShortcuts.Execute(EditorKeyboardShortcuts.ShortcutKey.Delete, _editor)
+            && _editor.Connections.Count == connectionsBefore - 2;
+
+        _editor.UndoRedoService.Undo();
+        bool oneUndo = _editor.Connections.Count == connectionsBefore;
+
+        _editor.ClearSelection();
+
+        string detail = $"nodos: reemplaza={nodeReplaces} añade={nodeAdds} | cables: reemplaza={wireReplaces} "
+            + $"añade={wireAdds} | borrado en una sola operación={deleted && oneUndo} "
+            + $"(cables {connectionsBefore}->{connectionsBefore - 2}->{_editor.Connections.Count})";
+
+        return (nodeReplaces, nodeAdds, wireReplaces, wireAdds, deleted && oneUndo, detail);
+    }
+
+    /// <summary>
+    /// Sonda del RECTÁNGULO de selección (hito 286): un rectángulo que encierra TODAS las tarjetas tiene que
+    /// elegir sus nodos <b>y marcar sus cables</b> —las dos cosas a la vez, que es lo que lo distingue del clic—,
+    /// y el modificador decide lo de FUERA: con Ctrl no se suelta nada, sin Ctrl manda el área (y se suelta
+    /// todo). Corre por los MISMOS tres tiempos que el gesto (arrancar, mover, soltar) y con puntos de la RAÍZ,
+    /// que es por donde entra el puntero: el cruce de espacios lo mide el propio rectángulo. El estado queda
+    /// como al entrar.
+    /// </summary>
+    internal (int Nodes, int Wires, bool MarksBoth, bool CtrlKeepsOutside, bool PlainReleases, string Detail)
+        ProbeRubberBand()
+    {
+        UpdateLayout();
+        ApplyAllNodePositions();
+
+        int nodes = _editor?.Nodes.Count ?? 0;
+        int wires = _editor?.Connections.Count ?? 0;
+        if (_editor is null || nodes == 0 || wires == 0 || _containers.Count == 0)
+        {
+            return (nodes, wires, false, false, false, "el grafo de la sonda no tiene tarjetas materializadas y cables");
+        }
+
+        var (left, top, right, bottom) = RubberBandAroundEverything();
+
+        // 1. Un rectángulo que encierra el grafo entero: los nodos Y los cables que caen dentro.
+        _editor.ClearSelection();
+        BeginRubberBand(new Windows.Foundation.Point(left, top), add: false);
+        UpdateRubberBand(new Windows.Foundation.Point(right, bottom));
+        bool marksBoth = _editor.Nodes.All(n => n.IsSelected)
+            && _editor.SelectedConnections.Count == wires;
+        EndRubberBand();
+
+        // 2. El mismo rectángulo, lejos de todo: con Ctrl no suelta lo de fuera... Los puntos del gesto son de
+        //    la RAÍZ —el espacio del puntero, que es lo que un `Windows.Foundation.Point` es aquí—: el cruce al
+        //    espacio del grafo lo hace el propio rectángulo por dentro (GraphPointFromScreen), no esta sonda.
+        double awayLeft = right + 600, awayTop = bottom + 600;
+        var away = new Windows.Foundation.Point(awayLeft, awayTop);
+        var awayEnd = new Windows.Foundation.Point(awayLeft + 300, awayTop + 300);
+        BeginRubberBand(away, add: true);
+        UpdateRubberBand(awayEnd);
+        bool ctrlKeeps = _editor.Nodes.Count(n => n.IsSelected) == nodes
+            && _editor.SelectedConnections.Count == wires;
+        EndRubberBand();
+
+        // 3. ...y sin Ctrl reemplaza: manda el área, que está vacía, así que suelta todo.
+        BeginRubberBand(away, add: false);
+        UpdateRubberBand(awayEnd);
+        bool plainReleases = _editor.Nodes.All(n => !n.IsSelected)
+            && _editor.SelectedConnections.Count == 0
+            && _editor.SelectedNode is null;
+        EndRubberBand();
+
+        string detail = $"rectángulo ({left:F0},{top:F0})-({right:F0},{bottom:F0}) de la raíz: "
+            + $"encierra {nodes} nodos y {wires} cables; con Ctrl lo de fuera se queda={ctrlKeeps}; "
+            + $"sin Ctrl suelta todo={plainReleases}";
+        return (nodes, wires, marksBoth, ctrlKeeps, plainReleases, detail);
+    }
+
+    /// <summary>
+    /// Sonda del BORRADO MIXTO (hito 287): una selección con un NODO y un CABLE —justo lo que deja el rectángulo
+    /// de selección— se borra entera con Supr y <b>un solo</b> deshacer la devuelve. Antes el Supr se llevaba
+    /// los cables y <b>dejaba los nodos</b>, así que esa misma selección había que borrarla en dos tandas (y
+    /// deshacerla otras dos). El estado queda como al entrar, por el propio undo — que es lo que se mide.
+    /// </summary>
+    internal (bool BothGone, bool OneUndoRestoresBoth, string Detail) ProbeMixedDeletion()
+    {
+        if (_editor is null || _editor.Nodes.Count < 2 || _editor.Connections.Count == 0)
+        {
+            return (false, false, "el grafo de la sonda no tiene dos nodos y un cable");
+        }
+
+        // El ÚLTIMO nodo y su cable: no se toca el que miran las otras sondas y el undo lo devuelve a su sitio.
+        var node = _editor.Nodes[^1];
+        var wire = _editor.Connections.FirstOrDefault(c => ReferenceEquals(c.Source.NodeOwner, node)
+                                                        || ReferenceEquals(c.Target.NodeOwner, node));
+        if (wire is null)
+        {
+            return (false, false, "el último nodo de la sonda no tiene cables");
+        }
+
+        int nodes = _editor.Nodes.Count;
+        int wires = _editor.Connections.Count;
+
+        _editor.ApplyRubberSelection([node], [wire], add: false, [], []);
+        EditorKeyboardShortcuts.Execute(EditorKeyboardShortcuts.ShortcutKey.Delete, _editor);
+
+        bool bothGone = !_editor.Nodes.Contains(node) && !_editor.Connections.Contains(wire)
+                     && _editor.Nodes.Count == nodes - 1;
+
+        _editor.UndoRedoService.Undo();
+
+        bool restored = _editor.Nodes.Contains(node) && _editor.Connections.Contains(wire)
+                     && _editor.Nodes.Count == nodes && _editor.Connections.Count == wires;
+
+        _editor.ClearSelection();
+
+        string detail = $"{node.Title} + su cable: borrado de golpe={bothGone}; un solo deshacer devuelve el "
+            + $"grafo entero={restored} (nodos {nodes}->{nodes - 1}->{_editor.Nodes.Count}, cables {wires}->"
+            + $"{wires - 1}->{_editor.Connections.Count})";
+        return (bothGone, restored, detail);
+    }
+
+    /// <summary>
+    /// El rectángulo que encierra el grafo ENTERO, en espacio de la RAÍZ y medido del árbol: el centro dibujado
+    /// de cada tarjeta (el mismo que mide la sonda del área de clic) más su media caja escalada, con un margen.
+    /// </summary>
+    private (double Left, double Top, double Right, double Bottom) RubberBandAroundEverything()
+    {
+        double left = double.MaxValue, top = double.MaxValue;
+        double right = double.MinValue, bottom = double.MinValue;
+
+        foreach (var pair in _containers)
+        {
+            var centre = TransformToVisualCenter(pair.Value, RootGrid);
+            double halfWidth = pair.Key.Width * CanvasTransform.ScaleX / 2;
+            double halfHeight = RubberCardHeight * CanvasTransform.ScaleY / 2;
+
+            left = Math.Min(left, centre.X - halfWidth);
+            top = Math.Min(top, centre.Y - halfHeight);
+            right = Math.Max(right, centre.X + halfWidth);
+            bottom = Math.Max(bottom, centre.Y + halfHeight);
+        }
+
+        return (left - 20, top - 20, right + 20, bottom + 20);
+    }
+
+    /// <summary>¿La capa pinta tantos cables con el trazo del marcado como se piden? Lo comparten la sonda y sus renglones.</summary>
+    private bool WireLayerIsPainting(int marked)
+    {
+        return WireLayer.Children
+            .OfType<Microsoft.UI.Xaml.Shapes.Path>()
+            .Count(p => AutomationProperties.GetAutomationId(p) == WireAnchor
+                     && p.StrokeThickness >= WireSelectedThickness) == marked;
     }
 
     /// <summary>
@@ -521,6 +744,155 @@ public sealed partial class EditorCanvasControl : UserControl
 
         _ = pendingStarted; // informativo: el pendiente existió durante el ciclo
         return (anchorsReal, connected && originalBack, statesRefreshed, disconnected, restored);
+    }
+
+    /// <summary>
+    /// Sonda del GESTO DEL CABLE (hito 278): recorre los tres tiempos del gesto por los MISMOS métodos que
+    /// ejecutan los handlers —pulsar un puerto, mover el puntero y soltar— y mide los desenlaces del encargo:
+    /// (1) pulsar arranca el cable sin armar el arrastre de la tarjeta, (2) el extremo sigue al puntero, (3)
+    /// soltar sobre un destino compatible crea la conexión, y (4) soltar en el vacío o sobre un destino
+    /// incompatible CANCELA dejando el estado limpio (sin cable fantasma y sin pendiente colgado).
+    ///
+    /// <para><b>Por qué aquí y no en la suite</b>: el host Uno es WinUI y no se materializa en la sesión de
+    /// pruebas —sus guardias censan la fuente—, y el puntero inyectado entrega pulsaciones pero no movimientos:
+    /// medir el gesto necesita las anclas reales y las tarjetas materializadas, que es lo que da la app viva.
+    /// El grafo queda como estaba: la conexión que crea el gesto la quita el undo del núcleo, el mismo camino
+    /// que usa la sonda del ciclo de conexión.</para>
+    /// </summary>
+    /// <returns>(arranca sin arrastrar, sigue al puntero, conecta al soltar en compatible, cancela lo que no
+    /// vale, detalle legible)</returns>
+    internal (bool Started, bool Followed, bool Connected, bool Cancelled, string Detail) ProbeSocketGesture()
+    {
+        if (_editor is null || _editor.Nodes.Count < 2)
+        {
+            return (false, false, false, false, "sin editor o con menos de dos nodos: no hay gesto que medir");
+        }
+
+        UpdateLayout();
+        ApplyAllNodePositions();
+        WriteBackAnchors();
+
+        // Un par REAL del flujo cargado: la primera salida del primer nodo y la primera entrada de otro con
+        // la que el producto permita conectar. No se inventa el escenario: el gesto se mide sobre el grafo vivo.
+        var source = _editor.Nodes[0].OutputPorts.FirstOrDefault();
+        var target = source is null
+            ? null
+            : _editor.Nodes.Skip(1).SelectMany(n => n.InputPorts)
+                .FirstOrDefault(p => PortViewModel.CanConnect(source, p));
+        if (source is null || target is null)
+        {
+            return (false, false, false, false, "el flujo cargado no trae un par de puertos conectable");
+        }
+
+        if (AnchorOf(source) is not { } sourceAnchor || AnchorOf(target) is not { } targetAnchor)
+        {
+            return (false, false, false, false, "las anclas de los puertos no se pudieron medir (¿layout pendiente?)");
+        }
+
+        var screenSource = ScreenPointOfAnchor(sourceAnchor);
+        var screenTarget = ScreenPointOfAnchor(targetAnchor);
+        var replaced = _editor.Connections.FirstOrDefault(c => c.Target == target);
+        int connectionsBefore = _editor.Connections.Count;
+
+        // 0) ANTES DE NADA: cada tarjeta materializada tiene que estar CABLEADA. El cableado se hacía en
+        //    Rebuild —donde el ItemsSource acaba de asignarse y todavía no hay ninguna vista— y buscaba la
+        //    vista en el Content del contenedor (que es el ViewModel), así que el evento se quedaba sin
+        //    suscriptor y pulsar un puerto no hacía nada: medido con el ratón inyectado sobre la ventana real.
+        bool cardsWired = _containers.Count > 0 && _socketWiring.Count == _containers.Count;
+
+        // 1) PULSAR el puerto: el cable arranca atado a su ancla, ya dibujado, y la tarjeta NO se arma.
+        BeginSocketGesture(source);
+        bool started = cardsWired
+            && _editor.PendingConnection?.Source == source
+            && _pendingWirePath is not null
+            && !WouldArmCardDrag(screenSource);
+
+        // 2) MOVER el puntero: el extremo libre sigue al cursor y el puerto bajo el cursor queda por destino.
+        var midpoint = new Windows.Foundation.Point(
+            (screenSource.X + screenTarget.X) / 2,
+            (screenSource.Y + screenTarget.Y) / 2);
+        UpdateSocketGesture(midpoint);
+        var midpointGraph = GraphPointFromScreen(midpoint);
+        bool followed = _editor.PendingConnection is { } pending
+            && _pendingWirePath is not null
+            && Math.Abs(pending.TargetLocation.X - midpointGraph.X) < 0.001
+            && Math.Abs(pending.TargetLocation.Y - midpointGraph.Y) < 0.001;
+
+        UpdateSocketGesture(screenTarget);
+        bool snapped = ReferenceEquals(_pendingHoverPort, target);
+
+        // 3) SOLTAR sobre un destino COMPATIBLE: conecta y deja el estado limpio.
+        EndSocketGesture(_pendingHoverPort);
+        bool connected = snapped
+            && _editor.Connections.Any(c => c.Source == source && c.Target == target)
+            && _editor.PendingConnection is null
+            && _pendingWirePath is null;
+        string connectedWhy = $"destino apuntado={snapped}"
+            + $", conexion presente={_editor.Connections.Any(c => c.Source == source && c.Target == target)}"
+            + $", pendiente={_editor.PendingConnection is not null}, cable={_pendingWirePath is not null}"
+            + $", conexiones {connectionsBefore}->{_editor.Connections.Count}, sustituye={replaced is not null}";
+
+        // El grafo vuelve a como estaba: el undo del núcleo deshace lo que creó el gesto (y devuelve la
+        // conexión que sustituyó, si la había).
+        _editor.UndoRedoService.Undo();
+        if (replaced is not null)
+        {
+            _editor.UndoRedoService.Undo();
+        }
+
+        bool restored = replaced is null
+            ? _editor.Connections.Count == connectionsBefore
+            : _editor.Connections.Contains(replaced);
+
+        // 4) CANCELAR: soltar en el VACÍO y sobre un destino INCOMPATIBLE (una salida, con el cable saliendo
+        //    de una salida) dejan lo mismo — ni conexión, ni pendiente, ni cable en la capa.
+        var (cancelledOnEmpty, whyEmpty) = TrySocketGestureEndingAt(new Windows.Foundation.Point(2, 2), source);
+        var incompatible = _editor.Nodes.Skip(1).SelectMany(n => n.OutputPorts).FirstOrDefault();
+        var (cancelledOnIncompatible, whyIncompatible) = incompatible is not null
+            && AnchorOf(incompatible) is { } incompatibleAnchor
+            ? TrySocketGestureEndingAt(ScreenPointOfAnchor(incompatibleAnchor), source)
+            : (false, "el flujo no trae un segundo nodo con salida");
+
+        string detail = $"origen '{source.NodeOwner.Title}.{source.DisplayName}' -> destino '{target.NodeOwner.Title}.{target.DisplayName}': "
+            + $"las tarjetas materializadas estan cableadas ({_socketWiring.Count} de {_containers.Count})={cardsWired}; "
+            + $"pulsar arranca el cable y no arma el arrastre de la tarjeta={started}; "
+            + $"el extremo sigue al puntero={followed}; "
+            + $"soltar sobre el puerto compatible conecta y deja el estado limpio={connected} ({connectedWhy}); "
+            + $"el grafo queda restaurado={restored}; "
+            + $"soltar en el vacio cancela={cancelledOnEmpty} ({whyEmpty}); "
+            + $"soltar sobre un destino incompatible cancela={cancelledOnIncompatible} ({whyIncompatible})";
+
+        return (started, followed, connected && restored, cancelledOnEmpty && cancelledOnIncompatible, detail);
+    }
+
+    /// <summary>
+    /// Recorre un gesto COMPLETO que debe CANCELAR: pulsar <paramref name="port"/>, mover hasta
+    /// <paramref name="screenPoint"/> y soltar donde el movimiento resolvió. Devuelve si no quedó conexión
+    /// nueva, ni pendiente, ni cable en la capa —y POR QUÉ, para que el informe del sondeo se lea sin abrir
+    /// el código cuando el desenlace no es el esperado.
+    /// </summary>
+    private (bool Cancelled, string Why) TrySocketGestureEndingAt(
+        Windows.Foundation.Point screenPoint, PortViewModel port)
+    {
+        if (_editor is null)
+        {
+            return (false, "sin editor");
+        }
+
+        int before = _editor.Connections.Count;
+        BeginSocketGesture(port);
+        UpdateSocketGesture(screenPoint);
+        var hover = _pendingHoverPort;
+        EndSocketGesture(hover);
+
+        string why = $"destino apuntado={(hover is null ? "nadie" : hover.DisplayName)}"
+            + $", pendiente={_editor.PendingConnection is not null}, cable={_pendingWirePath is not null}"
+            + $", conexiones {before}->{_editor.Connections.Count}";
+
+        return (hover is null
+            && _editor.PendingConnection is null
+            && _pendingWirePath is null
+            && _editor.Connections.Count == before, why);
     }
 
     /// <summary>
@@ -844,12 +1216,18 @@ public sealed partial class EditorCanvasControl : UserControl
         }
 
         NodesHost.ItemsSource = cards;
-        WireCardEvents(cards);
+        WireCardEvents();
         DrawWires();
     }
 
-    /// <summary>Cablea (y descablea) los eventos de socket de cada tarjeta.</summary>
-    private void WireCardEvents(List<NodeCardViewModel>? cards)
+    /// <summary>
+    /// Cablea (y descablea) los eventos de socket de las tarjetas <b>materializadas</b>.
+    ///
+    /// <para><b>Cuándo se llama</b>: el pase de layout que ya tiene contenedores —no <see cref="Rebuild"/>,
+    /// donde el <c>ItemsSource</c> acaba de asignarse y aún no hay ninguna vista que enganchar— y cada
+    /// reconstrucción, que suelta lo que hubiera antes de que el layout vuelva a materializar (hito 278).</para>
+    /// </summary>
+    private void WireCardEvents()
     {
         foreach (var entry in _socketWiring)
         {
@@ -858,21 +1236,44 @@ public sealed partial class EditorCanvasControl : UserControl
         }
 
         _socketWiring.Clear();
-        if (cards is null)
-        {
-            return;
-        }
 
-        // Los eventos viven en la VISTA (NodeCardView); se alcanzan desde los contenedores materializados.
+        // Los eventos viven en la VISTA (NodeCardView), y la vista sólo existe con su contenedor ya
+        // materializado: se busca en su ÁRBOL VISUAL, no en su Content (que es el ViewModel — buscarla en el
+        // Content era el segundo motivo por el que el evento se quedaba sin suscriptor: la comparación no
+        // podía dar true nunca).
         foreach (var pair in _containers)
         {
-            if (pair.Value.Content is NodeCardView view)
+            if (FirstDescendant<NodeCardView>(pair.Value) is not { } view
+                || _socketWiring.Any(entry => ReferenceEquals(entry.View, view)))
             {
-                view.SocketRequested += OnCardSocketRequested;
-                view.DisconnectRequested += OnCardDisconnectRequested;
-                _socketWiring.Add((view, OnCardSocketRequested, OnCardDisconnectRequested));
+                continue;
+            }
+
+            view.SocketRequested += OnCardSocketRequested;
+            view.DisconnectRequested += OnCardDisconnectRequested;
+            _socketWiring.Add((view, OnCardSocketRequested, OnCardDisconnectRequested));
+        }
+    }
+
+    /// <summary>El primer descendiente del árbol visual del tipo pedido, o <c>null</c> si no hay ninguno.</summary>
+    private static T? FirstDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                return match;
+            }
+
+            if (FirstDescendant<T>(child) is { } nested)
+            {
+                return nested;
             }
         }
+
+        return null;
     }
 
     private readonly List<(NodeCardView View, EventHandler<PortViewModel> Socket, EventHandler<PortViewModel> Disconnect)> _socketWiring = new();
@@ -931,89 +1332,6 @@ public sealed partial class EditorCanvasControl : UserControl
 
         return applied;
     }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Los cables: ConnectionGeometry, la misma curva que pinta Nodify en el escritorio
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    private void DrawWires()
-    {
-        WireLayer.Children.Clear();
-
-        if (_editor is null)
-        {
-            return;
-        }
-
-        foreach (var connection in _editor.Connections)
-        {
-            // Fase 3.3: las anclas REALES (write-back por árbol visual) mandan; la estimación del centro
-            // de tarjeta (Location.Y + 40) queda como respaldo si el árbol aún no materializó el socket.
-            var source = AnchorOf(connection.Source)
-                ?? new Sdk.Point(
-                    connection.Source.NodeOwner.Location.X + connection.Source.NodeOwner.Width,
-                    connection.Source.NodeOwner.Location.Y + 40);
-            var target = AnchorOf(connection.Target)
-                ?? new Sdk.Point(
-                    connection.Target.NodeOwner.Location.X,
-                    connection.Target.NodeOwner.Location.Y + 40);
-
-            var wire = ConnectionGeometry.BuildWire(source, target);
-
-            var path = new Microsoft.UI.Xaml.Shapes.Path
-            {
-                Stroke = CanvasBrush("CanvasWireBrush"),
-                StrokeThickness = 3.5,
-                Data = CreateWireGeometry(wire)
-            };
-
-            WireLayer.Children.Add(path);
-        }
-    }
-
-    /// <summary>
-    /// La figura del cable, a partir del trazado compartido (<see cref="ConnectionGeometry.WirePath"/>):
-    /// <b>una sola Bézier</b>, del ancla de salida al ancla de destino, con los dos cuellos como puntos de
-    /// control.
-    ///
-    /// <para><b>Los defectos que esto cierra</b>, los dos medidos con la sonda <c>ProbeWireTracking</c> y vistos
-    /// por el usuario en la app: la primera versión abría la figura en el primer punto de control, así que el
-    /// cable quedaba <b>separado del socket</b> y, con las anclas cerca, salía invertido (el rulo con forma de
-    /// «2»); la segunda añadió los dos tramos rectos del trazo del control de Nodify —que existen porque allí la
-    /// Bézier <i>sí</i> sale retirada— y el resultado se leía como una <b>Z</b>: dos bajíos rectos y una ese
-    /// apretada en medio. Con la curva nacida en el ancla no hace falta ningún tramo recto: el cable sale del
-    /// socket ya curvando.</para>
-    /// </summary>
-    private static Geometry CreateWireGeometry(ConnectionGeometry.WirePath wire)
-    {
-        var figure = new PathFigure
-        {
-            StartPoint = ToWindowsPoint(wire.Source),
-            IsFilled = false,
-            IsClosed = false
-        };
-
-        figure.Segments.Add(new BezierSegment
-        {
-            Point1 = ToWindowsPoint(wire.Exit),
-            Point2 = ToWindowsPoint(wire.Arrival),
-            Point3 = ToWindowsPoint(wire.Target)
-        });
-
-        return new PathGeometry { Figures = { figure } };
-    }
-
-    /// <summary>
-    /// La proyección del cable: <see cref="UnoPointProjection.ToUno"/> (núcleo portable), el mismo corazón
-    /// que <see cref="UnoPointConverter"/> — la geometría del cable se calcula en espacio de grafo
-    /// (<see cref="Sdk.Point"/>) y sólo se proyecta al dibujar, como en el escritorio.
-    /// </summary>
-    private static Windows.Foundation.Point ToWindowsPoint(Sdk.Point point)
-    {
-        (double x, double y) = UnoPointProjection.ToUno(point);
-        return new Windows.Foundation.Point(x, y);
-    }
-
     // ─────────────────────────────────────────────────────────────────────────────
     // Pan, zoom y encuadre
     // ─────────────────────────────────────────────────────────────────────────────
@@ -1698,23 +2016,21 @@ public sealed partial class EditorCanvasControl : UserControl
 
         CanvasFocusTrace.Write($"press src={e.OriginalSource?.GetType().Name ?? "nadie"} "
                              + $"punto=({point.X:F0},{point.Y:F0}) foco={focused} enfocado={DescribeFocused()}");
+        CanvasFocusTrace.Write("press CADENA: " + DescribeChain(e.OriginalSource));
 
-        // 1. Selección y arrastre: botón izquierdo sobre una tarjeta.
-        if (properties.IsLeftButtonPressed)
+        // 1. Selección y arrastre: botón izquierdo sobre una tarjeta — SALVO que un GESTO DE PUERTO tenga la
+        //    pulsación (hito 278): el cable en la mano no puede arrastrar la tarjeta que lo arrancó. El socket
+        //    consume su propia pulsación, pero eso no basta: su fila cae dentro de la caja de la tarjeta, así
+        //    que cualquier hueco del gesto acababa moviendo el nodo (lo que reportó el usuario).
+        if (properties.IsLeftButtonPressed && WouldArmCardDrag(point))
         {
             var card = CardAt(point);
             if (card is not null)
             {
-                // Click selecciona: el núcleo reacciona a IsSelected (SelectedNode + BringToFront +
-                // contador); si ya estaba seleccionada, BringToFront la sube sin romper la selección.
-                if (!card.Node.IsSelected)
-                {
-                    card.Node.IsSelected = true;
-                }
-                else
-                {
-                    _editor?.BringToFront(card.Node);
-                }
+                // La REGLA DE SELECCIÓN, decidida en el núcleo: pulsar REEMPLAZA (los demás se sueltan, y
+                // también los cables marcados) y Ctrl AÑADE a lo que ya estaba. El modificador lo lee aquí
+                // porque es del teclado; el estado lo gobierna el núcleo.
+                _editor?.SelectNode(card.Node, add: IsKeyDown(Windows.System.VirtualKey.Control));
 
                 // Arrastra la selección entera: el undo del escritorio mueve el bloque con
                 // MoveNodesAction, y aquí se registra igual al soltar.
@@ -1727,12 +2043,12 @@ public sealed partial class EditorCanvasControl : UserControl
             }
         }
 
-        // 2. Rubber band (botón izquierdo en el fondo): selección por rectángulo, como el escritorio.
+        // 2. Rubber band (botón izquierdo en el fondo): selección por rectángulo, como el escritorio. Marca
+        //    los NODOS y los CABLES que caen dentro con la MISMA regla que el clic —sin Ctrl REEMPLAZA (lo
+        //    elegido se suelta al empezar) y con Ctrl AÑADE—: el modificador se lee aquí, al pulsar.
         if (properties.IsLeftButtonPressed && !HitsInteractiveControl(point))
         {
-            _isRubberBanding = true;
-            _rubberStart = point;
-            ShowRubberBand(point, point);
+            BeginRubberBand(point, add: IsKeyDown(Windows.System.VirtualKey.Control));
             ((FrameworkElement)sender).CapturePointer(e.Pointer);
             return;
         }
@@ -1748,37 +2064,19 @@ public sealed partial class EditorCanvasControl : UserControl
 
     private void OnCanvasMoved(object sender, PointerRoutedEventArgs e)
     {
-        _lastPointerPosition = e.GetCurrentPoint(RootGrid).Position;        if (_isRubberBanding)
+        _lastPointerPosition = e.GetCurrentPoint(RootGrid).Position;
+
+        if (_isRubberBanding)
         {
-            ShowRubberBand(_rubberStart, _lastPointerPosition);
-            UpdateRubberSelection();
+            UpdateRubberBand(_lastPointerPosition);
             return;
         }
 
         // Cable pendiente: el extremo móvil sigue al cursor en espacio de grafo (el VM guarda
         // TargetLocation en Sdk.Point; el lienzo proyecta y redibuja).
-        if (_editor?.PendingConnection is { } pending)
+        if (_editor?.PendingConnection is not null)
         {
-            if (_pendingWirePath is not null)
-            {
-                WireLayer.Children.Remove(_pendingWirePath);
-            }
-
-            var graphPoint = GraphPointFromScreen(_lastPointerPosition);
-            pending.TargetLocation = graphPoint;
-            DrawPendingWire();
-
-            // ¿Hay un socket compatible bajo el cursor? Solta ahí al levantar ( snapping del escritorio).
-            var hoverCard = CardAt(_lastPointerPosition);
-            if (hoverCard is not null)
-            {
-                _pendingHoverPort = FindHoverPort(hoverCard, _lastPointerPosition);
-            }
-            else
-            {
-                _pendingHoverPort = null;
-            }
-
+            UpdateSocketGesture(_lastPointerPosition);
             return;
         }
 
@@ -1817,43 +2115,14 @@ public sealed partial class EditorCanvasControl : UserControl
         // Soltar el cable pendiente: sobre un socket compatible conecta; en el vacío, cancela.
         if (_editor?.PendingConnection is not null)
         {
-            var target = _pendingHoverPort;
-            _pendingHoverPort = null;
-            if (_pendingWirePath is not null)
-            {
-                WireLayer.Children.Remove(_pendingWirePath);
-                _pendingWirePath = null;
-            }
-
-            if (target is not null)
-            {
-                _editor.FinishConnectionCommand.Execute(target);
-            }
-            else
-            {
-                _editor.CancelConnectionCommand.Execute(null);
-            }
-
-            UpdatePortStatesAndWires();
+            // El destino lo resolvió el último movimiento; soltar lo cierra ahí o cancela (hito 278).
+            EndSocketGesture(_pendingHoverPort);
             return;
         }
 
         if (_isRubberBanding)
         {
-            _isRubberBanding = false;
-            RubberLayer.Children.Clear();
-
-            // Un clic sin arrastre en el fondo deselecciona: el estándar del editor (y lo que Nodify
-            // hacía en el escritorio). Un rectángulo de menos de 3 px no es una selección.
-            bool isClick = Math.Abs(_lastPointerPosition.X - _rubberStart.X) < 3
-                        && Math.Abs(_lastPointerPosition.Y - _rubberStart.Y) < 3;
-            if (isClick && _editor is not null)
-            {
-                foreach (var node in _editor.Nodes.Where(n => n.IsSelected))
-                {
-                    node.IsSelected = false;
-                }
-            }
+            EndRubberBand();
         }
 
         if (_drag is { } drag)
@@ -1878,7 +2147,135 @@ public sealed partial class EditorCanvasControl : UserControl
     // ── Rubber band: el rectángulo de selección y el conjunto que va atrapando ──
 
     private bool _isRubberBanding;
+
+    /// <summary>¿El rectángulo que se está arrastrando AÑADE (Ctrl) o REEMPLAZA? Se decide al pulsar.</summary>
+    private bool _rubberAdditive;
+
+    /// <summary>Lo que estaba elegido al empezar el rectángulo: con Ctrl, eso se queda aunque el rectángulo no lo toque.</summary>
+    private HashSet<NodeViewModel> _rubberBaseNodes = [];
+
+    /// <summary>Lo mismo para los CABLES marcados: con Ctrl, el rectángulo no suelta la marca de fuera.</summary>
+    private HashSet<ConnectionViewModel> _rubberBaseConnections = [];
+
+    /// <summary>
+    /// Las anclas de los cables, medidas <b>una vez</b> al empezar el rectángulo (mientras se arrastra, ni el
+    /// plano ni el árbol se mueven): decidir si un cable cae dentro no puede costar dos recorridos del árbol de
+    /// sockets por cada movimiento del puntero. Un cable sin sus dos anclas medidas no entra: el rectángulo no adivina.
+    /// </summary>
+    private Dictionary<ConnectionViewModel, (Sdk.Point Source, Sdk.Point Target)> _rubberAnchors = [];
+
     private Windows.Foundation.Point _rubberStart;
+
+    /// <summary>El alto de referencia de una tarjeta: el mismo con el que el lienzo la encuadra y mide sus cajas.</summary>
+    private const double RubberCardHeight = 140;
+
+    /// <summary>
+    /// PULSAR en el vacío con el botón izquierdo: arranca el rectángulo. Sin Ctrl REEMPLAZA —lo elegido se suelta
+    /// ya, para que se vea que manda el rectángulo— y con Ctrl AÑADE, así que lo anterior se guarda como base. El
+    /// punto llega en espacio de la RAÍZ (el del puntero) y el rectángulo se decide en espacio de GRAFO, que es
+    /// donde viven las tarjetas y las anclas.
+    /// </summary>
+    private void BeginRubberBand(Windows.Foundation.Point rootPoint, bool add)
+    {
+        _isRubberBanding = true;
+        _rubberStart = rootPoint;
+        _rubberAdditive = add;
+        _rubberBaseNodes = _editor?.Nodes.Where(n => n.IsSelected).ToHashSet() ?? [];
+        _rubberBaseConnections = _editor?.SelectedConnections.ToHashSet() ?? [];
+        _rubberAnchors = MeasureWireAnchors();
+
+        if (!add)
+        {
+            _editor?.ClearSelection();
+        }
+
+        ShowRubberBand(rootPoint, rootPoint);
+    }
+
+    /// <summary>MOVER: el rectángulo crece y la selección se recalcula con lo que va quedando dentro.</summary>
+    private void UpdateRubberBand(Windows.Foundation.Point rootPoint)
+    {
+        _lastPointerPosition = rootPoint;
+        ShowRubberBand(_rubberStart, rootPoint);
+        ApplyRubberBand();
+    }
+
+    /// <summary>
+    /// SOLTAR: el rectángulo desaparece. Sin arrastre fue un CLIC en el vacío, y eso suelta TODO lo elegido (nodos
+    /// y cables), como el clic en el fondo del escritorio.
+    /// </summary>
+    private void EndRubberBand()
+    {
+        _isRubberBanding = false;
+        RubberLayer.Children.Clear();
+
+        bool wasClick = Math.Abs(_lastPointerPosition.X - _rubberStart.X) < 3
+                     && Math.Abs(_lastPointerPosition.Y - _rubberStart.Y) < 3;
+        if (wasClick)
+        {
+            _editor?.ClearSelection();
+        }
+    }
+
+    /// <summary>
+    /// La decisión la toma el NÚCLEO (<see cref="EditorViewModel.ApplyRubberSelection"/>): aquí sólo se decide
+    /// QUÉ quedó dentro, con la misma vara para las dos cosas —una tarjeta entra por su CENTRO y un cable entra
+    /// con sus DOS anclas dentro, que son las que trazan su curva—.
+    /// </summary>
+    private void ApplyRubberBand()
+    {
+        if (_editor is null)
+        {
+            return;
+        }
+
+        var (left, top, right, bottom) = RubberBandInGraph();
+
+        var nodes = _containers
+            .Where(pair => CardCenterIsInside(pair.Value, pair.Key, left, top, right, bottom))
+            .Select(pair => pair.Key.Node)
+            .ToList();
+
+        var connections = _rubberAnchors
+            .Where(pair => IsInside(pair.Value.Source, left, top, right, bottom)
+                        && IsInside(pair.Value.Target, left, top, right, bottom))
+            .Select(pair => pair.Key)
+            .ToList();
+
+        _editor.ApplyRubberSelection(nodes, connections, _rubberAdditive, _rubberBaseNodes, _rubberBaseConnections);
+    }
+
+    /// <summary>
+    /// El rectángulo en espacio de GRAFO: los dos puntos del gesto vienen de la raíz (el puntero) y el plano los
+    /// mapea con el MISMO inverso que todo lo demás (<see cref="GraphPointFromScreen"/>). Compararlos en crudo
+    /// contra las posiciones de las tarjetas —que son del grafo— sólo acertaba con el plano sin mover.
+    /// </summary>
+    private (double Left, double Top, double Right, double Bottom) RubberBandInGraph()
+    {
+        var from = GraphPointFromScreen(_rubberStart);
+        var to = GraphPointFromScreen(_lastPointerPosition);
+        return (
+            Math.Min(from.X, to.X),
+            Math.Min(from.Y, to.Y),
+            Math.Max(from.X, to.X),
+            Math.Max(from.Y, to.Y));
+    }
+
+    /// <summary>El centro DIBUJADO de la tarjeta, en espacio de grafo: `Canvas.Left/Top` ya son del grafo (el pan
+    /// y el zoom los lleva el plano, no las posiciones) y el ancho es el del nodo.</summary>
+    private static bool CardCenterIsInside(
+        FrameworkElement container, NodeCardViewModel card,
+        double left, double top, double right, double bottom)
+        => IsInside(
+            Canvas.GetLeft(container) + card.Width / 2,
+            Canvas.GetTop(container) + RubberCardHeight / 2,
+            left, top, right, bottom);
+
+    private static bool IsInside(double x, double y, double left, double top, double right, double bottom)
+        => x >= left && x <= right && y >= top && y <= bottom;
+
+    private static bool IsInside(Sdk.Point point, double left, double top, double right, double bottom)
+        => IsInside(point.X, point.Y, left, top, right, bottom);
 
     /// <summary>Dibuja el rectángulo de selección en pantalla, del punto de partida al actual.</summary>
     private void ShowRubberBand(Windows.Foundation.Point from, Windows.Foundation.Point to)
@@ -1898,40 +2295,6 @@ public sealed partial class EditorCanvasControl : UserControl
         {
             Canvas.SetLeft(rect, Math.Min(from.X, to.X));
             Canvas.SetTop(rect, Math.Min(from.Y, to.Y));
-        }
-    }
-
-    /// <summary>
-    /// Los nodos cuyo CENTRO cae dentro del rectángulo se marcan como seleccionados: el estado del VM
-    /// repinta el glow de selección de la tarjeta (el binding ya existía de la fase 3.1).
-    /// </summary>
-    private void UpdateRubberSelection()
-    {
-        if (_editor is null)
-        {
-            return;
-        }
-
-        double left = Math.Min(_rubberStart.X, _lastPointerPosition.X);
-        double top = Math.Min(_rubberStart.Y, _lastPointerPosition.Y);
-        double right = Math.Max(_rubberStart.X, _lastPointerPosition.X);
-        double bottom = Math.Max(_rubberStart.Y, _lastPointerPosition.Y);
-
-        foreach (var pair in _containers)
-        {
-            var card = pair.Key;
-            double width = card.Width * CanvasTransform.ScaleX;
-            double height = 140 * CanvasTransform.ScaleY;
-            double x = Canvas.GetLeft(pair.Value);
-            double y = Canvas.GetTop(pair.Value);
-
-            bool inside = x + width / 2 >= left && x + width / 2 <= right
-                       && y + height / 2 >= top && y + height / 2 <= bottom;
-
-            if (inside)
-            {
-                card.Node.IsSelected = true;
-            }
         }
     }
 
@@ -2052,15 +2415,115 @@ public sealed partial class EditorCanvasControl : UserControl
 
         if (_editor.PendingConnection is null)
         {
-            WriteBackAnchors();
-            _editor.StartConnectionCommand.Execute(port);
-            _pendingSourceAnchor = port.Anchor;
+            BeginSocketGesture(port);
         }
         else
         {
-            _editor.FinishConnectionCommand.Execute(port);
-            UpdatePortStatesAndWires();
+            // Pulsar otro puerto con el cable en la mano lo cierra ahí: es el tercer tiempo del gesto, por el
+            // mismo camino que el soltar.
+            EndSocketGesture(port);
         }
+    }
+
+    // ── El GESTO DEL CABLE (hito 278): pulsar un puerto lo arranca, mover lo dibuja, soltar lo cierra ──
+    //
+    // Son TRES métodos y no un bloque dentro de cada handler porque el gesto tiene tres tiempos y cada uno
+    // llega por un camino distinto —la tarjeta sube la pulsación, el lienzo recibe los movimientos y el soltar
+    // llega también por la pérdida de captura—. La sonda del gesto los recorre en ese orden, que es el MISMO
+    // que ejecuta el puntero: medir por otro camino certificaría un comportamiento que nadie recorre.
+
+    /// <summary>
+    /// Radio (en píxeles de pantalla) dentro del cual soltar el cable cuelga del puerto más cercano. Es la
+    /// diana del gesto: el socket dibujado mide ~13 px y exigir puntería exacta convierte cada conexión en un
+    /// ejercicio de precisión (el hito 250 lo midió dos veces con dedos de verdad).
+    /// </summary>
+    private const double SocketDropTolerance = 48.0;
+
+    /// <summary>
+    /// ¿Un GESTO DE PUERTO tiene la pulsación? Mientras hay un cable pendiente la pulsación es suya: no arma el
+    /// arrastre de la tarjeta ni el rectángulo de selección. Es el único dueño de esa decisión, y lo citan el
+    /// handler de la pulsación y la sonda del gesto.
+    /// </summary>
+    private bool SocketGestureOwnsThePress => _editor?.PendingConnection is not null;
+
+    /// <summary>¿Una pulsación en este punto armaría el ARRASTRE de una tarjeta? (un gesto de puerto lo impide)</summary>
+    private bool WouldArmCardDrag(Windows.Foundation.Point point)
+        => !SocketGestureOwnsThePress && CardAt(point) is not null;
+
+    /// <summary>Pulsar un puerto arranca el gesto: el cable queda pendiente, atado a su ancla y ya dibujado.</summary>
+    private void BeginSocketGesture(PortViewModel port)
+    {
+        WriteBackAnchors();
+        _editor?.StartConnectionCommand.Execute(port);
+        _pendingSourceAnchor = port.Anchor;
+        _pendingHoverPort = null;
+        DrawPendingWire();
+        CanvasFocusTrace.Write($"gesto del cable: arranca en {SocketName(port)}"
+            + $" (cable en la capa={_pendingWirePath is not null})");
+    }
+
+    /// <summary>Mover el puntero dibuja el extremo libre y busca el puerto bajo el cursor: el destino del snapping.</summary>
+    private void UpdateSocketGesture(Windows.Foundation.Point screenPoint)
+    {
+        if (_editor?.PendingConnection is not { } pending)
+        {
+            return;
+        }
+
+        pending.TargetLocation = GraphPointFromScreen(screenPoint);
+        DrawPendingWire();
+
+        // El rastro anota SÓLO los cambios de destino (un movimiento llega por píxel): es la traza que deja
+        // una sesión con el puntero —el mismo instrumento del foco del hito 252— y la que dice si el snapping
+        // encontró puerto o si el soltar va a cancelar.
+        var hover = FindHoverPort(screenPoint);
+        if (!ReferenceEquals(hover, _pendingHoverPort))
+        {
+            _pendingHoverPort = hover;
+            CanvasFocusTrace.Write($"gesto del cable: destino bajo el cursor = {(hover is null ? "ninguno" : SocketName(hover))}");
+        }
+    }
+
+    /// <summary>
+    /// Soltar cierra el gesto: con destino COMPATIBLE conecta; sin él —vacío, destino incompatible o Escape—
+    /// CANCELA. Los dos desenlaces dejan el estado limpio: sin cable fantasma en la capa y sin destino colgado.
+    /// </summary>
+    private void EndSocketGesture(PortViewModel? target)
+    {
+        int connectionsBefore = _editor?.Connections.Count ?? 0;
+        _pendingHoverPort = null;
+        if (target is not null)
+        {
+            _editor?.FinishConnectionCommand.Execute(target);
+        }
+        else
+        {
+            _editor?.CancelConnectionCommand.Execute(null);
+        }
+
+        // El cable en la mano se saca de la capa AQUÍ: es el final del gesto, y sin esto quedaba un cable
+        // fantasma colgado del último punto del arrastre (lo cazó la sonda del sondeo en la app viva, que
+        // mide el estado limpio del desenlace).
+        ClearPendingWire();
+        UpdatePortStatesAndWires();
+        CanvasFocusTrace.Write($"gesto del cable: cierra destino={(target is null ? "ninguno" : SocketName(target))}"
+            + $" conexiones {connectionsBefore}->{_editor?.Connections.Count ?? 0}"
+            + $" cable en la capa={_pendingWirePath is not null}");
+    }
+
+    /// <summary>«Nodo.Puerto», para el rastro: el nombre que un humano reconoce en el informe de la sesión.</summary>
+    private static string SocketName(PortViewModel port) => $"'{port.NodeOwner.Title}.{port.DisplayName}'";
+
+    /// <summary>Quita de la capa el cable pendiente, si lo hay: el único sitio que lo saca.</summary>
+    private void ClearPendingWire()
+    {
+        if (_pendingWirePath is null)
+        {
+            return;
+        }
+
+        WireLayer.Children.Remove(_pendingWirePath);
+        _pendingWirePath = null;
     }
 
     private void OnCardDisconnectRequested(object? sender, PortViewModel port)
@@ -2087,46 +2550,80 @@ public sealed partial class EditorCanvasControl : UserControl
 
     /// <summary>
     /// El puerto compatible bajo el cursor durante el arrastre de un cable: es el objetivo del snapping.
-    /// Sin compatibilidad (o sin socket bajo el cursor), no hay objetivo y soltar cancela.
+    /// Sin compatibilidad (o sin puerto a tiro), no hay objetivo y soltar cancela.
+    ///
+    /// <para><b>Qué cambió en el hito 278</b>: antes se miraba SÓLO la tarjeta bajo el puntero y con 20 px de
+    /// diana (400 px²), así que soltar unos píxeles corto —fuera de la caja de la tarjeta o lejos del punto—
+    /// cancelaba una conexión que el usuario creía hecha. Ahora se mira toda tarjeta cuya caja (o su borde de
+    /// tolerancia) contiene el punto, y se elige el puerto más cercano dentro de <see cref="SocketDropTolerance"/>.
+    /// Sólo entran los destinos que el producto considera conectables (<see cref="PortViewModel.CanConnect"/>):
+    /// los que el arrastre muestra en aviso de tipo SÍ conectan —es la regla del escritorio— y los atenuados no.
+    /// </para>
     /// </summary>
-    private PortViewModel? FindHoverPort(NodeCardViewModel card, Windows.Foundation.Point screenPoint)
+    private PortViewModel? FindHoverPort(Windows.Foundation.Point screenPoint)
     {
         if (_editor?.PendingConnection?.Source is not { } source)
         {
             return null;
         }
 
-        var candidates = source.Direction == PortDirection.Output
-            ? card.Node.InputPorts
-            : card.Node.OutputPorts;
-
         PortViewModel? best = null;
-        double bestDistance = double.MaxValue;
-        foreach (var port in candidates)
+        double bestDistance = SocketDropTolerance * SocketDropTolerance;
+        foreach (var (card, container) in _containers)
         {
-            if (!PortViewModel.CanConnect(source, port))
+            if (!CardBoxIsWithin(container, screenPoint))
             {
                 continue;
             }
 
-            if (AnchorOf(port) is not { } anchor)
-            {
-                continue;
-            }
+            var candidates = source.Direction == PortDirection.Output
+                ? card.Node.InputPorts
+                : card.Node.OutputPorts;
 
-            var screen = ScreenPointOfAnchor(anchor);
-            double dx = screen.X - screenPoint.X;
-            double dy = screen.Y - screenPoint.Y;
-            double distance = (dx * dx) + (dy * dy);
-
-            if (distance < bestDistance && distance <= 400)
+            foreach (var port in candidates)
             {
-                best = port;
-                bestDistance = distance;
+                if (!PortViewModel.CanConnect(source, port))
+                {
+                    continue;
+                }
+
+                if (AnchorOf(port) is not { } anchor)
+                {
+                    continue;
+                }
+
+                var screen = ScreenPointOfAnchor(anchor);
+                double dx = screen.X - screenPoint.X;
+                double dy = screen.Y - screenPoint.Y;
+                double distance = (dx * dx) + (dy * dy);
+
+                if (distance <= bestDistance)
+                {
+                    best = port;
+                    bestDistance = distance;
+                }
             }
         }
 
         return best;
+    }
+
+    /// <summary>
+    /// ¿La caja de <paramref name="container"/> contiene el punto, con el borde de
+    /// <see cref="SocketDropTolerance"/> de margen? La caja se pregunta al árbol visual —el mismo cruce que la
+    /// medida de un ancla, con la escala del plano dentro—: el margen es lo que permite soltar el cable unos
+    /// píxeles fuera de la tarjeta destino sin que el gesto se cancele.
+    /// </summary>
+    private bool CardBoxIsWithin(FrameworkElement container, Windows.Foundation.Point screenPoint)
+    {
+        var box = container.TransformToVisual(RootGrid)
+            .TransformBounds(new Windows.Foundation.Rect(0, 0, container.ActualWidth, container.ActualHeight));
+        double margin = SocketDropTolerance;
+
+        return screenPoint.X >= box.X - margin
+            && screenPoint.X <= box.X + box.Width + margin
+            && screenPoint.Y >= box.Y - margin
+            && screenPoint.Y <= box.Y + box.Height + margin;
     }
 
     /// <summary>El punto de pantalla de un ancla de grafo (aplica el mapeo compartido: zoom + translate).</summary>
@@ -2146,6 +2643,8 @@ public sealed partial class EditorCanvasControl : UserControl
     /// <summary>El cable pendiente dibujado sobre la capa de cables, si hay arrastre activo.</summary>
     private void DrawPendingWire()
     {
+        ClearPendingWire();
+
         var pending = _editor?.PendingConnection;
         if (pending is null || pending.Source is null)
         {
@@ -2231,14 +2730,9 @@ public sealed partial class EditorCanvasControl : UserControl
         // Escape con cable pendiente lo CANCELA (y limpia la capa), antes que cualquier otra semántica.
         if (command == EditorKeyboardShortcuts.ShortcutKey.Escape && _editor.PendingConnection is not null)
         {
-            if (_pendingWirePath is not null)
-            {
-                WireLayer.Children.Remove(_pendingWirePath);
-                _pendingWirePath = null;
-            }
-
-            _editor.CancelConnectionCommand.Execute(null);
-            UpdatePortStatesAndWires();
+            // Escape CANCELA el gesto por el mismo camino que soltar en el vacío (hito 278): una sola casa
+            // para "dejar el estado limpio".
+            EndSocketGesture(null);
             return true;
         }
 

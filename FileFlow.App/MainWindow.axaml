@@ -25,7 +25,7 @@
         <KeyBinding Gesture="Ctrl+V" Command="{Binding Editor.PasteNodesCommand}" />
         <KeyBinding Gesture="Ctrl+X" Command="{Binding Editor.CutSelectedNodesCommand}" />
         <KeyBinding Gesture="Ctrl+D" Command="{Binding Editor.DuplicateSelectedNodesCommand}" />
-        <KeyBinding Gesture="Delete" Command="{Binding Editor.DeleteSelectedNodesCommand}" />
+        <KeyBinding Gesture="Delete" Command="{Binding Editor.DeleteSelectionCommand}" />
         <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding Editor.ZoomInCommand}" />
         <KeyBinding Gesture="Ctrl+Add" Command="{Binding Editor.ZoomInCommand}" />
         <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding Editor.ZoomOutCommand}" />

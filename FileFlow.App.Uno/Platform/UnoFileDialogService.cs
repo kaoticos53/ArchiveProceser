@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using FileFlow.App.Services;
+using Microsoft.UI.Xaml;
 using Windows.Storage.Pickers;
 
 namespace FileFlow.App.Uno.Platform;
@@ -13,23 +14,28 @@ namespace FileFlow.App.Uno.Platform;
 /// hilo llamador, la vía del «Probar» del inspector desde un click de UI.
 ///
 /// <para><b>Las restricciones de plataforma medidas</b>: los pickers de WinUI exigen el hilo de UI
-/// (WinRT lanza «Access is denied» desde otro). El síncrono bloquea con un Wait SIN interbloqueo
-/// porque el hilo que espera NO es el que despacha — y si el llamador ya está en UI, se aborta con
-/// null (declarado, no fingido). El asíncrono no bloquea nunca: encola y espera por el await. El
-/// parámetro de filtro del contrato se mapea al único patrón que los pickers de WinRT aceptan por
-/// su extensión.</para>
+/// (WinRT lanza «Access is denied» desde otro) <b>y un dueño</b>: en una app SIN empaquetar —como
+/// este host— el picker no tiene ventana propia y revienta con «Invalid window handle
+/// (0x80070578)», así que cada uno se ata a la ventana del host antes de abrirse (medido con el
+/// ratón: «Guardar Flujo...» del cajón se cerraba sin más y dejaba en la barra de estado
+/// «flujo guardado: EXCEPCION COMException: Invalid window handle»). El síncrono bloquea con un
+/// Wait SIN interbloqueo porque el hilo que espera NO es el que despacha — y si el llamador ya
+/// está en UI, se aborta con null (declarado, no fingido). El asíncrono no bloquea nunca: encola
+/// y espera por el await. El parámetro de filtro del contrato se mapea al único patrón que los
+/// pickers de WinRT aceptan por su extensión.</para>
 /// </summary>
 public sealed class UnoFileDialogService : IFileDialogService
 {
     public string? ShowOpenFileDialog(string title, string filter, string defaultExt = "")
     {
-        return RunOnUi(() =>
+        return RunOnUi(window =>
         {
             var picker = new FileOpenPicker
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
                 ViewMode = PickerViewMode.List
             };
+            OwnPicker(picker, window);
             ApplyFilter(picker, filter, defaultExt);
             return picker.PickSingleFileAsync().AsTask().GetAwaiter().GetResult()?.Path;
         });
@@ -37,13 +43,14 @@ public sealed class UnoFileDialogService : IFileDialogService
 
     public string? ShowSaveFileDialog(string title, string filter, string defaultExt = "", string defaultFileName = "")
     {
-        return RunOnUi(() =>
+        return RunOnUi(window =>
         {
             var picker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
                 SuggestedFileName = string.IsNullOrWhiteSpace(defaultFileName) ? "flujo" : defaultFileName
             };
+            OwnPicker(picker, window);
             ApplyFilter(picker, filter, defaultExt);
             return picker.PickSaveFileAsync().AsTask().GetAwaiter().GetResult()?.Path;
         });
@@ -51,16 +58,20 @@ public sealed class UnoFileDialogService : IFileDialogService
 
     public string? ShowFolderBrowserDialog(string title)
     {
-        return RunOnUi(() =>
+        return RunOnUi(window =>
         {
             var picker = new FolderPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
             picker.FileTypeFilter.Add("*");
+            OwnPicker(picker, window);
             return picker.PickSingleFolderAsync().AsTask().GetAwaiter().GetResult()?.Path;
         });
     }
 
-    /// <summary>El picker exige hilo de UI; el bloqueo exige NO estar ya en él. Ambas a la vez o null.</summary>
-    private static string? RunOnUi(Func<string?> pick)
+    /// <summary>
+    /// El picker exige hilo de UI; el bloqueo exige NO estar ya en él. Ambas a la vez o null.
+    /// El dueño viaja en el delegado: el picker se ata a la ventana que lo encola.
+    /// </summary>
+    private static string? RunOnUi(Func<Window, string?> pick)
     {
         var window = App.MainWindow;
         if (window is null)
@@ -82,7 +93,7 @@ public sealed class UnoFileDialogService : IFileDialogService
             {
                 try
                 {
-                    result = pick();
+                    result = pick(window);
                 }
                 finally
                 {
@@ -104,13 +115,14 @@ public sealed class UnoFileDialogService : IFileDialogService
 
     public Task<string?> ShowOpenFileDialogAsync(string title, string filter, string defaultExt = "")
     {
-        return EnqueueOnUiAsync(() =>
+        return EnqueueOnUiAsync(window =>
         {
             var picker = new FileOpenPicker
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
                 ViewMode = PickerViewMode.List
             };
+            OwnPicker(picker, window);
             ApplyFilter(picker, filter, defaultExt);
             return picker.PickSingleFileAsync().AsTask().GetAwaiter().GetResult()?.Path;
         });
@@ -118,13 +130,14 @@ public sealed class UnoFileDialogService : IFileDialogService
 
     public Task<string?> ShowSaveFileDialogAsync(string title, string filter, string defaultExt = "", string defaultFileName = "")
     {
-        return EnqueueOnUiAsync(() =>
+        return EnqueueOnUiAsync(window =>
         {
             var picker = new FileSavePicker
             {
                 SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
                 SuggestedFileName = string.IsNullOrWhiteSpace(defaultFileName) ? "flujo" : defaultFileName
             };
+            OwnPicker(picker, window);
             ApplyFilter(picker, filter, defaultExt);
             return picker.PickSaveFileAsync().AsTask().GetAwaiter().GetResult()?.Path;
         });
@@ -132,16 +145,17 @@ public sealed class UnoFileDialogService : IFileDialogService
 
     public Task<string?> ShowFolderBrowserDialogAsync(string title)
     {
-        return EnqueueOnUiAsync(() =>
+        return EnqueueOnUiAsync(window =>
         {
             var picker = new FolderPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
             picker.FileTypeFilter.Add("*");
+            OwnPicker(picker, window);
             return picker.PickSingleFolderAsync().AsTask().GetAwaiter().GetResult()?.Path;
         });
     }
 
     /// <summary>Encola el picker en UI y devuelve la Task del resultado: sin Wait ni interbloqueo.</summary>
-    private static Task<string?> EnqueueOnUiAsync(Func<string?> pick)
+    private static Task<string?> EnqueueOnUiAsync(Func<Window, string?> pick)
     {
         var window = App.MainWindow;
         if (window is null)
@@ -155,7 +169,7 @@ public sealed class UnoFileDialogService : IFileDialogService
         {
             try
             {
-                completion.SetResult(pick());
+                completion.SetResult(pick(window));
             }
             catch (Exception ex)
             {
@@ -167,6 +181,16 @@ public sealed class UnoFileDialogService : IFileDialogService
         }
 
         return completion.Task;
+    }
+
+    /// <summary>
+    /// Ata el picker a la ventana del host. Los pickers de WinRT de una app SIN empaquetar —como este
+    /// host— no tienen dueño propio y revientan con «Invalid window handle (0x80070578)» al abrirse;
+    /// el propio mensaje del runtime nombra la vía: WindowNative + InitializeWithWindow.
+    /// </summary>
+    private static void OwnPicker(object picker, Window window)
+    {
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
     }
 
     /// <summary>El patrón «Todos los archivos (*.*)|*.*» del contrato al FileTypeFilter de WinRT.</summary>

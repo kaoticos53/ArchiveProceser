@@ -201,7 +201,11 @@
 
         <!-- ================= Cuerpo: puertos dibujados y panel de parámetros plegable ================= -->
         <StackPanel Margin="0,4">
-          <Grid Margin="-16,0">
+          <!-- Los puertos viven DENTRO de la cara de la tarjeta (hito 278). Antes el Grid sangraba 16 px por
+               cada lado para sacar el socket al borde, y ese sobrante quedaba fuera del rectángulo de la
+               tarjeta: ni se pintaba ni se podía pulsar — el socket era invisible y su única zona activa era
+               el texto de la etiqueta. Traído adentro, el punto se ve y la fila entera se pulsa. -->
+          <Grid Margin="0,0">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="12" />
@@ -211,9 +215,16 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <!-- Socket VIVO (fase 3.3): pulsa para terminar un cable, click derecho para desconectar.
-                       El gesto lo maneja la tarjeta y lo sube al lienzo por SocketRequested. -->
-                  <StackPanel Orientation="Horizontal" Margin="0,2" Spacing="5"
-                              PointerPressed="OnSocketPressed" RightTapped="OnSocketRightTapped">
+                       El gesto lo maneja la tarjeta y lo sube al lienzo por SocketRequested.
+                       El fondo TRANSPARENTE más el relleno hacen de la fila ENTERA la zona activa, no del
+                       texto de la etiqueta (que medía ~19 px): sin fondo, el hit-test de los huecos de la
+                       fila caía en la cara de la tarjeta —que sí lo tiene— y la pulsación arrastraba el nodo
+                       en vez de arrancar el cable (hito 278). -->
+                  <StackPanel Orientation="Horizontal" Margin="0,1" Spacing="5" Padding="4,3"
+                              Background="Transparent"
+                              PointerPressed="OnSocketPressed" PointerReleased="OnSocketReleased"
+                              PointerCaptureLost="OnSocketReleased"
+                              RightTapped="OnSocketRightTapped">
                     <Grid Width="15" Height="15">
                       <Border Width="13" Height="13" CornerRadius="{Binding Converter={StaticResource SocketRadius}}"
                               HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -240,9 +251,12 @@
             <ItemsControl Grid.Column="2" ItemsSource="{Binding Node.OutputPorts}" HorizontalAlignment="Right">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <StackPanel Orientation="Horizontal" Margin="0,2" Spacing="5"
+                  <StackPanel Orientation="Horizontal" Margin="0,1" Spacing="5" Padding="4,3"
                               HorizontalAlignment="Right"
-                              PointerPressed="OnSocketPressed" RightTapped="OnSocketRightTapped">
+                              Background="Transparent"
+                              PointerPressed="OnSocketPressed" PointerReleased="OnSocketReleased"
+                              PointerCaptureLost="OnSocketReleased"
+                              RightTapped="OnSocketRightTapped">
                     <TextBlock Text="{Binding DisplayName}" FontSize="10.5" FontWeight="SemiBold"
                                Foreground="{StaticResource CanvasTextBrush}" VerticalAlignment="Center"
                                Opacity="{Binding Converter={StaticResource SocketOpacity}}" />

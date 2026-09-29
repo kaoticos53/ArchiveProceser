@@ -124,7 +124,7 @@ public class UnoAutomationSurfaceGuardTests
             "la sonda comprueba el peer expuesto, no sólo la propiedad: es lo que una sonda externa " +
             "necesita para SetFocus");
 
-        string selfcheck = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
+        string selfcheck = SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckPointerless.cs");
 
         selfcheck.Should().Contain(
             "canvas.ProbeUiAccessibility()",
@@ -203,10 +203,9 @@ public class UnoAutomationSurfaceGuardTests
     [Fact]
     public void TheInspector_ShouldMountTheUiaExternalFixture_WithRealSnapshots()
     {
-        string runtime = SourceText.CodeWithoutComments("FileFlow.App.Uno/RuntimeSelfCheck.cs");
+        string runtime = SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckUia.cs");
         string app = SourceText.CodeWithoutComments("FileFlow.App.Uno/App.xaml.cs");
         string panel = SourceText.CodeWithoutComments("FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs");
-        string mode = SourceText.CodeWithoutComments("FileFlow.App.Uno/SelfCheckUia.cs");
 
         runtime.Should().Contain(
             "public static bool MountUiaExternalScene(Window? window)",
@@ -229,8 +228,8 @@ public class UnoAutomationSurfaceGuardTests
             "el modo monta la escena ANTES de lanzar el sondeo: sin escena, las pestañas del inspector " +
             "nacerían vacías y el veredicto sería falso");
 
-        mode.Should().Contain(
-            "RuntimeSelfCheck.MountUiaExternalScene(mainWindow);",
+        runtime.Should().Contain(
+            "MountUiaExternalScene(mainWindow);",
             "el orden que la medición impuso vive dentro del modo: app → escena → observador");
 
         panel.Should().Contain(

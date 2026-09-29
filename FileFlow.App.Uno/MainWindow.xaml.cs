@@ -102,6 +102,21 @@ public sealed partial class MainWindow : Window
             "Uno_SplitterInspector", "Redimensionar la ficha del nodo"));
     }
 
+    // ── La superficie que mide la sonda del MARCO (hito 272) ──
+
+    /// <summary>
+    /// Las tres zonas de la rejilla raíz —barra, editor y franja de estado— y las dos asas con sus columnas.
+    /// Existen para que el sondeo pueda medir la GEOMETRÍA del marco: la regresión del hito 270 —el
+    /// <c>Workspace</c> sin su <c>Grid.Row</c>, pintado encima de la barra— pasó con 85 <c>[OK]</c> porque
+    /// ninguna sonda miraba dónde cae cada zona, y la barra sólo se pulsaba por método, no por puntero.
+    /// </summary>
+    internal FrameworkElement FrameBar => Bar;
+    internal FrameworkElement FrameWorkspace => Workspace;
+    internal FrameworkElement FrameStatus => StatusBarHost;
+    internal PanelSplitter FrameToolboxSplitter => ToolboxSplitter;
+    internal ColumnDefinition FrameToolboxColumn => ToolboxColumn;
+    internal ColumnDefinition FrameCanvasColumn => CanvasColumn;
+
     /// <summary>
     /// Aplica la visibilidad del panel al marco entero: la ficha plegada se lleva su columna (a ancho cero) y su
     /// asa, y al abrirse vuelve al ancho que el usuario le había dado —no al de fábrica—.

@@ -132,7 +132,7 @@ public partial class App : Application
         // por selfcheck-settings-report.txt.
         if (Environment.GetCommandLineArgs().Contains("--selfcheck-settings", StringComparer.Ordinal))
         {
-            RuntimeSelfCheck.RunSettingsProbe(
+            SelfCheckSettings.Run(
                 s_mainWindow,
                 s_services.GetRequiredService<IUiDispatcher>() is UnoUiDispatcher d
                     ? d.Queue
@@ -145,7 +145,7 @@ public partial class App : Application
         // mudanza a mitad. El veredicto sale por selfcheck-controlbar-report.txt.
         if (Environment.GetCommandLineArgs().Contains("--selfcheck-controlbar", StringComparer.Ordinal))
         {
-            RuntimeSelfCheck.RunControlBarProbe(
+            SelfCheckControlBar.Run(
                 s_mainWindow,
                 s_services.GetRequiredService<IUiDispatcher>() is UnoUiDispatcher c
                     ? c.Queue
@@ -159,7 +159,7 @@ public partial class App : Application
         // selfcheck-dialogs-report.txt.
         if (Environment.GetCommandLineArgs().Contains("--selfcheck-dialogs", StringComparer.Ordinal))
         {
-            RuntimeSelfCheck.RunDialogsProbe(
+            SelfCheckDialogs.Run(
                 s_mainWindow,
                 s_services.GetRequiredService<IUiDispatcher>() is UnoUiDispatcher dl
                     ? dl.Queue

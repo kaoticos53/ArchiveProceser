@@ -51,9 +51,10 @@ public class UnoHermeticBuildGuardTests
     ];
 
     /// <summary>
-    /// Los nodos cuya ventana es del ESCRITORIO, con la clave del diccionario que da su nombre. Los dos
-    /// últimos (el diseñador de datasets y el gestor de presets) además DECLARAN su superficie, así que en el
-    /// host Uno se sirven por ahí: su rama del toolkit es defensa declarada.
+    /// Los nodos cuya ventana es del ESCRITORIO, con la clave del diccionario que da su nombre. Cuatro de
+    /// ellos —el diseñador de datasets, el gestor de presets y los dos del gestor de contraseñas— además
+    /// DECLARAN su superficie, así que en el host Uno se sirven por ahí (hito 278 para el de contraseñas): su
+    /// rama del toolkit es defensa declarada, para el host que ignore las superficies declaradas.
     /// </summary>
     private static readonly (string File, string NameKey, string Window)[] DesktopOnlyNodes =
     [

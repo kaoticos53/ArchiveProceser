@@ -54,7 +54,6 @@
   <data name="Uno_InspectorActions" xml:space="preserve"><value>Acciones</value></data>
   <data name="Uno_InspectorParams" xml:space="preserve"><value>Parámetros</value></data>
   <data name="Uno_InspectorTelemetry" xml:space="preserve"><value>Telemetría</value></data>
-  <data name="Uno_InspectorResetMetrics" xml:space="preserve"><value>Vaciar métricas</value></data>
   <data name="Uno_InspectorTitle" xml:space="preserve"><value>Inspector</value></data>
   <data name="Uno_InspectorEmpty" xml:space="preserve"><value>Selecciona un nodo para inspeccionarlo.</value></data>
   <data name="Uno_InspectorStatus" xml:space="preserve"><value>Estado</value></data>
@@ -556,25 +555,9 @@
   <data name="AiModelUrls_StatusCustom" xml:space="preserve"><value>🔧 Personalizado</value></data>
   <data name="AiModelUrls_StatusDefault" xml:space="preserve"><value>📦 Oficial / Predeterminado</value></data>
   <data name="Uno_AiModelUrls_RequiredWarning" xml:space="preserve"><value>Debe especificar al menos una URL de descarga válida para este modelo.</value></data>
-<data name="PresetManager_Category" xml:space="preserve"><value>Categoría</value></data>
-<data name="PresetManager_DeleteBtn" xml:space="preserve"><value>🗑 Eliminar</value></data>
-<data name="PresetManager_Description" xml:space="preserve"><value>Descripción Corta</value></data>
-<data name="PresetManager_FfmpegArgs" xml:space="preserve"><value>Argumentos CLI de FFmpeg</value></data>
-<data name="PresetManager_FormTitle" xml:space="preserve"><value>✏️ Detalle y Configuración del Preset</value></data>
-<data name="PresetManager_HeaderSubtitle" xml:space="preserve"><value>Crea, edita, personaliza y administra los presets de conversión de audio y vídeo para el nodo de transcodificación.</value></data>
-<data name="PresetManager_HeaderTitle" xml:space="preserve"><value>🎬 Gestor de Presets de Transcodificación de Media</value></data>
-<data name="PresetManager_MsgDefaultCannotDelete" xml:space="preserve"><value>No se pueden eliminar los presets predeterminados del sistema.</value></data>
-<data name="PresetManager_MsgDeleteConfirm" xml:space="preserve"><value>¿Deseas eliminar el preset '{0}'?</value></data>
-<data name="PresetManager_MsgResetConfirm" xml:space="preserve"><value>¿Deseas restablecer todos los presets a los valores por defecto del sistema?</value></data>
-<data name="PresetManager_MsgSaveSuccess" xml:space="preserve"><value>Preset guardado con éxito.</value></data>
-<data name="PresetManager_NewBtn" xml:space="preserve"><value>➕ Nuevo</value></data>
-<data name="PresetManager_NewPresetDescription" xml:space="preserve"><value>Descripción del nuevo preset...</value></data>
-<data name="PresetManager_NewPresetName" xml:space="preserve"><value>Nuevo Preset Personalizado</value></data>
-<data name="PresetManager_OutputExt" xml:space="preserve"><value>Extensión de Salida</value></data>
-<data name="PresetManager_PresetName" xml:space="preserve"><value>Nombre del Preset</value></data>
-<data name="PresetManager_ResetBtn" xml:space="preserve"><value>🔄 Restablecer Predeterminados</value></data>
-<data name="PresetManager_ResetToolTip" xml:space="preserve"><value>Restablecer la biblioteca de presets a los valores originales del sistema</value></data>
-<data name="PresetManager_SavePreset" xml:space="preserve"><value>💾 Guardar Cambios del Preset</value></data>
-<data name="PresetManager_WindowTitle" xml:space="preserve"><value>Gestor de Presets de Media (FFmpeg)</value></data>
 <data name="Node_Param_OpenPresetManager" xml:space="preserve"><value>Abrir el Gestor de Presets (Crear, Editar, Eliminar Presets)</value></data>
+<data name="Node_Param_OpenPasswordManager" xml:space="preserve"><value>Gestionar lista de contraseñas (Importar / Exportar / Editar)</value></data>
+  <!-- El CABLE del lienzo: su menú, con la misma orden del núcleo que cumple el del escritorio -->
+  <data name="Uno_Connection_Delete" xml:space="preserve"><value>Eliminar conexión</value></data>
+
 </root>

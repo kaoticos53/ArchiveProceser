@@ -318,6 +318,36 @@ public sealed partial class NodeToolboxPanel : UserControl
     /// <summary>Cuenta de nodos del editor antes/después de añadir (la sonda compara).</summary>
     internal int EditorNodeCount => _editor?.Nodes.Count ?? -1;
 
+    /// <summary>
+    /// Las cajas de las chips de categoría en el sistema del PANEL, y cuántas categorías declara el view
+    /// model. La sonda compara las dos: con la tira en una sola línea, las once chips que no cabían nacían
+    /// recortadas contra el borde —caja vacía, sin scroll ni rueda que las alcanzara— y el censo por
+    /// declaración seguía diciendo «quince». Ahora que la tira se parte en filas (hito 272), cada chip que
+    /// el view model declara tiene que tener su caja dentro del panel.
+    /// </summary>
+    internal IReadOnlyList<Windows.Foundation.Rect> ChipBoxesForProbe()
+    {
+        var boxes = new List<Windows.Foundation.Rect>();
+        if (FindDescendant<WrapPanel>(CategoryChips) is not { } strip)
+        {
+            return boxes;
+        }
+
+        foreach (var child in strip.Children)
+        {
+            if (child is FrameworkElement chip)
+            {
+                boxes.Add(chip.TransformToVisual(this).TransformBounds(
+                    new Windows.Foundation.Rect(0, 0, chip.ActualWidth, chip.ActualHeight)));
+            }
+        }
+
+        return boxes;
+    }
+
+    /// <summary>Cuántas categorías declara el view model (el censo de la sonda).</summary>
+    internal int DeclaredCategoryCount => _vm?.AvailableCategories.Count ?? -1;
+
     /// <summary>Añade el primer ítem de un grupo por el MISMO método que el doble clic (la sonda).</summary>
     internal bool TryAddFirstItemOfGroupForProbe()
     {

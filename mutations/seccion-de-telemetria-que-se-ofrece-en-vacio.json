@@ -1,0 +1,26 @@
+{
+  "id": "seccion-de-telemetria-que-se-ofrece-en-vacio",
+  "hito": 275,
+  "claim": "La sección de Telemetría de la ficha del host Uno se OFRECE y PINTA: el panel la monta con la sección por contenido, la sonda la recorre entera (pestaña declarada, montaje, conmutación que la deja visible y sola) y exige sus filas pintadas —una fila en blanco no es una medida—.",
+  "why": "El defecto ya se midió una vez y no se veía: la ficha construía las filas de telemetría, las rellenaba desde CurrentStats y NO las montaba en ninguna parte, así que el usuario no tenía ni una medida mientras la guardia que existía —medía que las filas se construyeran— seguía en verde. El mutante deja la pestaña declarada y su envoltorio en su sitio, pero con un cuerpo vacío: es exactamente la superficie que se ofrece en vacío, y la caída nombra el montaje que falta.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs",
+      "replacements": [
+        {
+          "old": "            NamedPane(\"InspectorTelemetryScroll\", _telemetrySection)\n",
+          "new": "            NamedPane(\"InspectorTelemetryScroll\", new Grid())\n",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~TheInspector_ShouldMountTheTelemetrySection_InItsOwnDeclaredSection",
+    "why": "El caso exige el montaje con la sección por contenido (y la sonda del selfcheck que lo mide en runtime). Con el mutante el cuerpo de la pestaña queda vacío y el caso cae nombrando el montaje que falta: es el caso que faltaba, porque el que había medía la construcción de las filas."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~TheTelemetrySection_ShouldOnlyReadTheMetricsTheEngineWrites",
+    "why": "El caso hermano vigila la SECCIÓN (de dónde salen sus medidas, sus rótulos, sus anclas y su frontera de sólo lectura), que el mutante no toca: quita el montaje, no la sección. Si cayera, el mutante estaría rompiendo la sección y no su montaje."
+  }
+}

@@ -529,12 +529,27 @@ public sealed partial class SettingsPanel : UserControl
     /// </summary>
     internal (bool SixSections, string Detail) MeasureSectionCensus()
     {
+        // Un botón puede EXISTIR y no poder pulsarse: con la tira en una sola línea, los seis rótulos
+        // pedían más ancho que el panel de 800 y la pestaña «Actualizaciones» nacía recortada contra el
+        // borde —caja vacía, fuera del alcance del ratón y sin scroll ni rueda que la alcanzara— mientras
+        // este censo, que sólo miraba la declaración, seguía diciendo «seis». Desde el hito 272 el censo
+        // exige que cada botón tenga CAJA propia DENTRO del panel.
+        var boxes = SectionButtons.Select(BoxInPanel).ToArray();
         bool six = SectionPanes.Length == 6 && SectionButtons.Length == 6
-            && SectionButtons.All(b => b.Content is string text && !string.IsNullOrWhiteSpace(text));
+            && SectionButtons.All(b => b.Content is string text && !string.IsNullOrWhiteSpace(text))
+            && boxes.All(box => box.Width > 0 && box.Height > 0
+                && box.Left >= -0.5 && box.Top >= -0.5
+                && box.Right <= PanelHost.Width + 0.5 && box.Bottom <= PanelHost.Height + 0.5);
 
         return (six, "secciones=" + SectionPanes.Length + " / botones=" + SectionButtons.Length
-            + " rótulos=" + string.Join(" | ", SectionButtons.Select(b => b.Content as string)));
+            + " rótulos=" + string.Join(" | ", SectionButtons.Select(b => b.Content as string))
+            + " cajas=" + string.Join(" ", boxes.Select(b => $"{b.Width:F0}x{b.Height:F0}@({b.Left:F0},{b.Top:F0})")));
     }
+
+    /// <summary>La caja de un elemento en el sistema del PANEL (el que tiene ancho y alto fijos).</summary>
+    private Windows.Foundation.Rect BoxInPanel(FrameworkElement element) =>
+        element.TransformToVisual(PanelHost).TransformBounds(
+            new Windows.Foundation.Rect(0, 0, element.ActualWidth, element.ActualHeight));
 
     /// <summary>
     /// Despliega una de las secciones portadas en el hito 261 para poder medirla en un tiempo aparte.
