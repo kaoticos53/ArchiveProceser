@@ -273,7 +273,7 @@ public class ApplicationHeartbeatContractTests
 
         // El núcleo portable (FileFlow.App.Core) forma parte de la aplicación: los ViewModels y el
         // registro de latidos viven ahí, y el lint de fontanería los barre igual que el host.
-        return Directory.EnumerateFiles(Path.Combine(root, "FileFlow.App"), "*.cs", SearchOption.AllDirectories)
+        return Directory.EnumerateFiles(Path.Combine(root, "FileFlow.App.Uno"), "*.cs", SearchOption.AllDirectories)
             .Concat(Directory.EnumerateFiles(Path.Combine(root, "FileFlow.App.Core"), "*.cs", SearchOption.AllDirectories))
             .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
             .Where(path => !path.Contains("/obj/", StringComparison.OrdinalIgnoreCase)

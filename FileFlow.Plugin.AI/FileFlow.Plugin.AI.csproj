@@ -24,23 +24,6 @@
     <InternalsVisibleTo Include="FileFlow.Tests" />
   </ItemGroup>
 
-  <!--
-    SABOR DE UI (hito 268): la ventana de configuración del VLM —su XAML, sus convertidores y el view model
-    que envuelve— es del ESCRITORIO. En el host Uno no se compilan, para que el ensamblado no arrastre
-    Avalonia; el nodo declara la frontera por los diálogos de quien lo abrió (ver MultimodalVisionLlmNode).
-  -->
-  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' == 'true'">
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' != 'true'">
-    <Compile Remove="UI\MultimodalVlmConfigWindow.axaml.cs" />
-    <Compile Remove="UI\Converters\**\*.cs" />
-    <Compile Remove="ViewModels\MultimodalVlmConfigViewModel.cs" />
-    <AvaloniaXaml Remove="UI\MultimodalVlmConfigWindow.axaml" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />

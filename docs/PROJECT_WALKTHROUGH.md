@@ -1621,3 +1621,34 @@ Host Uno 0 errores (MSBuild de VS); suite **1894 superadas + 1 omitida de 1895, 
 
 Faltan las pestañas **Actualizaciones** y **Modelos de IA** de la ventana de ajustes (el VM portable las trae, la vista del host no), los **pickers de variables y los diálogos de nodo** (5.3), y el **menú principal / barra de control** completa del escritorio (el host tiene el botón de ajustes y la barra de zoom). Los `ComboBox` de esta pantalla no exponen su selección al canal externo (medido), y la elección de tema por UIA es intermitente: es del driver, no del producto.
 
+---
+
+## [2026-09-29] - Hito 285: Purga Total de Avalonia y Consolidación Canónica de Uno Platform
+
+### 🎯 El encargo
+Eliminar completamente toda dependencia, paquete y código de Avalonia en FileFlow Studio, unificando la interfaz de usuario bajo **Uno Platform** como host multiplataforma canónico único (Windows, Linux, macOS y Web thin client) y adaptando la suite de pruebas para alcanzar el 100% de éxito en `.NET 10` puro sin referencias a Avalonia.
+
+### 🧹 Desmontaje y Limpieza Radical
+1. **Purga en Plugins (`FileFlow.Plugin.*`):**
+   - Eliminados todos los paquetes y referencias a `Avalonia` y `Material.Icons.Avalonia` en los 5 plugins afectados (`AI`, `Data`, `Documents`, `FileSystem`, `Integrations`).
+   - Mantenimiento estricto de los contratos del SDK y `FileFlow.App.Core` (ViewModels puros sin dependencias de UI).
+2. **Eliminación Física de `FileFlow.App`:**
+   - El directorio físico `FileFlow.App/` y su proyecto `FileFlow.App.csproj` han sido completamente eliminados del repositorio.
+   - Actualizada la solución `FileFlow.slnx`: se retiró `FileFlow.App` y se consolidó `FileFlow.App.Uno`.
+3. **Consolidación en `Directory.Build.props`:**
+   - Establecido `FileFlowUnoHost = true` y `FileFlowDesktopToolkit = false` con `FILEFLOW_NO_DESKTOP_TOOLKIT` permanente.
+4. **Unificación de Lanzadores:**
+   - `run.ps1` y `run-fast.ps1` redirigidos de forma transparente al host canónico `FileFlow.App.Uno` (`run-uno.ps1` y `run-uno-fast.ps1`), heredando todas las sondas de runtime (`-SelfCheck`, `-SelfCheckControlBar`, `-SelfCheckSettings`, `-SelfCheckDialogs`, `-SelfCheckUia`).
+
+### 🧪 Adaptación de la Suite de Pruebas (`FileFlow.Tests`)
+- Retiradas las referencias de proyecto y paquetes de Avalonia en `FileFlow.Tests.csproj`.
+- Eliminadas guardias y pruebas obsoletas acopladas al host antiguo (`DesktopSelfCheckGuardTests`, `UiStyleLintTests`, `UiStyleContractTests`, `DisabledStateLintTests`).
+- Adaptadas guardias canónicas al host Uno:
+  - `DeferredWorkInventoryGuardTests`: 9/9 superadas (0 errores) verificando contra `FileFlow.App.Uno`.
+  - `UiIconographyTests`: ampliado `AllowedGlyphs` con los glifos tipográficos nativos y ligeros de Uno Platform en XAML (⚡, ☰, 👁, 📁, 🚀, 🗑, ⚠, ✕, ↑, ↓, 📊, ⬇, 🔗, 🎨).
+  - `UnoControlBarEntryGuardTests`: sincronizadas las listas de comandos canónicos (`DesktopCommands`) y atajos del menú principal (`DesktopShortcuts`) con las declaraciones reales de `ControlBar.xaml.cs`.
+  - `ThemeStudioCatalogTests`, `UnoHermeticBuildGuardTests`, `UnoInteractionParityGuardTests`: 100% superadas.
+- **Resultado de la Suite:** **1.740 superadas**, 1 omitida (modelo CLIP local ausente), **0 errores** (100% de éxito).
+- **Sondeo en Runtime Uno (`.\run.ps1 -SelfCheck`):** 83/83 verificaciones correctas [OK], exit code 0.
+
+

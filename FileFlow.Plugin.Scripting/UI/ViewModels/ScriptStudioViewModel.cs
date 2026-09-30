@@ -164,16 +164,25 @@ public sealed partial class ScriptStudioViewModel : ObservableObject
             FileSizeBytes = TestFileSizeBytes
         };
 
+        var syncContext = SynchronizationContext.Current;
+        void PostToUi(Action action)
+        {
+            if (syncContext != null)
+                syncContext.Post(_ => action(), null);
+            else
+                action();
+        }
+
         var mockFlowContext = new TestFlowExecutionContext((port, item) =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            PostToUi(() =>
             {
                 TestEmittedPorts.Add($"⚡ Emitido por '{port}' ({item.FileName})");
             });
         },
         (msg, lvl) =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            PostToUi(() =>
             {
                 TestLogs.Add($"[{lvl}] {msg}");
             });

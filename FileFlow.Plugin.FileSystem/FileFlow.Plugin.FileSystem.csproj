@@ -11,29 +11,8 @@
     <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
   </ItemGroup>
 
-  <!--
-    SABOR DE UI (hito 268): sin el toolkit del escritorio no se compilan las VENTANAS del plugin (su XAML y
-    su código de detrás), sus convertidores ni los dos view models que sólo existen para esas ventanas. El
-    DISEÑADOR DE DATASETS SÍ se compila: es la superficie que el nodo declara y que el host Uno pinta con su
-    propia vista sobre el mismo view model portable.
-  -->
-  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' == 'true'">
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
-    <PackageReference Include="Material.Icons.Avalonia" Version="3.0.2" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' != 'true'">
-    <!-- El icono del árbol lo elige un view model que SÍ se compila aquí: el paquete puro de Material.Icons
-         (el del toolkit de Avalonia sólo trae además el control). -->
+  <ItemGroup>
     <PackageReference Include="Material.Icons" Version="3.0.2" />
-    <Compile Remove="UI\Views\**\*.cs" />
-    <Compile Remove="UI\Converters\**\*.cs" />
-    <Compile Remove="UI\ViewModels\AdvancedRenamerEditorViewModel.cs" />
-    <Compile Remove="UI\ViewModels\RegexHelperViewModel.cs" />
-    <AvaloniaXaml Remove="UI\Views\**" />
-    <AvaloniaResource Remove="UI\Views\**" />
   </ItemGroup>
 
   <ItemGroup>

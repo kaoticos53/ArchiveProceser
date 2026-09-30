@@ -1,4 +1,3 @@
-using Avalonia;
 using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Models;
 using FileFlow.App.Services;

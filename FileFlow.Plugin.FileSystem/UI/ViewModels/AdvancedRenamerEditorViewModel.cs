@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FileFlow.Plugin.FileSystem.UI.Models;
@@ -172,15 +171,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [RelayCommand]
     private async Task OpenDataSetDesignerAsync()
     {
-        var window = new Views.SyntheticDataSetDesignerWindow();
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-        {
-            await window.ShowDialog(desktop.MainWindow);
-        }
-        else
-        {
-            window.Show();
-        }
+        await Task.CompletedTask;
         LoadSampleCategories();
         GenerateLivePreview();
     }
@@ -288,89 +279,74 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [RelayCommand]
     public async Task SaveCurrentAsPresetAsync()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+        var picked = await DesktopFilePicker.PickSaveAsync(
+            "Guardar Preset de Renombrado Avanzado",
+            [
+                new FileTypeFilter("Ajustes de Renombrado (*.ffren)", ["*.ffren"]),
+                new FileTypeFilter("Archivos JSON (*.json)", ["*.json"])
+            ],
+            "preset.ffren",
+            "ffren",
+            _dialogService);
+
+        if (picked != null)
         {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel != null)
+            var preset = new RenamerPreset
             {
-                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-                {
-                    Title = "Guardar Preset de Renombrado Avanzado",
-                    SuggestedFileName = "preset.ffren",
-                    DefaultExtension = "ffren",
-                    FileTypeChoices =
-                    [
-                        new Avalonia.Platform.Storage.FilePickerFileType("Ajustes de Renombrado (*.ffren)") { Patterns = ["*.ffren"] },
-                        new Avalonia.Platform.Storage.FilePickerFileType("Archivos JSON (*.json)") { Patterns = ["*.json"] }
-                    ]
-                });
+                Name = Path.GetFileNameWithoutExtension(picked.Path),
+                Description = "Preset personalizado creado por el usuario",
+                Category = "Personalizado",
+                Steps = Steps.ToList()
+            };
 
-                if (file != null)
-                {
-                    var preset = new RenamerPreset
-                    {
-                        Name = Path.GetFileNameWithoutExtension(file.Path.LocalPath),
-                        Description = "Preset personalizado creado por el usuario",
-                        Category = "Personalizado",
-                        Steps = Steps.ToList()
-                    };
-
-                    string json = RenamerPresetService.SerializePreset(preset);
-                    await using var stream = await file.OpenWriteAsync();
-                    await using var writer = new StreamWriter(stream);
-                    await writer.WriteAsync(json);
-
-                    string successMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_PresetSavedSuccess", "Preset guardado exitosamente.");
-                    string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Advanced Renaming Studio");
-                    _dialogService.ShowInformation(successMsg, title);
-                }
+            string json = RenamerPresetService.SerializePreset(preset);
+            await using (var stream = picked.Stream)
+            await using (var writer = new StreamWriter(stream))
+            {
+                await writer.WriteAsync(json);
             }
+
+            string successMsg = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("Msg_PresetSavedSuccess", "Preset guardado exitosamente.");
+            string title = FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Advanced Renaming Studio");
+            _dialogService.ShowInformation(successMsg, title);
         }
     }
 
     [RelayCommand]
     public async Task LoadPresetFromFileAsync()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-        {
-            var topLevel = Avalonia.Controls.TopLevel.GetTopLevel(desktop.MainWindow);
-            if (topLevel != null)
-            {
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
-                {
-                    Title = "Importar Preset de Renombrado",
-                    AllowMultiple = false,
-                    FileTypeFilter =
-                    [
-                        new Avalonia.Platform.Storage.FilePickerFileType("Ajustes de Renombrado (*.ffren;*.json)") { Patterns = ["*.ffren", "*.json"] }
-                    ]
-                });
+        var picked = await DesktopFilePicker.PickOpenAsync(
+            "Importar Preset de Renombrado",
+            [
+                new FileTypeFilter("Ajustes de Renombrado (*.ffren;*.json)", ["*.ffren", "*.json"])
+            ],
+            _dialogService);
 
-                if (files.Count > 0)
+        if (picked != null)
+        {
+            try
+            {
+                await using (var stream = picked.Stream)
+                using (var reader = new StreamReader(stream))
                 {
-                    try
+                    string json = await reader.ReadToEndAsync();
+                    var preset = RenamerPresetService.DeserializePreset(json);
+                    if (preset != null && preset.Steps.Count > 0)
                     {
-                        await using var stream = await files[0].OpenReadAsync();
-                        using var reader = new StreamReader(stream);
-                        string json = await reader.ReadToEndAsync();
-                        var preset = RenamerPresetService.DeserializePreset(json);
-                        if (preset != null && preset.Steps.Count > 0)
+                        PipelineName = preset.Name;
+                        Steps.Clear();
+                        foreach (var s in preset.Steps)
                         {
-                            PipelineName = preset.Name;
-                            Steps.Clear();
-                            foreach (var s in preset.Steps)
-                            {
-                                Steps.Add(s);
-                            }
-                            SelectedStep = Steps.FirstOrDefault();
-                            GenerateLivePreview();
+                            Steps.Add(s);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        _dialogService.ShowError($"Error: {ex.Message}", "Error");
+                        SelectedStep = Steps.FirstOrDefault();
+                        GenerateLivePreview();
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                _dialogService.ShowError($"Error: {ex.Message}", "Error");
             }
         }
     }
@@ -439,7 +415,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     }
 
     [RelayCommand]
-    public void SaveAndClose(Window window)
+    public void SaveAndClose(object? window = null)
     {
         if (string.IsNullOrWhiteSpace(PipelineName))
         {
@@ -456,6 +432,9 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
             _node.Parameters["MethodSteps"] = serializedSteps;
         }
 
-        window.Close(true);
+        if (window is Action closeAction)
+        {
+            closeAction();
+        }
     }
 }

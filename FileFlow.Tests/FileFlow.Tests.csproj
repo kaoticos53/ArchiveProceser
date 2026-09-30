@@ -12,11 +12,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Headless" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Skia" Version="12.1.2" />
-    <PackageReference Include="Nodify.Avalonia" Version="2.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.0">
@@ -34,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
     <ProjectReference Include="..\FileFlow.Core\FileFlow.Core.csproj" />
+    <ProjectReference Include="..\FileFlow.App.Core\FileFlow.App.Core.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.FileSystem\FileFlow.Plugin.FileSystem.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Archives\FileFlow.Plugin.Archives.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Images\FileFlow.Plugin.Images.csproj" />
@@ -46,7 +42,6 @@
     <ProjectReference Include="..\FileFlow.Plugin.Data\FileFlow.Plugin.Data.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.AI\FileFlow.Plugin.AI.csproj" />
     <ProjectReference Include="..\FileFlow.Plugin.Subflows\FileFlow.Plugin.Subflows.csproj" />
-    <ProjectReference Include="..\FileFlow.App\FileFlow.App.csproj" />
   </ItemGroup>
 
 </Project>

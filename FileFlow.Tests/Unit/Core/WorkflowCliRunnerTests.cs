@@ -5,6 +5,7 @@ using FileFlow.Core.Engine;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;
 using FileFlow.Plugin.Logic;
+using FileFlow.Sdk.Localization;
 using FluentAssertions;
 using Xunit;
 
@@ -88,14 +89,15 @@ public class WorkflowCliRunnerTests
             using var sw = new StringWriter();
             int exitCode = await WorkflowCliRunner.RunAsync(options, new PluginLoader(), sw);
 
+            string expectedMsg = LocalizationManager.Instance.GetString("Diagnosis_NoNodes", "ningún nodo");
             exitCode.Should().Be(1, "no hay nada que ejecutar, así que no puede ser un éxito");
-            sw.ToString().Should().Contain("ningún nodo");
+            sw.ToString().Should().Contain(expectedMsg);
             sw.ToString().Should().NotContain("completado con éxito");
 
             using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(summaryReportPath));
             doc.RootElement.GetProperty("Succeeded").GetBoolean().Should().BeFalse(
                 "el resumen es lo que lee quien automatiza, y no puede decir que fue bien");
-            doc.RootElement.GetProperty("ErrorMessage").GetString().Should().Contain("ningún nodo");
+            doc.RootElement.GetProperty("ErrorMessage").GetString().Should().Contain(expectedMsg);
         }
         finally
         {
@@ -209,7 +211,8 @@ public class WorkflowCliRunnerTests
             int exitCode = await WorkflowCliRunner.RunAsync(options, pluginLoader, sw);
 
             exitCode.Should().Be(0, "el aviso cuenta lo que conviene saber: no es un motivo para no ejecutar");
-            sw.ToString().Should().Contain("AVISO").And.Contain("no llega a ningún destino",
+            sw.ToString().Should().Contain("AVISO");
+            (sw.ToString().Contains("no llega a ningún destino") || sw.ToString().Contains("reaches no destination")).Should().BeTrue(
                 "y se dice antes de arrancar, que es cuando sirve de algo");
 
             using var doc = JsonDocument.Parse(await File.ReadAllTextAsync(summaryReportPath));

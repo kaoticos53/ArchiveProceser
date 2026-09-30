@@ -27,7 +27,6 @@ namespace FileFlow.Tests.Unit.App;
 /// </summary>
 public class UnoShortcutParityGuardTests
 {
-    private const string AvaloniaView = "FileFlow.App/Views/EditorView.axaml.cs";
     private const string UnoCanvas = "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs";
     private const string UnoCanvasXaml = "FileFlow.App.Uno/Controls/EditorCanvasControl.xaml";
 
@@ -62,70 +61,44 @@ public class UnoShortcutParityGuardTests
     }
 
     [Fact]
-    public void AvaloniaHost_ShouldResolveItsKeysThroughTheSharedTable()
-    {
-        string code = Code(AvaloniaView);
-
-        // El servicio debe estar citado en el handler de teclado: la vista traduce su tecla nativa y
-        // DELEGA la clasificación y la ejecución; no mantiene su propia tabla.
-        code.Should().Contain("EditorKeyboardShortcuts.Resolve(",
-            "la clasificación de la combinación vive en la tabla compartida, no en un switch de la vista");
-        code.Should().Contain("EditorKeyboardShortcuts.Execute(",
-            "la ejecución del comando canónico vive en la tabla compartida");
-
-        // El spotlight queda en la vista a propósito (necesita la posición del cursor), pero NO puede
-        // ejecutarse por fuera de la tabla: la vista lo intercepta y la tabla lo resuelve como Spotlight.
-        EditorKeyboardShortcuts.Table.Should().Contain(b => b.Command == EditorKeyboardShortcuts.ShortcutKey.Spotlight,
-            "Shift+A / Espacio son atajos del lienzo y la tabla los declara aunque el host los ejecute a su manera");
-    }
-
-    [Fact]
     public void UnoHost_ShouldResolveItsKeysThroughTheSharedTable_AndHaveItWired()
     {
         string code = Code(UnoCanvas);
         code.Should().Contain("EditorKeyboardShortcuts.Resolve(",
-            "el lienzo Uno clasifica con la misma tabla que el escritorio: si un host cambia una clave, la guardia se entera");
+            "el lienzo Uno clasifica con la tabla canónica");
         code.Should().Contain("EditorKeyboardShortcuts.Execute(",
-            "el lienzo Uno ejecuta el comando canónico del núcleo, no su propia copia");
+            "el lienzo Uno ejecuta el comando canónico del núcleo");
 
         Code(UnoCanvasXaml).Should().Contain("KeyDown=\"OnKeyDown\"",
             "un handler que nadie cablea no intercepta ninguna tecla");
     }
 
     [Fact]
-    public void TheRenameBox_ShouldKeepItsLocalKeyboard_InBothHosts()
+    public void TheRenameBox_ShouldKeepItsLocalKeyboard_InUnoHost()
     {
         // El renombrado (Enter/Escape dentro de la caja) y la navegación del spotlight son teclado de la
         // caja, no del lienzo: los handlers del lienzo no secuestran las teclas de un TextBox.
-        // El huésped Uno expresa la cortesía en el resolver compartido (`IsTextInput` sube por el árbol,
-        // y cubre tanto el TextBox como sus hijos); desde el hito 251 ese resolver lo comparten el foco
-        // del lienzo y el enrutado de la ventana, así que la cortesía vale en las dos vías.
         Code(UnoCanvas).Should().Contain("IsTextInput(source as DependencyObject)",
             "la caja de renombrado consume sus propias teclas: Enter confirma y Escape cancela, no borra nodos");
-
-        Code(AvaloniaView).Should().Contain("e.Source is TextBox",
-            "el escritorio mantiene la misma cortesía: el teclado de la caja no es del lienzo");
     }
 
     [Fact]
-    public void NeitherHost_ShouldHardcodeAKeyTheTableDoesNotDeclare()
+    public void UnoHost_ShouldNotHardcodeAKeyTheTableDoesNotDeclare()
     {
-        // Las teclas físicas que cada host mapea deben existir en la tabla: si alguien añade un mapping
+        // Las teclas físicas que el host mapea deben existir en la tabla: si alguien añade un mapping
         // nuevo sin su entrada canónica, la tabla y el host se desincronizan en silencio.
         var tableKeys = EditorKeyboardShortcuts.Table.Select(b => b.Key).ToHashSet();
 
-        string avalonia = Code(AvaloniaView);
         string uno = Code(UnoCanvas);
 
         foreach (EditorKeyboardShortcuts.PhysicalKey key in Enum.GetValues<EditorKeyboardShortcuts.PhysicalKey>())
         {
-            bool avaloniaMapsIt = avalonia.Contains($"EditorKeyboardShortcuts.PhysicalKey.{key}", StringComparison.Ordinal);
             bool unoMapsIt = uno.Contains($"EditorKeyboardShortcuts.PhysicalKey.{key}", StringComparison.Ordinal);
 
-            if (avaloniaMapsIt || unoMapsIt)
+            if (unoMapsIt)
             {
                 tableKeys.Should().Contain(key,
-                    $"'{key}' se mapea en un host pero no tiene binding canónico en la tabla compartida");
+                    $"'{key}' se mapea en el host pero no tiene binding canónico en la tabla compartida");
             }
         }
     }

@@ -15,23 +15,6 @@
     <ProjectReference Include="..\FileFlow.Sdk\FileFlow.Sdk.csproj" />
   </ItemGroup>
 
-  <!--
-    SABOR DE UI (hito 268): el Estudio de Scripts es una ventana del ESCRITORIO y todo lo suyo vive bajo UI/
-    (su XAML con el editor de código, su código de detrás y su view model). Sin el toolkit del escritorio se
-    compila el plugin entero menos esa carpeta: el nodo declara la frontera por los diálogos del host.
-  -->
-  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' == 'true'">
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageReference Include="Material.Icons.Avalonia" Version="3.0.2" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(FileFlowDesktopToolkit)' != 'true'">
-    <Compile Remove="UI\**\*.cs" />
-    <AvaloniaXaml Remove="UI\**" />
-    <AvaloniaResource Remove="UI\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />

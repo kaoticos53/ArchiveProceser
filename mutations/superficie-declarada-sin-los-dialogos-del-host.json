@@ -8,8 +8,8 @@
       "file": "FileFlow.Plugin.FileSystem/Nodes/Sources/SyntheticDataSourceNode.cs",
       "replacements": [
         {
-          "old": "        new UI.ViewModels.SyntheticDataSetDesignerViewModel(\n            null,\n            (context as NodeCustomActionContext)?.Dialogs);\n",
-          "new": "        new UI.ViewModels.SyntheticDataSetDesignerViewModel(); // mutante: el contenido nace sin los diálogos del host\n",
+          "old": "        var dialogs = (context as NodeCustomActionContext)?.Dialogs;\n        return new UI.ViewModels.SyntheticDataSetDesignerViewModel(null, dialogs);\n",
+          "new": "        return new UI.ViewModels.SyntheticDataSetDesignerViewModel(); // mutante: el contenido nace sin los diálogos del host\n",
           "count": 1
         }
       ]

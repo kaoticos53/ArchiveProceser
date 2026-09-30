@@ -27,8 +27,8 @@ public class UnoControlBarTextsGuardTests
     private const string StringsSpanish = "FileFlow.App.Uno/Resources/Strings.es.resx";
 
     /// <summary>La barra del escritorio y su cajón: la referencia de paridad.</summary>
-    private const string DesktopStringsEnglish = "FileFlow.App/Resources/Strings.resx";
-    private const string DesktopStringsSpanish = "FileFlow.App/Resources/Strings.es.resx";
+    private const string DesktopStringsEnglish = "FileFlow.App.Core/Resources/Strings.resx";
+    private const string DesktopStringsSpanish = "FileFlow.App.Core/Resources/Strings.es.resx";
 
     /// <summary>Dónde vive la orden de una entrada: en el code-behind (un comando) o en el XAML (un enlace).</summary>
     private enum Home

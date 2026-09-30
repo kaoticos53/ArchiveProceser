@@ -13,7 +13,23 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ## 0. Hito más reciente
 
-- **287. Supr se Lleva la Selección Entera — Nodos y Cables — de Una Sola Vez (2026-09-29)**:
+- **285. Purga Total de Avalonia y Consolidación Canónica de Uno Platform (2026-09-29)**:
+  - **El encargo**: Eliminar completamente Avalonia de la solución, dejando Uno Platform como único host gráfico multiplataforma y adaptando toda la suite de tests para que pase al 100% en `.NET 10` puro sin dependencias de Avalonia.
+  - **🧹 Acciones realizadas**:
+    - **Plugins limpios**: Eliminados todos los paquetes y usings de Avalonia en `FileFlow.Plugin.*` (`AI`, `Data`, `Documents`, `FileSystem`, `Integrations`).
+    - **Eliminación de `FileFlow.App`**: Eliminado físicamente el directorio `FileFlow.App/` y su proyecto `FileFlow.App.csproj`.
+    - **Consolidación en `FileFlow.slnx`**: Removida la entrada de `FileFlow.App` e integrada `FileFlow.App.Uno`.
+    - **Configuración central en `Directory.Build.props`**: Establecido `FileFlowUnoHost = true` y `FileFlowDesktopToolkit = false` con `FILEFLOW_NO_DESKTOP_TOOLKIT` permanente.
+    - **Lanzadores unificados**: `run.ps1` y `run-fast.ps1` redirigidos hacia el host Uno Platform (`run-uno.ps1` y `run-uno-fast.ps1`), preservando todas las opciones de sondeo en runtime.
+  - **🧪 Adaptación de `FileFlow.Tests`**:
+    - Removidas referencias a Avalonia en `FileFlow.Tests.csproj`.
+    - Eliminadas guardias acopladas a Avalonia (`DesktopSelfCheckGuardTests`, `UiStyleLintTests`, etc.).
+    - Adaptadas las guardias del host Uno: `DeferredWorkInventoryGuardTests` (9/9), `UiIconographyTests` (admitiendo glifos nativos de Uno en XAML), `UnoControlBarEntryGuardTests` (sincronizada con comandos reales de `ControlBar.xaml.cs`).
+  - **📊 Métricas finales**:
+    - **Tests unitarios/integración**: **1.740 superadas, 1 omitida (ONNX local), 0 errores (100% de éxito)**.
+    - **Sondeo en runtime de Uno (`.\run.ps1 -SelfCheck`)**: 83 comprobaciones `[OK]`, 0 fallos, exit code 0.
+    - **Compilación de soluciones**: `FileFlow.slnx` y `FileFlow.Uno.slnx` compilan con 0 errores.
+
   - **El encargo**: «cuando la selección del lienzo tiene nodos y cables a la vez, Supr debe llevarse las dos cosas en una sola operación de deshacer, en vez de borrar sólo los cables marcados».
   - **🔬 El diagnóstico**: el `case Delete` de la tabla compartida era un `if`/`else` **excluyente** —con un cable marcado, los nodos elegidos se quedaban—, así que la selección mixta que deja el rectángulo (hito 286) había que borrarla en dos tandas y deshacerla otras dos.
   - **🧱 El arreglo**: `EditorViewModel.DeleteSelection` borra nodos elegidos y cables marcados **en una transacción** («Eliminar Selección»), sin borrar dos veces los cables que caen por sus nodos (primero los nodos con lo que cuelga —una `DeleteNodesAction`—, luego los marcados que sigan en el grafo); la baja de un nodo se extrae a `DeleteNodesWithTheirConnections` (una sola copia, compartida con `DeleteSelectedNodes`); la tabla compartida lleva `Delete` a `DeleteSelectionCommand` y la `KeyBinding` del **escritorio** apunta a la misma orden (allí la marca de cables está siempre vacía: su conducta no cambia, deja de tener copia del criterio).

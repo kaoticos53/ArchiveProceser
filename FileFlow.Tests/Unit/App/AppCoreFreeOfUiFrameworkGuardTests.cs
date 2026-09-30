@@ -60,19 +60,11 @@ public class AppCoreFreeOfUiFrameworkGuardTests
     }
 
     [Fact]
-    public void AppCore_ShouldBeReferencedByBothHosts()
+    public void AppCore_ShouldBeReferencedByUnoHost()
     {
-        // La rebanada 2 existe para que los dos hosts compartan una única capa de ViewModels y
-        // servicios portables: si un host deja de referenciarla, ha vuelto a copiarla.
         string repoRoot = RepoRoot();
-        foreach (string hostCsproj in new[]
-        {
-            Path.Combine(repoRoot, "FileFlow.App", "FileFlow.App.csproj"),
-            Path.Combine(repoRoot, "FileFlow.App.Uno", "FileFlow.App.Uno.csproj"),
-        })
-        {
-            Assert.True(File.Exists(hostCsproj), $"No se encontró el csproj del host: {hostCsproj}");
-            Assert.Contains("FileFlow.App.Core.csproj", File.ReadAllText(hostCsproj), StringComparison.Ordinal);
-        }
+        string hostCsproj = Path.Combine(repoRoot, "FileFlow.App.Uno", "FileFlow.App.Uno.csproj");
+        Assert.True(File.Exists(hostCsproj), $"No se encontró el csproj del host: {hostCsproj}");
+        Assert.Contains("FileFlow.App.Core.csproj", File.ReadAllText(hostCsproj), StringComparison.Ordinal);
     }
 }

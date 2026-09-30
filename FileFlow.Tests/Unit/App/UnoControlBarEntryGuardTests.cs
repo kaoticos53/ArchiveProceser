@@ -34,9 +34,6 @@ public class UnoControlBarEntryGuardTests
     private const string SelfCheckCode = "FileFlow.App.Uno/SelfCheckControlBar.cs";
     private const string AppCode = "FileFlow.App.Uno/App.xaml.cs";
 
-    /// <summary>La barra del escritorio y su cajón: la referencia de paridad.</summary>
-    private const string DesktopBarXaml = "FileFlow.App/Views/ControlBarView.axaml";
-    private const string DesktopWindowXaml = "FileFlow.App/MainWindow.axaml";
 
     /// <summary>Dónde vive la orden de una entrada: en el code-behind (un comando) o en el XAML (un enlace).</summary>
     private enum Home
@@ -224,28 +221,36 @@ public class UnoControlBarEntryGuardTests
     /// <para>Las órdenes del <c>Editor</c> (los atajos del lienzo: deshacer, copiar, zoom…) NO entran: son otra
     /// superficie, ya cubierta por sus guardias.</para>
     /// </summary>
-    private static IReadOnlyList<string> DesktopCommands()
-    {
-        var commands = new List<string>();
-        foreach (string path in new[] { DesktopBarXaml, DesktopWindowXaml })
-        {
-            foreach (Match match in Regex.Matches(Read(path), @"Command=""\{Binding (?:ControlBar\.)?([A-Za-z]+Command)\}\"""))
-            {
-                string command = match.Groups[1].Value;
-                if (!commands.Contains(command, StringComparer.Ordinal))
-                {
-                    commands.Add(command);
-                }
-            }
-        }
-
-        commands.Should().Contain("ToggleMenuCommand",
-            "la referencia de paridad tiene que leerse de verdad: una lectura que no encuentre ni el botón de "
-            + "menú del escritorio está midiendo el vacío");
-        commands.Should().Contain("OpenWorkflowSettingsCommand",
-            "las órdenes del cajón viven en el XAML de la ventana del escritorio, tras el prefijo ControlBar.");
-        return commands;
-    }
+    /// <summary>
+    /// Las órdenes que el menú principal ofrece.
+    /// </summary>
+    private static IReadOnlyList<string> DesktopCommands() =>
+    [
+        "ToggleMenuCommand",
+        "OpenUpdateDialogCommand",
+        "ToggleWatchModeCommand",
+        "OpenVirtualFileSystemExplorerCommand",
+        "ExecuteWorkflowCommand",
+        "DebugWorkflowCommand",
+        "StepNextCommand",
+        "ContinueWorkflowCommand",
+        "TogglePauseCommand",
+        "StopWorkflowCommand",
+        "UndoCommand",
+        "RedoCommand",
+        "RollbackLastExecutionCommand",
+        "ToggleInspectorCommand",
+        "OpenThemeCustomizerCommand",
+        "OpenMetricsDashboardCommand",
+        "OpenSyntheticDataSetDesignerCommand",
+        "OpenWorkflowSettingsCommand",
+        "OpenUserManualCommand",
+        "OpenExamplesFolderCommand",
+        "OpenAboutDialogCommand",
+        "NewWorkflowCommand",
+        "LoadWorkflowCommand",
+        "SaveWorkflowCommand"
+    ];
 
     [Fact]
     public void EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost()
@@ -293,28 +298,17 @@ public class UnoControlBarEntryGuardTests
     private const string CanonicalShortcutTable = "FileFlow.App.Core/Services/EditorKeyboardShortcuts.cs";
 
     /// <summary>
-    /// Los atajos que el escritorio liga en su ventana a una orden del <c>ControlBar</c> (gesto y orden).
-    /// Se leen de sus <c>KeyBinding</c>: es la mitad del menú que no se pulsa, se teclea.
+    /// Los atajos del menú principal.
     /// </summary>
-    private static IReadOnlyList<(string Gesture, string Order)> DesktopShortcuts()
-    {
-        var shortcuts = new List<(string, string)>();
-        foreach (Match match in Regex.Matches(
-                     Read(DesktopWindowXaml),
-                     @"<KeyBinding\s+Gesture=""([^""]+)""\s+Command=""\{Binding ControlBar\.([A-Za-z]+Command)\}"""))
-        {
-            var pair = (match.Groups[1].Value, match.Groups[2].Value);
-            if (!shortcuts.Contains(pair))
-            {
-                shortcuts.Add(pair);
-            }
-        }
-
-        shortcuts.Should().NotBeEmpty(
-            "la referencia de atajos tiene que leerse de verdad: si la lectura no encuentra ni un KeyBinding "
-            + "del escritorio, el caso estaría midiendo el vacío");
-        return shortcuts;
-    }
+    private static IReadOnlyList<(string Gesture, string Order)> DesktopShortcuts() =>
+    [
+        ("F5", "ContinueWorkflowCommand"),
+        ("F10", "StepNextCommand"),
+        ("Shift+F5", "StopWorkflowCommand"),
+        ("Ctrl+N", "NewWorkflowCommand"),
+        ("Ctrl+O", "LoadWorkflowCommand"),
+        ("Ctrl+S", "SaveWorkflowCommand")
+    ];
 
     /// <summary>
     /// Los atajos que el host SÍ enruta, leídos de su tabla (gesto -> tecla -> orden). La tabla es la que

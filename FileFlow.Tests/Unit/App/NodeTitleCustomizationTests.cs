@@ -1,5 +1,4 @@
 using System.IO;
-using Avalonia;
 using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services;
 using FileFlow.App.ViewModels;

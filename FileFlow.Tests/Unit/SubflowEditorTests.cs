@@ -1,4 +1,3 @@
-using Avalonia;
 using Point = FileFlow.Sdk.Point;
 using FileFlow.App.Services.UndoRedo;
 using FileFlow.App.ViewModels;

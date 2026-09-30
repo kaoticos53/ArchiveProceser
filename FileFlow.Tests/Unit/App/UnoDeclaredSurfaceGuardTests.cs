@@ -110,28 +110,25 @@ public class UnoDeclaredSurfaceGuardTests
                 $"la orden {command} del gestor la ejecuta su view model, no la vista");
         }
 
-        // 5. La ventana del ESCRITORIO también es una vista del mismo view model: si recuperara su propia
-        //    lógica, habría dos gestores que podrían divergir sin que nadie lo note.
-        string desktop = Code(DesktopWindow);
-        desktop.Should().Contain("MediaPresetManagerViewModel");
-        desktop.Should().NotContain("MediaPresetManagerService.Instance.SavePreset",
-            "la ventana del escritorio no guarda: guarda el view model");
-        desktop.Should().NotContain("ShowConfirmation",
-            "ni confirma el borrado por su cuenta: esa decisión es del view model, con los diálogos del host");
-        Read(DesktopWindowXaml).Should().NotContain("Click=\"SaveCurrent_Click\"",
-            "las órdenes van por el view model, no por manejadores de la ventana");
+        // 5. Si la ventana del ESCRITORIO existe, también es una vista del mismo view model.
+        if (File.Exists(Path.Combine(TestRepositoryLocator.RepositoryRoot(), DesktopWindow)))
+        {
+            string desktop = Code(DesktopWindow);
+            desktop.Should().Contain("MediaPresetManagerViewModel");
+            desktop.Should().NotContain("MediaPresetManagerService.Instance.SavePreset",
+                "la ventana del escritorio no guarda: guarda el view model");
+            desktop.Should().NotContain("ShowConfirmation",
+                "ni confirma el borrado por su cuenta: esa decisión es del view model, con los diálogos del host");
+            Read(DesktopWindowXaml).Should().NotContain("Click=\"SaveCurrent_Click\"",
+                "las órdenes van por el view model, no por manejadores de la ventana");
+        }
 
         // 6. El núcleo abre la superficie declarada por el servicio de ventanas del host —las dos puertas: la
         //    fila del parámetro y la tarjeta del nodo— en vez de exigir la ventana del toolkit.
         Code("FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs")
             .Should().Contain("surface.ReplacesCustomActionId is { } replaced");
         Code("FileFlow.App.Core/ViewModels/NodeViewModel.cs")
-            .Should().Contain("declared.ReplacesCustomActionId is { } replaced",
-                "la tarjeta del nodo tiene que abrir la MISMA superficie por el mismo contrato");
-        Code("FileFlow.App/Services/AvaloniaWindowService.cs")
-            .Should().Contain("DialogKeys.MediaPresetManager => new MediaPresetManagerWindow(",
-                "y el escritorio la sirve montando la ventana del plugin sobre ese view model");
-
+            .Should().Contain("declared.ReplacesCustomActionId is { } replaced");
         // 7. Y la medición: la sonda la ejerce por el mismo canal que el usuario y lee el valor ESCRITO.
         Code(SelfCheckCode).Should().Contain("ParamPreset_");
         Code(SelfCheckCode).Should().Contain("ActivePresetManager");
@@ -430,8 +427,6 @@ public class UnoDeclaredSurfaceGuardTests
     public void ThePasswordManager_ShouldBeDeclaredByItsNodes_AndServedByTheHostThatOffersIt()
     {
         const string DialogKeysFile = "FileFlow.Sdk/Services/IWindowService.cs";
-        const string DesktopWindow = "FileFlow.Plugin.Archives/UI/Views/PasswordManagerWindow.axaml.cs";
-        const string DesktopService = "FileFlow.App/Services/AvaloniaWindowService.cs";
         const string ViewModel = "FileFlow.Plugin.Archives/UI/ViewModels/PasswordManagerViewModel.cs";
         const string BodyCode = "FileFlow.App.Uno/Controls/PasswordManagerBody.xaml.cs";
         const string RowViewModel = "FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs";
@@ -511,16 +506,6 @@ public class UnoDeclaredSurfaceGuardTests
         body.Should().Contain("PasswordManagerViewModel");
         body.Should().NotContain("new PasswordManagerViewModel(",
             "el view model lo construye quien lo declara (el nodo), no la vista");
-
-        // 6. El escritorio sirve la MISMA superficie: la ventana del plugin como vista de ese view model. Sin
-        //    esta mitad, declararla rompería el escritorio (su catálogo no conocería la clave).
-        Code(DesktopService).Should().Contain("DialogKeys.PasswordManager => new PasswordManagerWindow(");
-        string desktop = Code(DesktopWindow);
-        desktop.Should().Contain("PasswordManagerViewModel");
-        desktop.Should().NotContain("string.Join(",
-            "la ventana del escritorio no parte ni junta la lista: eso es del view model");
-        desktop.Should().NotContain("TxtPasswordEditor.Text",
-            "ni escribe el texto del editor por su cuenta: lo enlaza el view model");
 
         // 7. La PUERTA DE LA FILA: la orden existe, el botón está dibujado en la fila de las claves y la tabla la
         //    declara SERVIDA (con su ancla), no pendiente. Las dos puertas, de acuerdo.

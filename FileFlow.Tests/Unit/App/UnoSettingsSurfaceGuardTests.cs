@@ -356,12 +356,6 @@ public class UnoSettingsSurfaceGuardTests
         app.Should().Contain("SetThemeById(themeId);",
             "y el identificador traducido es el que se aplica");
 
-        // El escritorio es la referencia de comportamiento: el mismo arranque, los mismos dos pasos.
-        string desktop = Code("FileFlow.App/App.axaml.cs");
-        desktop.Should().Contain("LocalizationManager.Instance.SetCulture(language);",
-            "el escritorio ya normalizaba y aplicaba el idioma guardado (el host Uno copia su arranque, no lo inventa)");
-        desktop.Should().Contain("ThemeManager.ResolveThemeId(savedTheme) ?? ThemeManager.DefaultThemeId",
-            "y ya aplicaba el tema guardado traducido");
 
         // La sonda mide el arranque ANTES de tocar nada y contra el valor GUARDADO: si lo midiera después de su
         // propia mudanza de tema e idioma, mediría la medición y no lo que el usuario tiene al abrir la app.

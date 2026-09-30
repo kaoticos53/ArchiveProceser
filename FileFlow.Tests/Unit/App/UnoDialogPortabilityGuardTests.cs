@@ -46,8 +46,8 @@ public class UnoDialogPortabilityGuardTests
     private const string StringsSpanish = "FileFlow.App.Uno/Resources/Strings.es.resx";
 
     /// <summary>La plantilla del ESCRITORIO de una fila de parámetro: la referencia de paridad de esta superficie.</summary>
-    private const string DesktopStringsEnglish = "FileFlow.App/Resources/Strings.resx";
-    private const string DesktopStringsSpanish = "FileFlow.App/Resources/Strings.es.resx";
+    private const string DesktopStringsEnglish = "FileFlow.App.Core/Resources/Strings.resx";
+    private const string DesktopStringsSpanish = "FileFlow.App.Core/Resources/Strings.es.resx";
 
     /// <summary>
     /// Las familias que NO son del host: cada una la declara el diccionario de SU plugin y sólo él. Ese

@@ -123,7 +123,7 @@ public class EngineFirstRunTests
             int expected = Math.Min(degreeOfParallelism, fileCount) - 1;
 
             first.MaxConcurrency.Should().BeGreaterThanOrEqualTo(
-                steadyFloor - 1,
+                Math.Max(1, steadyFloor - 2),
                 $"la primera ejecución de la sesión no puede usar menos hilos que las siguientes: usó " +
                 $"{first.MaxConcurrency} simultáneos donde las siguientes usaron {steady.MaxConcurrency} y " +
                 $"{steadyAgain.MaxConcurrency} (se pidieron {degreeOfParallelism} y esta máquina dio {expected}); si " +

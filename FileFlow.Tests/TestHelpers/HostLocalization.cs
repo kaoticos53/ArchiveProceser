@@ -38,7 +38,7 @@ namespace FileFlow.Tests.TestHelpers;
 public static class HostLocalization
 {
     /// <summary>Nombre base del diccionario de recursos del host (el mismo que registra su arranque).</summary>
-    public const string HostResourceBaseName = "FileFlow.App.Resources.Strings";
+    public const string HostResourceBaseName = "FileFlow.App.Core.Resources.Strings";
 
     private static readonly Lock Gate = new();
     private static bool _registered;
@@ -82,5 +82,5 @@ public static class HostLocalization
     /// clave no depende de si ya se registró.
     /// </summary>
     public static ResourceManager NewHostResourceManager() =>
-        new(HostResourceBaseName, typeof(FileFlow.App.App).Assembly);
+        new(HostResourceBaseName, typeof(FileFlow.App.Core.HostUi).Assembly);
 }

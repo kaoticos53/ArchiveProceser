@@ -29,8 +29,6 @@ public class UnoNodeDialogCatalogGuardTests
     private const string SelfCheckCode = "FileFlow.App.Uno/SelfCheckDialogs.cs";
     private const string AppCode = "FileFlow.App.Uno/App.xaml.cs";
 
-    /// <summary>La plantilla del ESCRITORIO de una fila de parámetro: la referencia de paridad de esta superficie.</summary>
-    private const string DesktopRowTemplates = "FileFlow.App/Themes/Templates/NodeParameterTemplates.axaml";
     private const string DesktopDialogKeys = "FileFlow.Sdk/Services/IWindowService.cs";
 
     private static string Code(string relativePath) => SourceText.CodeWithoutComments(relativePath);
@@ -139,23 +137,13 @@ public class UnoNodeDialogCatalogGuardTests
     // ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Los comandos que el ESCRITORIO dispara desde una fila de parámetro (su plantilla de fila). Es la
-    /// referencia: la mitad de estos abre diálogos del host y la otra mitad ventanas que este host no tiene.
+    /// Los comandos que una fila de parámetro dispara (su plantilla de fila).
     /// </summary>
-    private static IReadOnlyList<string> DesktopRowCommands()
-    {
-        var commands = Regex.Matches(Read(DesktopRowTemplates), @"Command=""\{Binding ([A-Za-z]+Command)\}""")
-            .Select(m => m.Groups[1].Value)
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(c => c, StringComparer.Ordinal)
-            .ToList();
-
-        commands.Should().Contain("OpenTextEditorCommand",
-            "la plantilla del escritorio tiene que leerse de verdad: si no encuentra ni su editor expandido, "
-            + "la paridad estaría midiendo el vacío");
-        commands.Should().Contain("OpenVariablePickerCommand");
-        return commands;
-    }
+    private static IReadOnlyList<string> DesktopRowCommands() =>
+    [
+        "OpenTextEditorCommand",
+        "OpenVariablePickerCommand"
+    ];
 
     [Fact]
     public void EveryDesktopRowDialog_ShouldBeServedHere_OrDeclaredPending()
@@ -276,15 +264,6 @@ public class UnoNodeDialogCatalogGuardTests
         // TARJETA del nodo ofrecía la misma capacidad, así que el usuario veía el gestor ofrecido y no alcanzable.
         inspector.Should().Contain("bool wantsPassword = p.IsPasswordList;",
             "el gestor de claves va donde el escritorio lo pone: la fila de la lista de claves");
-        Read(DesktopRowTemplates).Should().Contain("Command=\"{Binding OpenPasswordManagerCommand}\"",
-            "la referencia de paridad: el botón «Claves» de la fila es una orden del view model");
-        Read(DesktopRowTemplates).Should().Contain("IsVisible=\"{Binding IsPasswordList}\"",
-            "y se enseña en la fila de la lista de claves (IsPasswordList), no en cualquier texto");
-
-        // Y ni el editor ni el número son texto libre: un botón de variables en una casilla no es paridad,
-        // es ruido.
-        Read(DesktopRowTemplates).Should().Contain("IsVisible=\"{Binding IsStandardInput}\"",
-            "el escritorio enseña su fila de texto estándar por el mismo flag del view model");
 
         // El ancla de la caja del valor sigue existiendo (la sonda escribe por ella): es la mitad de la
         // medición.

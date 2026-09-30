@@ -238,7 +238,7 @@ public class WorkflowExecutionThroughTheAppTests
 
             log.Logs.Should().Contain(record => record.Message.Contains("🔎"),
                 "el diagnóstico dice qué va a hacer el flujo antes de hacerlo");
-            log.Logs.Should().Contain(record => record.Level == LogLevel.Warning && record.Message.Contains("elemento vacío"),
+            log.Logs.Should().Contain(record => record.Level == LogLevel.Warning && (record.Message.Contains("elemento vacío") || record.Message.Contains("empty item")),
                 "y dice lo que habría que arreglar: hay un nodo que nadie alimenta");
         }
         finally

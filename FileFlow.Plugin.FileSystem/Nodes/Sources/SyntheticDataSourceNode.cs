@@ -2,9 +2,7 @@ using System.IO;
 using System.Text.Json;
 using FileFlow.Plugin.FileSystem.Services;
 using FileFlow.Plugin.FileSystem.UI.Services;
-#if !FILEFLOW_NO_DESKTOP_TOOLKIT
-using FileFlow.Plugin.FileSystem.UI.Views;
-#endif
+
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
@@ -73,19 +71,16 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
     /// ensamblado de plugin y no puede resolverlos, y sin ellos el diseñador cae al doble nulo, que a una
     /// confirmación contesta «sí» sin preguntar —el borrado de un dataset propio desaparecería del catálogo sin
     /// que nadie lo autorice—. Es el mismo camino que usa el gestor de presets de medios.</para>
-    public object? CreateDialogPayload(object? context = null) =>
-        new UI.ViewModels.SyntheticDataSetDesignerViewModel(
-            null,
-            (context as NodeCustomActionContext)?.Dialogs);
+    public object? CreateDialogPayload(object? context = null)
+    {
+        var dialogs = (context as NodeCustomActionContext)?.Dialogs;
+        return new UI.ViewModels.SyntheticDataSetDesignerViewModel(null, dialogs);
+    }
 
     public void ExecuteCustomAction(string actionId, object? context = null)
     {
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
-#if FILEFLOW_NO_DESKTOP_TOOLKIT
-            // Defensa declarada (hito 268): este host no puede montar la ventana del toolkit, pero la
-            // superficie que el nodo DECLARA es la puerta que sí cumple —el núcleo la abre por el catálogo del
-            // host y no llega hasta aquí—. Si algún camino llegara, se DICE en vez de caer en silencio.
             DesktopOnlySurface.Declare(
                 (context as NodeCustomActionContext)?.Dialogs,
                 LocalizationManager.Instance.GetString("DataSetDesigner_WindowTitle", "Diseñador de Conjuntos de Datos Sintéticos"),
@@ -94,46 +89,6 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
                     "Plugin_DesktopOnly_Message",
                     "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
                     LocalizationManager.Instance.GetString("DataSetDesigner_WindowTitle", "Diseñador de Conjuntos de Datos Sintéticos")));
-#else
-            Action? onCompleted = null;
-            object? parentWindow = context;
-            IDialogService? dialogs = null;
-
-            if (context is NodeCustomActionContext customCtx)
-            {
-                parentWindow = customCtx.ParentWindow;
-                onCompleted = customCtx.OnCompleted;
-                dialogs = customCtx.Dialogs;
-            }
-            else if (context is Action callback)
-            {
-                onCompleted = callback;
-            }
-
-            // El host con el toolkit del escritorio monta ESTA ventana con el contenido del nodo; los hosts que
-            // no pueden montarla llegan por la superficie declarada (arriba) con el mismo view model. Los dos
-            // caminos llevan los diálogos del host, para que la confirmación del borrado sea la misma.
-            var window = new SyntheticDataSetDesignerWindow(
-                new UI.ViewModels.SyntheticDataSetDesignerViewModel(null, dialogs));
-
-            if (onCompleted != null)
-            {
-                window.Closed += (_, _) => onCompleted();
-            }
-
-            if (parentWindow is Avalonia.Controls.Window ownerWindow)
-            {
-                window.ShowDialog(ownerWindow);
-            }
-            else if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-            {
-                window.ShowDialog(desktop.MainWindow);
-            }
-            else
-            {
-                window.Show();
-            }
-#endif
         }
     }
 

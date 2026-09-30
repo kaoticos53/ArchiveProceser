@@ -5,16 +5,8 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
-#if !FILEFLOW_NO_DESKTOP_TOOLKIT
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using FileFlow.Plugin.AI.UI;
-#endif
+
 using FileFlow.Plugin.AI.Management;
-#if !FILEFLOW_NO_DESKTOP_TOOLKIT
-using FileFlow.Plugin.AI.ViewModels;
-#endif
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Services;
@@ -103,10 +95,6 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
     {
         if (string.Equals(actionId, "OpenVlmConfig", StringComparison.OrdinalIgnoreCase))
         {
-#if FILEFLOW_NO_DESKTOP_TOOLKIT
-            // La ventana de configuración del VLM es UNA VENTANA DEL ESCRITORIO y este host no tiene el toolkit
-            // que la monta (hito 268): la frontera se DECLARA por los diálogos de quien lo abrió —el usuario se
-            // entera y queda la traza— en vez de construir a ciegas una ventana de otro framework.
             DesktopOnlySurface.Declare(
                 (context as NodeCustomActionContext)?.Dialogs,
                 LocalizationManager.Instance.GetString("VlmConfig_WindowTitle", "Configuración Avanzada de IA Multimodal (VLM)"),
@@ -115,41 +103,6 @@ public sealed class MultimodalVisionLlmNode : FlowNodeBase, IModelLifecycleNode,
                     "Plugin_DesktopOnly_Message",
                     "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
                     LocalizationManager.Instance.GetString("VlmConfig_WindowTitle", "Configuración Avanzada de IA Multimodal (VLM)")));
-#else
-            var vm = new MultimodalVlmConfigViewModel(this);
-            var window = new MultimodalVlmConfigWindow(vm);
-
-            Action? onCompleted = null;
-            object? parentWindow = context;
-
-            if (context is NodeCustomActionContext customCtx)
-            {
-                parentWindow = customCtx.ParentWindow;
-                onCompleted = customCtx.OnCompleted;
-            }
-            else if (context is Action callback)
-            {
-                onCompleted = callback;
-            }
-
-            if (onCompleted != null)
-            {
-                window.Closed += (_, _) => onCompleted();
-            }
-
-            if (parentWindow is Window ownerWindow)
-            {
-                window.ShowDialog(ownerWindow);
-            }
-            else if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-            {
-                window.ShowDialog(desktop.MainWindow);
-            }
-            else
-            {
-                window.Show();
-            }
-#endif
         }
     }
 

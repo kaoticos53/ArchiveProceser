@@ -1,8 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
-#if !FILEFLOW_NO_DESKTOP_TOOLKIT
-using FileFlow.Plugin.FileSystem.UI.Views;
-#endif
+
 using FileFlow.Sdk;
 using FileFlow.Sdk.Localization;
 using FileFlow.Sdk.Renaming;
@@ -86,10 +84,6 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
     {
         if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
         {
-#if FILEFLOW_NO_DESKTOP_TOOLKIT
-            // El Estudio de Renombrado Avanzado es UNA VENTANA DEL ESCRITORIO y este host no tiene el toolkit
-            // que la monta (hito 268): la frontera se DECLARA por los diálogos de quien lo abrió —el usuario se
-            // entera y queda la traza— en vez de construir a ciegas una ventana de otro framework.
             DesktopOnlySurface.Declare(
                 (context as NodeCustomActionContext)?.Dialogs,
                 LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)"),
@@ -98,39 +92,6 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
                     "Plugin_DesktopOnly_Message",
                     "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
                     LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)")));
-#else
-            var window = new AdvancedRenamerEditorWindow(this);
-            Action? onCompleted = null;
-            object? parentWindow = context;
-
-            if (context is NodeCustomActionContext customCtx)
-            {
-                parentWindow = customCtx.ParentWindow;
-                onCompleted = customCtx.OnCompleted;
-            }
-            else if (context is Action callback)
-            {
-                onCompleted = callback;
-            }
-
-            if (onCompleted != null)
-            {
-                window.Closed += (_, _) => onCompleted();
-            }
-
-            if (parentWindow is Avalonia.Controls.Window ownerWindow)
-            {
-                window.ShowDialog(ownerWindow);
-            }
-            else if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
-            {
-                window.ShowDialog(desktop.MainWindow);
-            }
-            else
-            {
-                window.Show();
-            }
-#endif
         }
     }
 

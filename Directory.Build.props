@@ -12,34 +12,15 @@
   </PropertyGroup>
 
   <!-- =================================================================== -->
-  <!-- SABOR DE UI: qué toolkit se compila (hito 268)                       -->
+  <!-- HOST DE UI CANÓNICO: Uno Platform (WinUI 3 / Multiplataforma)        -->
   <!-- =================================================================== -->
-  <!--
-    El producto tiene DOS hosts con interfaces gráficas distintas y un solo grafo de nodos. El host de
-    ESCRITORIO (Avalonia) monta las ventanas modales que los plugins traen consigo; el host UNO (WinUI 3)
-    no puede montarlas —son ventanas del toolkit del escritorio— y las declara por su propio catálogo.
-
-    Hasta el hito 267 el host Uno se compilaba con la MISMA solución y con MSBuild de Visual Studio, así
-    que arrastraba las 16 DLL de Avalonia de los cinco plugins que declaran ventanas. La solución del host
-    Uno (FileFlow.Uno.slnx) compila el grafo SIN ese toolkit: los paquetes de Avalonia y los ficheros que
-    sólo existen para el escritorio quedan fuera, y el nodo que necesita su ventana declara la frontera por
-    los diálogos del host.
-
-    La elección es de la SOLUCIÓN (o de quien pasa -p:FileFlowUnoHost=true a mano): abrir FileFlow.Uno.slnx
-    —en Visual Studio o con `dotnet build`— es lo que pide el sabor Uno, y compilar cualquier proyecto suelto
-    o la solución del escritorio es lo que pide el sabor de escritorio (el de por defecto, para que un
-    `dotnet build` sin contexto no cambie de producto por sorpresa).
-  -->
   <PropertyGroup>
-    <FileFlowUnoHost Condition="'$(FileFlowUnoHost)' == '' and '$(SolutionFileName)' == 'FileFlow.Uno.slnx'">true</FileFlowUnoHost>
-    <FileFlowUnoHost Condition="'$(FileFlowUnoHost)' == ''">false</FileFlowUnoHost>
-
-    <FileFlowDesktopToolkit Condition="'$(FileFlowUnoHost)' == 'true'">false</FileFlowDesktopToolkit>
-    <FileFlowDesktopToolkit Condition="'$(FileFlowDesktopToolkit)' == ''">true</FileFlowDesktopToolkit>
-
-    <!-- La constante que lee el nodo: sin el toolkit del escritorio no hay ventana que montar. -->
-    <DefineConstants Condition="'$(FileFlowDesktopToolkit)' == 'false'">$(DefineConstants);FILEFLOW_NO_DESKTOP_TOOLKIT</DefineConstants>
+    <FileFlowUnoHost>true</FileFlowUnoHost>
+    <FileFlowDesktopToolkit>false</FileFlowDesktopToolkit>
+    <!-- Los plugins y nodos operan desacoplados de toolkits pesados obsoletos -->
+    <DefineConstants>$(DefineConstants);FILEFLOW_NO_DESKTOP_TOOLKIT</DefineConstants>
   </PropertyGroup>
+
 
   <!-- =================================================================== -->
   <!-- Tarea MSBuild para lectura e incremento automático del Build Number -->

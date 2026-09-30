@@ -1,6 +1,4 @@
 using System.IO;
-using Avalonia;
-using Avalonia.Media;
 using FileFlow.App.Services;
 using FileFlow.App.Themes;
 using FluentAssertions;
@@ -131,40 +129,5 @@ public class CustomThemeServiceTests : IDisposable
         imported.AccentPrimary.Should().Be("#00FFAA");
         imported.FontFamily.Should().Be("Inter, Segoe UI");
         imported.CornerRadius.Should().Be(12.0);
-    }
-
-    [Fact]
-    public void BuildResourceDictionary_ShouldGenerateValidWpfBrushesAndFonts()
-    {
-        // Arrange
-        var theme = new ThemeDefinition
-        {
-            AppBackground = "#101010",
-            AccentPrimary = "#AABBCC",
-            WireColorStart = "#FF0000",
-            WireColorMid = "#00FF00",
-            WireColorEnd = "#0000FF",
-            FontFamily = "Segoe UI",
-            CodeFontFamily = "Cascadia Code",
-            BaseFontSize = 13.5,
-            CornerRadius = 8.0,
-            NodeShadowBlur = 30.0
-        };
-
-        // Act — los tokens los genera el host (ThemeResourceApplier), ya no CustomThemeService.
-        var dict = ThemeResourceApplier.BuildResourceDictionary(theme);
-
-        // Assert
-        dict.Should().NotBeNull();
-        dict.ContainsKey("AppBackgroundBrush").Should().BeTrue();
-        dict["AppBackgroundBrush"].Should().BeOfType<SolidColorBrush>();
-
-        dict.ContainsKey("AccentPrimaryBrush").Should().BeTrue();
-        dict.ContainsKey("ConnectionWireBrush").Should().BeTrue();
-        dict["ConnectionWireBrush"].Should().BeOfType<LinearGradientBrush>();
-
-        dict.ContainsKey("AppFontFamily").Should().BeTrue();
-        dict["AppFontSize"].Should().Be(13.5);
-        dict["AppCornerRadius"].Should().Be(new CornerRadius(8.0));
     }
 }

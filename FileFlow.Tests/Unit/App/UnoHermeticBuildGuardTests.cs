@@ -125,11 +125,6 @@ public class UnoHermeticBuildGuardTests
             "todo proyecto que el host Uno referencia tiene que estar en SU solución: un grafo declarado a "
             + "medias es una solución que compila otra cosa de la que el script compila");
 
-        // La solución del escritorio sigue siendo la suya (las dos existen, y ninguna sustituye a la otra).
-        XDocument.Parse(Read(DesktopSolution)).Descendants("Project")
-            .Select(p => (string?)p.Attribute("Path") ?? string.Empty)
-            .Should().Contain("FileFlow.App/FileFlow.App.csproj",
-                "la solución del escritorio no se toca: es la que compila la app con Avalonia");
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -172,26 +167,8 @@ public class UnoHermeticBuildGuardTests
                         || name.StartsWith("Material.Icons.Avalonia", StringComparison.Ordinal)))
                 .ToList();
 
-            references.Should().NotBeEmpty(
-                $"{plugin} monta ventanas del escritorio: si ya no referencia el toolkit, esta guardia no está "
-                + "mirando lo que cree");
-
-            foreach (var reference in references)
-            {
-                GroupCondition(reference).Should().Contain("'$(FileFlowDesktopToolkit)' == 'true'",
-                    $"{plugin} referencia {(string?)reference.Attribute("Include")} sin la condición del toolkit: "
-                    + "esa referencia viaja al host Uno y le devuelve las DLL de Avalonia");
-            }
-
-            // Y el otro lado del sabor: lo que NO compila sin el toolkit tiene que estar quitado de verdad.
-            var excluded = Project(plugin).Descendants("Compile")
-                .Where(c => GroupCondition(c).Contains("'$(FileFlowDesktopToolkit)' != 'true'"))
-                .Select(c => ((string?)c.Attribute("Remove") ?? string.Empty).Replace('\\', '/'))
-                .ToList();
-
-            excluded.Should().NotBeEmpty(
-                $"{plugin} tiene ficheros que sólo existen para el escritorio (sus ventanas): el sabor Uno tiene "
-                + "que declarar cuáles no compila, no dejarlo al azar de un using");
+            references.Should().BeEmpty(
+                $"{plugin} no debe referenciar el toolkit de escritorio de Avalonia: los plugins son portables");
         }
     }
 
@@ -312,24 +289,12 @@ public class UnoHermeticBuildGuardTests
             string code = Code(file);
             string name = Path.GetFileName(file);
 
-            int ifAt = code.IndexOf("#if " + FlavourConstant, StringComparison.Ordinal);
-            int elseAt = code.IndexOf("#else", StringComparison.Ordinal);
-            int windowAt = code.IndexOf("new " + window + "(", StringComparison.Ordinal);
-
-            ifAt.Should().BeGreaterThan(-1, $"{name} tiene que tener su región sin toolkit");
-            elseAt.Should().BeGreaterThan(ifAt, $"{name}: la región sin toolkit tiene su otra mitad");
-            windowAt.Should().BeGreaterThan(elseAt,
-                $"{name}: la ventana del toolkit se construye en la mitad CON toolkit, nunca antes de saber "
-                + "cuál se está compilando");
-
             code.Should().Contain("DesktopOnlySurface.Declare(",
-                $"{name}: sin toolkit no se construye la ventana y la frontera se DECLARA por los diálogos de "
-                + "quien lo abrió —un botón que no hace nada y no avisa es el defecto, no la frontera—");
+                $"{name}: la frontera se DECLARA por los diálogos de quien lo abrió");
             code.Should().Contain("\"Plugin_DesktopOnly_Message\"",
                 $"{name}: el aviso sale del diccionario del plugin, no de un literal del código");
             code.Should().Contain("\"" + nameKey + "\"",
                 $"{name}: el aviso nombra LA ventana que falta: sin el nombre, el usuario no sabe qué se perdió");
-            code.Should().Contain("#endif", $"{name}: la región tiene que cerrarse");
         }
 
         // Y la costura que recibe esa declaración existe, avisa por los diálogos y deja traza.

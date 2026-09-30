@@ -42,9 +42,6 @@ public class DeferredWorkInventoryGuardTests
     /// </summary>
     private static readonly DeferredWorkDecision[] Registry =
     [
-        // ── La aplicación: el barrido de la splash (hito 169) y el registro de latidos (hito 178) ──
-        Exercised("FileFlow.App/Views/SplashScreenWindow.axaml.cs::.ctor::Timer", "AdvanceShimmer", "SplashScreenStartupTests"),
-
         // Los cuatro latidos del hito 173 programaban cada uno su temporizador; desde el hito 178 hay un solo
         // sitio que programa latidos —el registro— y su paso público es el arranque del latido, con la declaración
         // como evidencia: `HeartbeatCadenceTests` declara latidos y mide su cadencia una vez por el mecanismo
@@ -56,19 +53,10 @@ public class DeferredWorkInventoryGuardTests
         Exercised("FileFlow.App.Core/ViewModels/EditorViewModel.cs::ExpireConnectionPulseAsync::Delay", "PulseConnectionEnergy", "ConnectionEnergyTests"),
         Exercised("FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs::CopyEvaluatedValueAsync::Delay", "CopyEvaluatedValueAsync", "NodeParameterViewModelTests"),
 
-        // El aviso de cierre del arranque: espera a que el primer fotograma esté pintado antes de salir a la red
-        // a buscar actualizaciones. No hay paso público y su duración sólo tiene sentido con una interfaz real
-        // detrás; la prueba de humo de arranque recorre el arranque, no esta espera.
-        RealTime("FileFlow.App/App.axaml.cs::StartBackgroundWork::Delay", "espera del arranque a que la interfaz esté pintada antes de consultar actualizaciones (no compite con el primer fotograma)"),
-
-        // La comprobación de actualizaciones del host Uno espera, como la del escritorio, a que la interfaz esté
-        // montada antes de salir a la red. Es la MISMA decisión de arriba, en el arranque del host: no hay paso
-        // público y su duración sólo tiene sentido con una interfaz real detrás (y con una release nueva de
-        // verdad, que es cuando el distintivo se enciende). En los modos de sondeo ni se arranca.
-        RealTime("FileFlow.App.Uno/App.xaml.cs::StartUpdateCheck::Delay", "espera del arranque del host a que la interfaz esté montada antes de consultar actualizaciones (la misma de la aplicación de escritorio; se salta entera en los modos de sondeo)"),
-
-        // El fundido de cierre avanza por fotogramas de 16 ms: la duración <i>es</i> la animación.
-        RealTime("FileFlow.App/Views/SplashScreenWindow.axaml.cs::CloseWithFadeAsync::Delay", "el fundido de cierre avanza fotograma a fotograma; ningún test lo llama porque la splash se cierra de verdad en el arranque"),
+        // La comprobación de actualizaciones del host Uno espera a que la interfaz esté
+        // montada antes de salir a la red. No hay paso público y su duración sólo tiene sentido con una
+        // interfaz real detrás (y con una release nueva de verdad). En los modos de sondeo ni se arranca.
+        RealTime("FileFlow.App.Uno/App.xaml.cs::StartUpdateCheck::Delay", "espera del arranque del host a que la interfaz esté montada antes de consultar actualizaciones; se salta entera en los modos de sondeo"),
 
         // ── Core: reintentos, planificador, sondeo del vigilante y la cola de la telemetría ──
         // Las pruebas del reintento usan initialBackoffMs: 10, así que la espera se ejecuta (corta, pero real).
@@ -191,7 +179,7 @@ public class DeferredWorkInventoryGuardTests
         inventory.Should().NotBeEmpty("un inventario vacío haría pasar la guardia sin mirar nada");
 
         inventory.Select(site => site.File).Should().Contain(
-            path => path.StartsWith("FileFlow.App/", StringComparison.Ordinal),
+            path => path.StartsWith("FileFlow.App.Uno/", StringComparison.Ordinal),
             "la aplicación es donde viven los latidos de la interfaz");
 
         inventory.Select(site => site.File).Should().Contain(
@@ -211,7 +199,7 @@ public class DeferredWorkInventoryGuardTests
         inventory.Select(site => site.Key).Should().Contain(
             [
                 "FileFlow.App.Core/Services/HeartbeatService.cs::Start::Timer",
-                "FileFlow.App/Views/SplashScreenWindow.axaml.cs::.ctor::Timer",
+                "FileFlow.App.Uno/App.xaml.cs::StartUpdateCheck::Delay",
                 "FileFlow.App.Core/ViewModels/EditorViewModel.cs::ExpireConnectionPulseAsync::Delay",
                 "FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs::CopyEvaluatedValueAsync::Delay"
             ]);

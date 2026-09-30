@@ -1,5 +1,4 @@
 using System.IO;
-using Avalonia;
 using FileFlow.App.ViewModels;
 using FileFlow.Core.Plugins;
 using FileFlow.Plugin.FileSystem;

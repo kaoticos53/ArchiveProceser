@@ -25,29 +25,6 @@ public class ModularRefactoringComponentsTests
     }
 
     [Fact]
-    public void ThemeResourceApplier_ShouldGenerateWpfResources()
-    {
-        // Arrange
-        var theme = new ThemeDefinition
-        {
-            Id = "test_theme",
-            Name = "Test Theme",
-            AppBackground = "#123456",
-            AccentPrimary = "#654321",
-            FontFamily = "Arial"
-        };
-
-        // Act
-        var resources = ThemeResourceApplier.BuildResourceDictionary(theme);
-
-        // Assert
-        resources.Should().NotBeNull();
-        resources.ContainsKey("AppBackgroundBrush").Should().BeTrue();
-        resources.ContainsKey("AccentPrimaryBrush").Should().BeTrue();
-        resources.ContainsKey("AppFontFamily").Should().BeTrue();
-    }
-
-    [Fact]
     public void RenameIndexCalculator_CalculateInsertIndex_ShouldClampProperly()
     {
         // Act & Assert

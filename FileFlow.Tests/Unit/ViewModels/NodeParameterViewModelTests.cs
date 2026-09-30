@@ -32,7 +32,7 @@ public class NodeParameterViewModelTests : IDisposable
     public void DisplayName_ShouldUpdateReactively_WhenCultureChanges()
     {
         // Arrange
-        var resourceManager = new ResourceManager("FileFlow.App.Resources.Strings", typeof(FileFlow.App.App).Assembly);
+        var resourceManager = new ResourceManager("FileFlow.App.Core.Resources.Strings", typeof(FileFlow.App.Core.HostUi).Assembly);
         LocalizationManager.Instance.RegisterResourceManager(resourceManager);
 
         AvaloniaTestHelper.SetCultureOnUI("es-ES");

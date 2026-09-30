@@ -1,9 +1,10 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using Avalonia.Threading;
+using FileFlow.App.Core;
 using FileFlow.Core.Telemetry;
 using FileFlow.Sdk;
+using FileFlow.Sdk.Services;
 using FileFlow.Sdk.Telemetry;
 
 namespace FileFlow.App.Collections;
@@ -11,6 +12,7 @@ namespace FileFlow.App.Collections;
 /// <summary>
 /// Colección de virtualización de datos asíncrona de alto rendimiento (Data Virtualization) conectada a SQLite In-Memory.
 /// Permite explorar cientos de miles o millones de registros con consumo de memoria constante (<15 MB) y 120 FPS.
+/// Desacoplada de frameworks de UI concretos mediante <see cref="IUiDispatcher"/>.
 /// </summary>
 public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnlyList<StructuredLogRecord>, INotifyCollectionChanged, INotifyPropertyChanged
 {
@@ -18,6 +20,7 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
     private const int MaxCachedPages = 30; // 3.000 registros en RAM activos
 
     private readonly ILogStore _store;
+    private readonly IUiDispatcher _dispatcher;
     private readonly Lock _lock = new();
     private readonly Dictionary<int, (DateTime LastAccess, StructuredLogRecord[] Page)> _pageCache = [];
     private readonly HashSet<int> _fetchingPages = [];
@@ -27,9 +30,10 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public AsyncVirtualizingList(ILogStore? store = null)
+    public AsyncVirtualizingList(ILogStore? store = null, IUiDispatcher? dispatcher = null)
     {
         _store = store ?? SqliteLogStore.Instance;
+        _dispatcher = dispatcher ?? HostUi.Dispatcher;
     }
 
     public int Count
@@ -109,13 +113,13 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
 
             try
             {
-                if (Dispatcher.UIThread.CheckAccess())
+                if (_dispatcher.CheckAccess())
                 {
                     NotifyItem();
                 }
                 else
                 {
-                    Dispatcher.UIThread.Post(NotifyItem, DispatcherPriority.Background);
+                    _dispatcher.Post(NotifyItem);
                 }
             }
             catch
@@ -153,13 +157,13 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
 
         try
         {
-            if (Dispatcher.UIThread.CheckAccess())
+            if (_dispatcher.CheckAccess())
             {
                 Notify();
             }
             else
             {
-                Dispatcher.UIThread.Post(Notify);
+                _dispatcher.Post(Notify);
             }
         }
         catch
@@ -190,13 +194,13 @@ public sealed class AsyncVirtualizingList : IList<StructuredLogRecord>, IReadOnl
 
             try
             {
-                if (Dispatcher.UIThread.CheckAccess())
+                if (_dispatcher.CheckAccess())
                 {
                     NotifyCount();
                 }
                 else
                 {
-                    Dispatcher.UIThread.Post(NotifyCount, DispatcherPriority.Background);
+                    _dispatcher.Post(NotifyCount);
                 }
             }
             catch
