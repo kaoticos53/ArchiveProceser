@@ -13,6 +13,154 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ## 0. Hito más reciente
 
+- **298. Diálogo de Ajustes — Transformación de RadioButtons a Barra de Pestañas Moderna (Tab Bar) (2026-09-30)**:
+  - **El encargo**: En el diálogo de ajustes de la imagen transformar todos esos radiobuttons de arriba en pestañas.
+  - **🔬 Diagnóstico**: En `SettingsPanel.xaml`, las 6 secciones («Almacenamiento y Rutas», «Apariencia e Idioma», «Rendimiento y Ejecución», «Herramientas Externas», «Modelos de IA» y «Actualizaciones») se presentaban como controles `RadioButton` con su glifo circular clásico por defecto.
+  - **🧱 Acciones**:
+    - Declarado `SettingsTabButtonStyle` en `SettingsPanel.xaml.Resources`: plantilla limpia con `Border` de 6px de radio, relleno equilibrado y `ContentPresenter`, eliminando totalmente el glifo circular.
+    - Barra de navegación integrada en un contenedor `Border` con fondo `CanvasCardBrush`, borde sutil `CanvasBorderBrush` y esquinas de 8px (Tab Bar / Segmented Control).
+    - Control reactivo en `SettingsPanel.xaml.cs` (`UpdateTabButtonStyle`): la pestaña activa resalta con fondo `CanvasSurfaceBrush`, borde perimetral `CanvasBorderBrush` y texto de acento `CanvasAccentGlowBrush` en `SemiBold`. Las inactivas quedan con fondo transparente y texto secundario, e interactividad hover mediante `OnTabPointerEntered` y `OnTabPointerExited`.
+    - Preservados todos los `x:Name`, `Tag`, `GroupName`, `AutomationProperties.AutomationId` y la tabla de censos `SectionButtons`.
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Guardias: `UnoSettingsSurfaceGuardTests` (13/13).
+    - Mutaciones: `seccion-que-pierde-el-panel-que-conmutaba` MUERDE.
+    - Sonda de runtime: `-SelfCheckSettings` VERIFICADO (exit code 0; apertura, 6 secciones medidas, cambio de temas e idioma en caliente).
+    - Suite de tests: 1.755 pruebas superadas (100% de éxito).
+
+- **297. Catálogo de Nodos — Jerarquía Visual Reforzada y Selector Desplegable de Categorías (2026-09-30)**:
+  - **El encargo**: En el catálogo de nodos hacer que las categorías se diferencien de los nodos (que lucían casi iguales) y sustituir todos los botones/chips superiores por un desplegable que filtre los nodos según la categoría seleccionada.
+  - **🔬 Diagnóstico**:
+    1. Ambigüedad visual: los encabezados de categoría y los nodos compartían iconos en cajitas de 24×24 con fondo `CanvasCardBrush`, borde fino, icono de acento de 14×14 y tipografía de 12px. El encabezado era transparente en reposo en `CategoryGroupHeaderStyle`, pareciendo un nodo más con un pequeño chevron.
+    2. Saturación por botones: la fila de categorías utilizaba un `WrapPanel` con 15 botones (`CategoryChips`), dividiéndose en múltiples líneas que robaban espacio al catálogo.
+  - **🧱 Acciones**:
+    - **Filtro Desplegable (`CategoryFilterComboBox`)**:
+      - Sustituida la tira de botones por un `ComboBox` enlazado a `Vm.AvailableCategories`, con sincronización bidireccional inmediata en `SelectedCategoryItem` y `SelectedCategoryFilter`.
+      - Plantilla rica con icono de categoría (`IconToGeometry`), nombre (`DisplayName`) y contador pill en tiempo real (`Count`).
+      - Code-behind sincronizado en `NodeToolboxPanel.xaml.cs` (`OnCategoryFilterSelectionChanged`, `SyncCategoryFilterSelection`).
+      - Adaptación de la sonda `ChipBoxesForProbe()` para medir la caja del `CategoryFilterComboBox`, verificando que todas las categorías declaradas están dentro de los límites del panel y conservando verdes `SelfCheckPanels.cs` y `UnoSelfCheckLayoutGuardTests`.
+    - **Diferenciación Visual**:
+      - **Categorías**: diseñadas como tarjetas de sección destacadas con fondo sólido `CanvasCardBrush`, borde de 1px `CanvasBorderBrush`, esquinas `CornerRadius="8"`, icono en caja de 26×26 con borde de acento e icono brillante de 15×15, tipografía `12.5px Bold` e insignia pill de conteo destacada (`10.5px Bold` en `CanvasAccentGlowBrush`).
+      - **Nodos hijos**: indentados 22px en cascada (`Margin="22,3,2,4"`), fondo y borde transparentes en reposo para no competir con las tarjetas de categoría, icono subordinado de 20×20 con esquinas de 4px y color secundario (`CanvasSecondaryBrush`), tipografía `11.5px Normal` y realce reactivo en hover (`PointerEntered`).
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Mutaciones (`mutate.ps1`): `toolbox-que-no-sigue-el-tema` y `estados-fuera-de-la-raiz-de-la-plantilla` muerden (testigo rojo, control verde, restauración exacta).
+    - Suite de tests (`dotnet test FileFlow.slnx`): 1.755 superadas (100% de éxito).
+    - Sonda de runtime (`.\run-uno-fast.ps1 -SelfCheck`): VERIFICADO (83 comprobaciones internas + paneles + lienzo + catálogo, exit 0).
+
+- **296. Desplazamiento Fluido por Rueda del Ratón en Todos los Diálogos Modales (2026-09-30)**:
+  - **El encargo**: En los diálogos la rueda del ratón debería desplazar las líneas abajo y arriba.
+  - **🔬 Diagnóstico**:
+    1. En WinUI 3 desktop, los `ContentDialog` albergan su contenido dentro de un `ScrollViewer` de plantilla (`ContentScrollViewer`). Cuando el contenido cabe en la ventana, dicho `ScrollViewer` no se mueve (`ScrollableHeight == 0`) pero intercepta y marca como manipulado (`e.Handled = true`) el evento `PointerWheelChanged`. Esto priva a los controles hijos (listas `ListView`, editores multilínea `TextBox` y paneles con `ScrollViewer`) de recibir el evento de rueda o lo bloquea si el foco activo reside en los botones del diálogo.
+    2. En `TextEditorDialogBody.xaml`, `EditorBox` (`TextBox` multilínea) carecía de `ScrollViewer.VerticalScrollBarVisibility="Auto"` y `ScrollViewer.VerticalScrollMode="Enabled"`, impidiendo el scroll vertical de líneas de texto.
+  - **🧱 Acciones**:
+    - En `UnoWindowService.cs` (`ShowOwnedModalAsync`), se conecta `EnableDialogMouseWheelScrolling` con `UIElement.PointerWheelChangedEvent` y `handledEventsToo: true`.
+    - Localizador inteligente `FindScrollTarget`: a partir de `e.OriginalSource`, sube por la jerarquía visual detectando instancias de `ListViewBase` (obteniendo su `ScrollViewer` interno), `TextBox` multilínea o `ScrollViewer` con `ScrollableHeight > 0`.
+    - Desplazamiento proporcional: convierte las muescas de giro a desplazamiento de ~3 líneas (~48px) y llama a `targetScrollViewer.ChangeView(...)` con `Math.Clamp` y soporte para rueda horizontal.
+    - Actualizadas propiedades de scroll en `VariablePickerDialogBody.xaml` (`VariablesList` y detalle), `TextEditorDialogBody.xaml` (`EditorBox` y `VariableList`) y `AdvancedRenamerBody.xaml` (`StepsListView`, `ReplaceListView` y `PreviewListView`).
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Guardias: `UnoNodeDialogCatalogGuardTests` (5/5), `UiIconographyTests` (3/3).
+    - Sondas de runtime: `-SelfCheck` (exit 0), `-SelfCheckDialogs` (exit 0).
+
+- **295. Desbloqueo y Redimensionamiento Interactivo del Diálogo de Catálogo de Variables (2026-09-30)**:
+  - **El encargo**: En el diálogo de catálogo de variables el contenido queda recortado y no se puede redimensionar.
+  - **🔬 Diagnóstico**:
+    1. `ContentDialog` en WinUI 3 impone un `MaxWidth` por defecto de 548px. El catálogo de variables (`VariablePickerDialogBody.xaml`) cuenta con un diseño de dos columnas (lista y panel de detalle de 280px con muestra evaluada), el cual quedaba truncado a la derecha impidiendo leer la tarjeta de detalles completa.
+    2. No existía mecanismo de redimensionamiento manual por arrastre ni botón para maximizar la ventana modal.
+  - **🧱 Acciones**:
+    - En `UnoWindowService.cs` (`ShowVariablePickerAsync`), se asignan `MaxWidth = 2400`, `MaxHeight = 1600` y recursos de diálogo `ContentDialogMaxWidth` y `ContentDialogMaxHeight` a 2400.
+    - En `VariablePickerDialogBody.xaml` y `.xaml.cs`: tamaño por defecto amplio `820×520` (elástico de `640×420` a `2200×1400`), columna lateral de detalle de 280px con `ScrollViewer` vertical, botón de cabecera `MaximizeRestoreButton` para conmutar con un clic entre tamaño normal y maximizado (`[+]` / `[-]`), y tirador vectorial `VariablePickerResizeGrip` en la esquina inferior derecha con captura continua de puntero y sujeción elástica (`Math.Clamp`).
+    - Conservados todos los identificadores de automatización y accesibilidad.
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Guardias: `UnoNodeDialogCatalogGuardTests` (5/5), `UiIconographyTests` (3/3).
+    - Sondas de runtime: `-SelfCheck` (exit 0), `-SelfCheckDialogs` (exit 0).
+
+- **294. Redimensionamiento Interactivo y Desbloqueo del Ancho Máximo en Diálogos Modales WinUI 3 (2026-09-30)**:
+  - **El encargo**: El diálogo del pipeline de métodos quedaba recortado por la derecha y no se podía redimensionar.
+  - **🔬 Diagnóstico**: En WinUI 3, el estilo por defecto de `ContentDialog` impone un `MaxWidth` de 548px (`ContentDialogMaxWidth`). Al renderizar `AdvancedRenamerBody`, el diálogo quedaba truncado a 548px ignorando el contenido. Además, `ContentDialog` carece de bordes de arrastre nativos para redimensionar.
+  - **🧱 Acciones**:
+    - En `App.xaml`, declarados `ContentDialogMaxWidth` (2400) y `ContentDialogMaxHeight` (1600).
+    - En `UnoWindowService.cs` (`ShowAdvancedRenamerAsync` y `ShowSurfaceAsync`), asignados `MaxWidth = 2400`, `MaxHeight = 1600` y recursos locales `ContentDialogMaxWidth`/`Height`.
+    - En `AdvancedRenamerBody.xaml`: tamaño inicial amplio `1020×640`, botón `MaximizeRestoreButton` en la cabecera para conmutar entre tamaño estándar y maximizado, y grip de arrastre manual interactivo (`RenamerResizeGrip`) en la esquina inferior derecha con captura de puntero (`PointerPressed`/`Moved`/`Released`).
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Guardias: `UiIconographyTests` (3/3), `UnoThemeRepaintGuardTests` (6/6), `UnoNodeDialogCatalogGuardTests` (3/3).
+    - Sondas runtime: `-SelfCheck` (exit 0), `-SelfCheckDialogs` (exit 0).
+
+- **293. Superficie de Estudio de Renombrado Avanzado y Acciones de Diálogo Accesibles en Tarjeta e Inspector (2026-09-30)**:
+  - **El encargo**: Al pulsar el botón «🏷️ Pipeline de Métodos...» en el nodo Renombrar Archivo, aparecía el aviso de "Ventana del host de escritorio" en lugar de abrir el configurador de pipelines. Igualmente para otros nodos con acciones y superficies modales, y solicitar que estos botones aparezcan también en el Inspector lateral para facilidad del usuario.
+  - **🔬 Diagnóstico**:
+    1. `AdvancedRenamerNode` invocaba `DesktopOnlySurface.Declare(...)` sin implementar `INodeDialogSurfaceProvider`. En consecuencia, al activarse la acción en el host Uno, no existía una factoría de superficie registrada y saltaba el modal de aviso de host de escritorio.
+    2. `SyntheticDataSourceNode` implementaba `INodeDialogSurfaceProvider` con `DialogKey => DialogKeys.DataSetDesigner`, pero le faltaba declarar `ReplacesCustomActionId => "OpenDataSetDesigner"`, provocando que el fallback de acción cayera en la declaración de solo-escritorio.
+    3. En `NodeInspectorPanel`, las filas de parámetros que editan propiedades asociadas a superficies (como `PipelineName` para el pipeline de renombrado) no exponían el botón de acción de fila `🏷️` en el Inspector.
+  - **🧱 Acciones**:
+    - **Registro Canónico de Diálogo en SDK**: Registrada la constante `DialogKeys.AdvancedRenamer = "AdvancedRenamer"` en `FileFlow.Sdk/Services/IWindowService.cs`.
+    - **Implementación de `INodeDialogSurfaceProvider` en `AdvancedRenamerNode`**: Retorna `DialogKeys.AdvancedRenamer`, `ReplacesCustomActionId => "OpenRenamerPipeline"`, y construye el payload con `AdvancedRenamerEditorViewModel` inyectando los pasos y presets actuales.
+    - **Corrección en `SyntheticDataSourceNode`**: Definida la propiedad `ReplacesCustomActionId => "OpenDataSetDesigner"`.
+    - **Nueva Vista WinUI 3 `AdvancedRenamerBody` (`FileFlow.App.Uno/Controls/AdvancedRenamerBody.xaml` y `.xaml.cs`)**: Interfaz completa de dos columnas que incluye catálogo de pasos, reordenación, adición con flyout de 9 métodos de renombrado, configuración dinámica según método, presets y previsualización en vivo (Live Preview) reactiva con probador de muestras. Todo el XAML libre de emojis no permitidos por `UiIconographyTests`.
+    - **Soporte en `UnoWindowService`**: Registrado `DialogKeys.AdvancedRenamer` con mapeo a `AdvancedRenamerBody` mediante `ShowAdvancedRenamerAsync` en un `ContentDialog` con botones Aceptar y Cancelar.
+    - **Inspector Enriquecido**: Añadida la propiedad `IsRenamerPipeline` y el comando `OpenRenamerPipelineCommand` en `NodeParameterViewModel`, cableado en `NodeInspectorPanel.xaml.cs` bajo `HostRowActions` con ancla `ParamRenamer_` y botón `🏷️`. Mantenido el target de la mutación `fila-de-presets-sin-su-boton`.
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Suite de pruebas unitarias (`dotnet test`): **1755 superadas, 0 errores, 1 omitida** (1756).
+    - Guardias: `UnoNodeDialogCatalogGuardTests` (5/5), `DesktopOnlySurfaceGuardTests` (2/2), `UiIconographyTests` (3/3), `MutationDeclarationGuardTests` (9/9).
+    - Mutaciones: `acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta` (MUERDE 1/1), `fila-de-presets-sin-su-boton` (MUERDE 1/1).
+    - Sondas de runtime Uno: `-SelfCheck` (exit 0), `-SelfCheckDialogs` (exit 0).
+
+- **292. Alineación Inmediata de Iconos y Nodos en el Despliegue de Categorías del Catálogo Uno (2026-09-30)**:
+  - **El encargo**: Al desplegar una categoría en el panel del catálogo de nodos, los iconos salían desalineados con respecto al texto (desplazados hacia abajo) y se alineaban al cambiar el tamaño del panel.
+  - **🔬 Diagnóstico**:
+    1. En `NodeToolboxPanel.xaml`, `ToolboxItemDetails` no tenía `Visibility="Collapsed"` en XAML (nacía `Visible`).
+    2. Al desplegar la categoría, Uno/WinUI calculaba el `Measure` inicial del ítem con la altura completa de los detalles (~60px), centrando verticalmente el icono (`Height="24"`, `VerticalAlignment="Center"`) a `Y = 18px`.
+    3. Luego `OnToolboxItemDetailsLoading` colapsaba el bloque detallado en modo compacto, el texto subía a `Y = 0`, pero la columna 0 no se re-disponía, quedando el icono desfasado 18px abajo con espacio vacío debajo.
+    4. Al redimensionar el panel, un pase de layout global medía el ítem directamente en 24px alineando el icono y el texto.
+  - **🧱 Acciones**:
+    - **`Visibility="Collapsed"` nativo**: Declarado directamente sobre `ToolboxItemDetails` en `NodeToolboxPanel.xaml` para que las tarjetas nazcan en 24px de alto sin inflación fantasma.
+    - **Enlace tipado**: `ItemsControl.Visibility` consume `Converter={StaticResource BoolToVis}`.
+    - **Asentamiento inmediato al desplegar**: `Checked="OnCategoryGroupExpanded"` en el `ToggleButton` del encabezado de categoría (`NodeToolboxPanel.xaml.cs`) para invalidar y asentar inmediatamente el layout de la categoría al abrirla.
+    - **Invalidación en cascada y despacho directo**: `InvalidateDetailsAncestors` en `OnToolboxItemDetailsLoading` y `ApplyToDetailsBlocks`, y evaluación de `DispatcherQueue.HasThreadAccess` en `OnVmPropertyChanged` para aplicar la visibilidad instantáneamente si ya estamos en el hilo de UI.
+    - **Sonda en runtime sincronizada**: `ProbeDetailsBlocks` ejecuta `ApplyViewMode()` tras forzar la materialización.
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores de compilación.
+    - Runtime Uno: `-SelfCheck` **VERIFICADO** (exit 0; 113 `[OK]`, 0 fallos), `-SelfCheckSettings` (exit 0), `-SelfCheckControlBar` (exit 0), `-SelfCheckDialogs` (exit 0).
+    - Mutaciones `toolbox-que-no-sigue-el-tema` y `toggle-que-no-persiste`: **MUERDEN** (1/1).
+
+- **291. Los Estilos Compartidos del Host Uno en su Propio Diccionario (y el VisualStateManager que estaba mudo) (2026-09-30)**:
+  - **El encargo**: extraer los estilos y plantillas de control compartidos del host Uno a su propio diccionario de recursos, para que cada plantilla tenga su espacio de nombres de estados.
+  - **🧱 Acciones**:
+    - **Diccionario nuevo `FileFlow.App.Uno/Themes/ControlStyles.xaml`**: recibe `CategoryChipStyle` (con su `CommonStates` completo) salido del panel del catálogo y `InspectorTabRadioButtonStyle` salido de `App.xaml`; se fusiona en `App.xaml` (`ResourceDictionary Source="ms-appx:///Themes/ControlStyles.xaml"`). Pinceles por `StaticResource` (nunca `ThemeResource`, la lección del 233).
+    - **El panel recupera su espacio de nombres**: al vivir el chip en otro archivo, el encabezado del catálogo declara su propia máquina de estados y el realce del puntero pasa a **declarativo** (`PointerOver`/`Pressed`/`Disabled`/`Checked*` sobre `HeaderRoot.Background`); se retiran los handlers `OnGroupHeaderPointerEntered/Exited` del code-behind, que ya no hacen falta.
+  - **🔬 Hallazgo (corrige un error del 290)**: el bloque `VisualStateManager.VisualStateGroups` del chip y del encabezado se había dejado como **hermano del raíz** del `ControlTemplate`. Esa forma **compila pero en Uno no se aplica** —los grupos tienen que colgar dentro del primer hijo de la raíz de la plantilla—, así que **los estados del chip estaban MUERTOS** (el chip seleccionado nunca se pintó de acento; el «chip claro sobre claro» del 290 se dio por curado sin aplicarse). Medido en la app viva (UIA: el chip «Todas» `On` pero con color de reposo; el hover del encabezado sin efecto) y corregido moviendo el bloque **dentro** del `Border` raíz en las dos plantillas. Tras el arreglo, medido: chip seleccionado `#6366F1` (1.279 px), chip hover `#818CF8` (1.280 px), encabezado realzado `#161B22` (9.515 px).
+    - **Guardia nueva de la colocación**: `UnoVisualStateNameScanner.InspectTemplateStateGroupPlacement` (parsea el XAML como XML; los 20 del host son bien formados) + hecho `EveryVisualStateGroupInTheUnoHost_ShouldLiveInsideItsTemplateRoot` (con control «hay estados dentro de la raíz») + dos auto-tests (forma muda y forma aplicada).
+    - **Guardias actualizadas**: `UnoVisualStateNameGuardTests` retargeta el caso del chip al diccionario nuevo y afirma que el panel recupera su `CommonStates`+`PointerOver`; `UnoThemeRepaintGuardTests` añade el diccionario a los archivos que deben consumir por `StaticResource`.
+    - **Mutación nueva `estados-fuera-de-la-raiz-de-la-plantilla`**: **MUERDE** en ~24,5 s (devuelve el bloque a hermano del raíz; compila, y sólo la guardia de colocación lo caza). Requirió **dos** sustituciones (quitar el bloque de dentro del raíz + reinsertarlo como hermano).
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores.
+    - Suite completa: **1755 superadas, 1 omitida (ONNX local), 0 errores** (1756).
+    - `-SelfCheck`: **VERIFICADO** (113 `[OK]` · 0 `[FALLO]`, exit 0). `-SelfCheckSettings`: **VERIFICADO** (18 `[OK]` · 0 `[FALLO]`, exit 0).
+    - `mutations/COVERAGE.md` regenerado: **110 declaradas · guardias con mutación 17/35 · subsistemas con mutación 14/16**.
+
+- **290. El Catálogo de Nodos Sigue el Tema (y deja de leerse claro sobre claro) (2026-09-30)**:
+  - **El encargo**: el panel izquierdo (catálogo de nodos) no seguía el tema —quedaba claro con el texto claro, ilegible— y su organización de categorías y nodos estaba desalineada y era poco atractiva.
+  - **🔬 Diagnóstico**: el hito **288** había pedido los pinceles del catálogo (y el fondo del cajón y la franja de estado en `MainWindow.xaml`) por `{ThemeResource …}` creyendo que era lo dinámico. Es lo contrario y ya estaba escrito desde el **233**: `UnoThemeHost` no republica claves, **cambia el COLOR del pincel singleton** de `App.xaml`, y el `StaticResource` captura esa misma instancia (repinta); un `ThemeResource` de aplicación **no re-evalúa** y deja el control congelado en los colores de arranque. Los 25 `{ThemeResource}` del host eran 22 del catálogo + 3 de la ventana: el único rincón que aún los usaba. Además, la plantilla de fábrica de los `ToggleButton` pinta `Checked`/`PointerOver`/`Pressed` con los pinceles del sistema (ignora los `Setter` del estilo) y la alineación del encabezado y de la tarjeta de nodo no compartía columnas.
+  - **🧱 Acciones**:
+    - **Tema** (`NodeToolboxPanel.xaml`, `MainWindow.xaml`): los 25 `{ThemeResource}` → `{StaticResource}`, y el cajón pinta su propio fondo `CanvasSurfaceBrush` en el `Grid` raíz.
+    - **Plantilla propia del chip** (`CategoryChipStyle`): `ControlTemplate` con un `VisualStateGroup` que resuelve `Normal`/`PointerOver`/`Pressed`/`Disabled`/`Checked`/`CheckedPointerOver`/`CheckedPressed` con los pinceles `Canvas*` (chip elegido en acento primario con texto `CanvasOnAccentBrush`), `MinWidth`/`MinHeight` a 0 y `Margin` en el chip.
+    - **Encabezado de grupo**: `ControlTemplate` con el chevron dentro (dos `PathIcon` con `Visibility` atada a `IsExpanded` por los conversores existentes) y contador en píldora; el realce del puntero va por code-behind, porque **dos `VisualStateGroup` en el mismo diccionario de recursos no compilan** (el `XamlCompiler` sale con código 1 y sin mensaje — aislado por bisección).
+    - **Alineación de un solo ritmo**: icono en `x=22` y nombre en `x=56` en encabezado y tarjeta (mismo `ColumnSpacing=10`); realce al pasar el puntero sobre el nodo con el pincel del tema.
+    - **Guardia del tema** en `UnoThemeRepaintGuardTests` (`HostXaml_ShouldConsumeTheThemeBrushesByStaticResource`): sin `{ThemeResource` en el panel ni en la ventana y con consumo real de `{StaticResource Canvas…}`.
+    - **Guardia de los nombres de estado** (la mina que descubrió el arreglo): la regla se midió con **cinco builds** porque el `XamlCompiler` falla **sin mensaje**. No es «un grupo por diccionario» —dos caben si se llaman distinto— sino que **los `x:Name` de `VisualStateGroup` y `VisualState` son únicos en TODO el archivo**, recursos y contenido incluidos; y renombrarlos no vale, porque WinUI pide sus estados por nombre (`GoToState("Checked")`). Escáner en `FileFlow.Tests/TestHelpers/UnoVisualStateNameScanner.cs` (cita las dos líneas de la repetición) y guardia `UnoVisualStateNameGuardTests` (11 casos, con auto-tests de cada defecto y de cada no-defecto; con el defecto plantado en el árbol real el hecho se pone rojo). **Sin mutación**, y no por olvido: el defecto no compila y un `NO-COMPILA` es veredicto de fallo del andamiaje.
+  - **📊 Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores de compilación.
+    - Suite completa (`dotnet test`): **1752 superadas, 1 omitida (ONNX local), 0 errores** (1753), en **tres corridas consecutivas**.
+    - **Hallazgo lateral (y corregido)**: con la guardia nueva el suite fallaba **siempre, en una prueba distinta cada vez** (reloj de carpeta, flujo sin nodos, diagnosis, latido de rendimiento). No era un estado global: era la **enumeración** de la guardia, que recorría `FileFlow.App.Uno` entero **incluyendo `bin`/`obj`** —el runtime de WinUI— para luego filtrar; ese barrido competía por el disco con las pruebas de temporización. Poda al recorrer en `UnoGeometryBindingScanner.XamlFilesUnder` (la aprovechan también las guardias de geometría) → suite verde.
+    - Medición visual sobre la app viva: fondo `#131720` y textos con contraste **12,0:1 / 6,0:1 / 5,0:1** (todos por encima del 4,5:1 de AA).
+    - `-SelfCheck`: **VERIFICADO** (113 `[OK]` · 0 `[FALLO]`; 81 ítems, 15 chips con caja, filtro 81→5, 20 bloques detallados con 0 visibles en compacto).
+    - `-SelfCheckSettings`: **VERIFICADO** (18 `[OK]` · 0 `[FALLO]`; cambio y restauración de tema e idioma).
+    - Mutación nueva `toolbox-que-no-sigue-el-tema`: **MUERDE** con el control verde; `mutations/COVERAGE.md` regenerado (**109 declaradas · guardias sin mutación 19/35**).
+
 - **289. Reclamación de Espacio del Lienzo al Cerrar Inspector y Pestañas Reales sin Glifo Circular (2026-09-30)**:
   - **El encargo**: Resolver la no recuperación de espacio en el lienzo cuando se cierra el panel lateral inspector y transformar los selectores de páginas del inspector en pestañas auténticas en lugar de radio botones con glifo circular.
   - **Acciones realizadas**:

@@ -4,9 +4,9 @@
 > **No se edita a mano.**
 > Regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`.
 
-Mutaciones declaradas: 108
+Mutaciones declaradas: 110
 Subsistemas del producto con alguna mutación: 14 de 16
-Guardias que auditan el repositorio con mutación que las muerda: 16 de 34
+Guardias que auditan el repositorio con mutación que las muerda: 17 de 35
 
 ## Qué declara cada mutación
 
@@ -53,6 +53,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 16 de 34
 | `editor-que-no-devuelve-el-texto-confirmado` | `FileFlow.App.Uno/Platform/UnoWindowService.cs` | `TheDialogs_ShouldBeViewsOfThePortableViewModels_NotCopiesOfThem` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` |
 | `ejecucion-pausada-heredada` | `FileFlow.Core/Engine/WorkflowExecutor.cs` | `ARunThatEndedWhilePaused_ShouldNotLeaveTheNextOneWaiting` | `Journal_ShouldOnlyContainTheOperationsOfTheCurrentRun` |
 | `entrada-de-ventana-que-no-ejecuta-su-orden` | `FileFlow.App.Uno/Controls/MainMenuDrawer.xaml.cs` | `TheWindowEntries_ShouldBeServedByTheHostsDialogCatalogue` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` |
+| `estados-fuera-de-la-raiz-de-la-plantilla` | `FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml` | `EveryVisualStateGroupInTheUnoHost_ShouldLiveInsideItsTemplateRoot` | `ToolboxPanel_ShouldWireSearchAndCategoryFilterToTheViewModel` |
 | `estudio-de-temas-que-esconde-lo-que-no-sirve` | `FileFlow.App.Uno/Controls/ThemeCustomizerBody.xaml.cs` | `TheThemeStudio_ShouldDeclareWhatItCannotServe_AndNotDrawIt` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` |
 | `extension-de-preset-sin-punto-al-guardar` | `FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs` | `Saving_ShouldNormalizeTheExtension` | `Saving_ShouldWriteThroughTheStore_NotOnlyInTheList` |
 | `fila-de-presets-sin-su-boton` | `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | `EveryDesktopRowDialog_ShouldBeServedHere_OrDeclaredPending` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` |
@@ -115,6 +116,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 16 de 34
 | `tema-sin-repintado` | `FileFlow.App.Uno/Platform/UnoThemeHost.cs` | `UnoThemeRepaintGuardTests` | `ThemeHost_ShouldKeepCreatingMissingBrushes_AndThePortableGenerator` |
 | `texto-del-pdf-que-se-olvida` | `FileFlow.Plugin.Documents/PdfTextExtractorNode.cs` | `PdfTextExtractorNode_ExtractsTextSuccessfully` | `PdfSplitNode_SplitsMultiplePagePdf` |
 | `toggle-que-no-persiste` | `FileFlow.App.Core/ViewModels/ToolboxViewModel.cs` | `ToolboxViewModel_ToggleViewMode_ShouldPersistCompactMode` | `ToolboxViewModel_SearchText_ShouldExpandMatchingCategories` |
+| `toolbox-que-no-sigue-el-tema` | `FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml` | `HostXaml_ShouldConsumeTheThemeBrushesByStaticResource` | `ToolboxPanel_ShouldWireSearchAndCategoryFilterToTheViewModel` |
 | `toolbox-sin-filtro` | `FileFlow.App.Core/ViewModels/ToolboxViewModel.cs` | `ToolboxViewModel_SearchText_ShouldReduceTheCatalogueToMatchingNodes` | `ToolboxViewModel_SearchText_ShouldExpandMatchingCategories` |
 | `validador-sin-materializar-puertos` | `FileFlow.Core/Engine/GraphValidator.cs` | `GraphValidatorDynamicPortTests` | `GraphValidatorTests` |
 | `ventana-servida-que-no-esta-en-el-catalogo` | `FileFlow.App.Uno/Platform/UnoWindowService.cs` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` | `EveryEntry_ShouldExistInItsViewWithItsAnchorAndItsState` |
@@ -129,7 +131,7 @@ defecto declarado demuestra que sus pruebas muerdan. Es la lista de trabajo, no 
 - `FileFlow.Plugin.Scripting`
 - `FileFlow.Plugin.Subflows`
 
-## Guardias del repositorio sin ninguna mutación que las muerda (18 de 34)
+## Guardias del repositorio sin ninguna mutación que las muerda (18 de 35)
 
 Las guardias que auditan el árbol (usan `SourceTree`, `TestRepositoryLocator` o `TestSuiteIndex`) y no
 aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostrado que muerdan.
@@ -156,7 +158,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 ## Dónde muta cada declaración
 
 - **FileFlow.App.Core**: `borrado-que-deja-los-nodos`, `boton-del-nodo-que-no-avisa`, `cable-con-la-curva-al-reves`, `cuello-que-no-cabe-en-el-hueco`, `inspector-sin-write-back`, `latido-rearrancado-que-no-late`, `orden-destructiva-que-vuelve-a-la-via-sincrona`, `pregunta-destructiva-escrita-en-el-codigo`, `prueba-sincrona-en-hilo-de-ui`, `rectangulo-con-ctrl-que-reemplaza`, `rectangulo-que-no-ve-los-cables`, `seleccion-que-no-reemplaza`, `tarjeta-que-no-habla-por-su-color`, `toggle-que-no-persiste`, `toolbox-sin-filtro`, `vfs-que-se-vacia-sin-preguntar`
-- **FileFlow.App.Uno**: `accion-de-urls-que-descarga-el-modelo`, `acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta`, `ajuste-que-no-devuelve-el-idioma`, `ajuste-sin-su-texto`, `ancla-que-ignora-la-escala`, `arranque-que-no-aplica-el-tema-guardado`, `atajo-que-no-llega-sin-foco`, `aviso-de-actualizacion-que-nadie-enciende`, `boton-probar-que-se-ofrece-sin-nodo`, `cable-con-anclas-estimadas`, `cable-marcado-que-no-se-ve`, `cable-que-no-se-puede-pulsar`, `cable-que-no-toca-su-socket`, `cables-que-no-llegan-tarde`, `campo-que-no-muestra-lo-que-el-dialogo-escribio`, `conmutador-de-parametros-que-no-refresca`, `cuerpo-del-gestor-que-habla-con-el-almacen`, `decoradores-que-no-llegan-al-arbol`, `disenador-de-datasets-fuera-del-catalogo`, `editor-que-no-devuelve-el-texto-confirmado`, `entrada-de-ventana-que-no-ejecuta-su-orden`, `estudio-de-temas-que-esconde-lo-que-no-sirve`, `fila-de-presets-sin-su-boton`, `fila-de-variables-que-abre-el-menu-que-no-esta-portado`, `flujo-que-se-cumple-por-el-picker-sincrono`, `gesto-de-puerto-que-no-conecta`, `gestor-de-claves-que-el-host-no-sirve`, `hit-test-en-el-espacio-equivocado`, `lienzo-sin-peer-uia`, `menu-que-ejecuta-la-orden-de-otro`, `menu-que-no-declara-lo-que-falta`, `menu-que-no-declara-un-atajo`, `menu-que-sale-en-una-esquina`, `menu-sin-el-estado-de-su-contexto`, `panel-de-nodo-sin-su-servicio-de-ventanas`, `reclamacion-que-roba-al-cuadro-de-texto`, `seccion-de-telemetria-que-se-ofrece-en-vacio`, `seccion-que-pierde-el-panel-que-conmutaba`, `snapshots-congelados-en-el-panel`, `socket-que-se-queda-sin-cablear`, `sondeo-uia-sin-hijo-externo`, `tarjeta-sin-la-puerta-de-sus-parametros`, `tema-sin-repintado`, `ventana-servida-que-no-esta-en-el-catalogo`, `vista-del-disenador-con-su-propio-modelo`
+- **FileFlow.App.Uno**: `accion-de-urls-que-descarga-el-modelo`, `acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta`, `ajuste-que-no-devuelve-el-idioma`, `ajuste-sin-su-texto`, `ancla-que-ignora-la-escala`, `arranque-que-no-aplica-el-tema-guardado`, `atajo-que-no-llega-sin-foco`, `aviso-de-actualizacion-que-nadie-enciende`, `boton-probar-que-se-ofrece-sin-nodo`, `cable-con-anclas-estimadas`, `cable-marcado-que-no-se-ve`, `cable-que-no-se-puede-pulsar`, `cable-que-no-toca-su-socket`, `cables-que-no-llegan-tarde`, `campo-que-no-muestra-lo-que-el-dialogo-escribio`, `conmutador-de-parametros-que-no-refresca`, `cuerpo-del-gestor-que-habla-con-el-almacen`, `decoradores-que-no-llegan-al-arbol`, `disenador-de-datasets-fuera-del-catalogo`, `editor-que-no-devuelve-el-texto-confirmado`, `entrada-de-ventana-que-no-ejecuta-su-orden`, `estados-fuera-de-la-raiz-de-la-plantilla`, `estudio-de-temas-que-esconde-lo-que-no-sirve`, `fila-de-presets-sin-su-boton`, `fila-de-variables-que-abre-el-menu-que-no-esta-portado`, `flujo-que-se-cumple-por-el-picker-sincrono`, `gesto-de-puerto-que-no-conecta`, `gestor-de-claves-que-el-host-no-sirve`, `hit-test-en-el-espacio-equivocado`, `lienzo-sin-peer-uia`, `menu-que-ejecuta-la-orden-de-otro`, `menu-que-no-declara-lo-que-falta`, `menu-que-no-declara-un-atajo`, `menu-que-sale-en-una-esquina`, `menu-sin-el-estado-de-su-contexto`, `panel-de-nodo-sin-su-servicio-de-ventanas`, `reclamacion-que-roba-al-cuadro-de-texto`, `seccion-de-telemetria-que-se-ofrece-en-vacio`, `seccion-que-pierde-el-panel-que-conmutaba`, `snapshots-congelados-en-el-panel`, `socket-que-se-queda-sin-cablear`, `sondeo-uia-sin-hijo-externo`, `tarjeta-sin-la-puerta-de-sus-parametros`, `tema-sin-repintado`, `toolbox-que-no-sigue-el-tema`, `ventana-servida-que-no-esta-en-el-catalogo`, `vista-del-disenador-con-su-propio-modelo`
 - **FileFlow.Core**: `diario-acumula-ejecuciones`, `ejecucion-pausada-heredada`, `modo-virtual-heredado`, `punto-de-control-sobrevive-a-la-ejecucion`, `punto-de-control-vuelve-a-escribir-por-archivo`, `retroalimentacion-de-barrera-contada-como-ciclo`, `retroalimentacion-sin-avisos`, `struct-de-shell-desalineado`, `validador-sin-materializar-puertos`
 - **FileFlow.Plugin.AI**: `cache-de-embeddings-sin-entorno`, `carpeta-de-nodo-de-ia-donde-corre`, `modelo-clip-buscado-por-su-id`
 - **FileFlow.Plugin.Archives**: `archivo-vacio-dejado-atras`, `compresor-contra-su-propia-entrada`, `compresor-que-escribe-donde-corre`

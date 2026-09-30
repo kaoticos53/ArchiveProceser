@@ -1236,6 +1236,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         ("OpenVariableCatalogCommand", "ParamVariable_", "el catálogo de variables del núcleo: el botón «{x}» abre DIRECTO su primera entrada, el catálogo completo"),
         ("OpenMediaPresetManagerCommand", "ParamPreset_", "el gestor de presets del nodo (el botón «🎬» de la fila del preset): la orden pide la superficie que DECLARA el nodo y la sirve el catálogo de diálogos de este host sobre su view model portable"),
         ("OpenPasswordManagerCommand", "ParamPassword_", "el gestor de contraseñas del nodo (el botón «🔑» de la fila de la lista de claves): la orden pide la superficie que DECLARA el nodo —igual que la acción «🔑 Claves...» de su tarjeta— y la sirve el catálogo de diálogos de este host sobre su view model portable"),
+        ("OpenRenamerPipelineCommand", "ParamRenamer_", "el estudio de renombrado avanzado del nodo (el botón «🏷️» de la fila del pipeline): la orden pide la superficie que DECLARA el nodo —igual que la acción «🏷️ Pipeline de Métodos...» de su tarjeta— y la sirve el catálogo de diálogos de este host sobre su view model portable"),
     ];
 
     /// <summary>
@@ -1269,8 +1270,13 @@ public sealed partial class NodeInspectorPanel : UserControl
         bool wantsPassword = p.IsPasswordList;
         if (!wantsEditor && !wantsVariables && !wantsPresets && !wantsPassword)
         {
-            return editor;
+            if (!p.IsRenamerPipeline)
+            {
+                return editor;
+            }
         }
+
+        bool wantsRenamer = p.IsRenamerPipeline;
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Top };
         if (wantsEditor)
@@ -1319,6 +1325,19 @@ public sealed partial class NodeInspectorPanel : UserControl
                 "Node_Param_OpenPasswordManager",
                 "Gestionar lista de contraseñas (Importar / Exportar / Editar)",
                 p.OpenPasswordManagerCommand));
+        }
+
+        // El ESTUDIO DE RENOMBRADO AVANZADO: la misma fila que el escritorio marca para el pipeline de
+        // métodos del nodo de renombrado. La orden es la de la fila y la cumple la superficie que declara
+        // el nodo —igual que la acción «🏷️ Pipeline de Métodos...» de su tarjeta—.
+        if (wantsRenamer)
+        {
+            actions.Children.Add(RowActionButton(
+                "ParamRenamer_" + p.Key,
+                "🏷️",
+                "AdvancedRenamer_WindowTitle",
+                "Estudio de Renombrado Avanzado (Pipeline de Métodos)",
+                p.OpenRenamerPipelineCommand));
         }
 
         var grid = new Grid { ColumnSpacing = 4 };

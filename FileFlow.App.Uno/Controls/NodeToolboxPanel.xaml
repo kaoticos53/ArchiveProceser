@@ -5,43 +5,141 @@
     xmlns:conv="using:FileFlow.App.Uno.Platform"
     xmlns:controls="using:FileFlow.App.Uno.Controls">
 
+  <!--
+    El CAJÓN DE HERRAMIENTAS del host Uno (catálogo de nodos).
+
+    <b>Los colores van SIEMPRE por StaticResource</b>, nunca por ThemeResource: el puente de temas
+    (UnoThemeHost) no republica claves — cambia el COLOR del pincel singleton declarado en App.xaml, y el
+    StaticResource captura esa MISMA instancia, así que su mutación repinta a todos los consumidores vivos.
+    Un ThemeResource de aplicación no re-evalúa (la lección del 233) y dejaba este panel CONGELADO en los
+    colores de arranque: al pasar a un tema claro quedaba claro por fuera con el texto claro por dentro,
+    ilegible. Era el único rincón del host que aún usaba ThemeResource; se alinea con el resto.
+
+    <b>Las plantillas con estados viven cada una en su propio archivo</b>: los x:Name de VisualStateGroup y
+    VisualState comparten espacio de nombres en TODO el archivo XAML (recursos y contenido), así que aquí sólo
+    cabe UNA máquina de estados con los nombres convencionales. El chip (CategoryChipStyle, con su
+    CommonStates) se extrajo a Themes/ControlStyles.xaml —su página recuperó el espacio de nombres— y por eso
+    el ENCABEZADO de grupo declara ahora sus propios estados (el realce del puntero, que antes iba por
+    code-behind). Cada plantilla tiene, así, su espacio de nombres de estados. Renombrar los estados no era la
+    salida: WinUI los pide por nombre (GoToState("Checked")) y un estado renombrado no se alcanza nunca; el
+    choque, además, no da error sino un XamlCompiler con código 1 y SIN MENSAJE. La guardia del suite
+    (UnoVisualStateNameGuardTests) vigila que nadie repita un nombre de estado en ningún XAML del host.
+
+    <b>La alineación es un solo ritmo</b>: el icono de cada categoría y el de cada nodo arrancan en la misma
+    x (22) y los nombres en la misma x (56), porque el encabezado (padding 6 + chevron 10 + hueco 6) y la
+    lista indentada (margen 16 + padding 6 + icono 24 + hueco 10) comparten las mismas cuentas.
+  -->
   <UserControl.Resources>
     <conv:MaterialIconKindToGeometryConverter x:Key="IconToGeometry" />
+    <conv:BoolToVisibilityConverter x:Key="BoolToVis" />
+    <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis" />
 
-    <!-- Estilo para chips de categoría tipo píldora elegante -->
-    <Style x:Key="CategoryChipStyle" TargetType="ToggleButton">
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Padding" Value="10,3" />
-      <Setter Property="Margin" Value="0,1" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Background" Value="{ThemeResource CanvasCardBrush}" />
-      <Setter Property="Foreground" Value="{ThemeResource CanvasSecondaryBrush}" />
-      <Setter Property="BorderBrush" Value="{ThemeResource CanvasBorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-    </Style>
-
-    <!-- Estilo para encabezado de grupo acordeón -->
+    <!-- ── Encabezado de grupo acordeón (su propia máquina de estados, ya sin choque de nombres) ──
+         El chip —dueño de los nombres convencionales— se mudó a Themes/ControlStyles.xaml, así que este
+         archivo vuelve a tener un espacio de nombres libre y el realce del puntero es declarativo. Si el
+         chip no se hubiera extraído, este segundo ControlTemplate con CommonStates no compilaría: el
+         XamlCompiler saldría con código 1 y sin mensaje. -->
     <Style x:Key="CategoryGroupHeaderStyle" TargetType="ToggleButton">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="6,4" />
-      <Setter Property="Margin" Value="0,1" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="{StaticResource CanvasCardBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource CanvasTextBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource CanvasBorderBrush}" />
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="Margin" Value="0,2,0,2" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Border x:Name="HeaderRoot"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}"
+                    Padding="{TemplateBinding Padding}">
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters>
+                      <Setter Target="HeaderRoot.Background" Value="{StaticResource CanvasCardBrush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters>
+                      <Setter Target="HeaderRoot.Background" Value="{StaticResource CanvasCardBrush}" />
+                      <Setter Target="HeaderRoot.Opacity" Value="0.85" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Disabled">
+                    <VisualState.Setters>
+                      <Setter Target="HeaderRoot.Opacity" Value="0.5" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <!-- El encabezado expandido (IsChecked) no cambia de fondo en reposo —lo dice el chevron—,
+                       pero sí conserva el realce al pasar el puntero. -->
+                  <VisualState x:Name="Checked" />
+                  <VisualState x:Name="CheckedPointerOver">
+                    <VisualState.Setters>
+                      <Setter Target="HeaderRoot.Background" Value="{StaticResource CanvasCardBrush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="CheckedPressed">
+                    <VisualState.Setters>
+                      <Setter Target="HeaderRoot.Background" Value="{StaticResource CanvasCardBrush}" />
+                      <Setter Target="HeaderRoot.Opacity" Value="0.85" />
+                    </VisualState.Setters>
+                  </VisualState>
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+              <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0" Width="12" Height="12"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <PathIcon x:Name="ChevronCollapsed"
+                            Width="10" Height="10"
+                            Data="M6,4 L12,10 L6,16"
+                            Foreground="{StaticResource CanvasSecondaryBrush}"
+                            Visibility="{Binding IsExpanded, Converter={StaticResource InvBoolToVis}}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  <PathIcon x:Name="ChevronExpanded"
+                            Width="10" Height="10"
+                            Data="M4,6 L10,12 L16,6"
+                            Foreground="{StaticResource CanvasAccentGlowBrush}"
+                            Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+
+                <ContentPresenter x:Name="HeaderContent" Grid.Column="1"
+                                  Content="{TemplateBinding Content}"
+                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                  Foreground="{TemplateBinding Foreground}"
+                                  HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                  AutomationProperties.AccessibilityView="Raw" />
+              </Grid>
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
   </UserControl.Resources>
 
-  <Grid RowSpacing="10" Padding="14,12,12,12">
+  <Grid Background="{StaticResource CanvasSurfaceBrush}" RowSpacing="10" Padding="14,12,12,12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <!-- Cabecera: Título con tipografía refinada + botón de modo compacto/detallado -->
+    <!-- Fila 0 · Cabecera: título + botón de modo compacto/detallado -->
     <Grid Grid.Row="0" ColumnSpacing="8" VerticalAlignment="Center">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
@@ -49,123 +147,164 @@
       </Grid.ColumnDefinitions>
       <TextBlock x:Name="TitleText" Grid.Column="0" FontSize="13" FontWeight="Bold"
                  VerticalAlignment="Center"
-                 Foreground="{ThemeResource CanvasTextBrush}" />
+                 Foreground="{StaticResource CanvasTextBrush}" />
       <Button x:Name="ViewModeToggle" Grid.Column="1" Click="OnViewModeToggleClicked"
               AutomationProperties.AutomationId="ToolboxViewModeToggle"
-              Background="{ThemeResource CanvasCardBrush}" BorderThickness="1"
-              BorderBrush="{ThemeResource CanvasBorderBrush}" CornerRadius="6"
-              Padding="6,4" VerticalAlignment="Center"
+              MinWidth="0" MinHeight="0"
+              Background="{StaticResource CanvasCardBrush}" BorderThickness="1"
+              BorderBrush="{StaticResource CanvasBorderBrush}" CornerRadius="6"
+              Padding="7,5" VerticalAlignment="Center"
               ToolTipService.ToolTip="Cambiar modo de vista (Compacto / Detallado)">
         <PathIcon x:Name="ViewModeIcon"
                   Data="M3,2.5 H21 V4.5 H3 Z M3,7.5 H21 V9.5 H3 Z M3,12.5 H21 V14.5 H3 Z M3,17.5 H13 V19.5 H3 Z"
                   Width="12" Height="12"
-                  Foreground="{ThemeResource CanvasSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  Foreground="{StaticResource CanvasSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Button>
     </Grid>
 
-    <!-- Buscador + chips de categoría (Segmented Filter Bar) -->
-    <StackPanel Grid.Row="1" Spacing="8">
+    <!-- Fila 1 · Buscador + selector desplegable de categoría -->
+    <StackPanel Grid.Row="1" Spacing="9">
       <TextBox x:Name="SearchBox"
                Text="{x:Bind Vm.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                PlaceholderText="Buscar nodo… (Ctrl+F)" FontSize="12"
                CornerRadius="6" Padding="10,6"
-               Background="{ThemeResource CanvasCardBrush}"
-               Foreground="{ThemeResource CanvasTextBrush}"
-               BorderBrush="{ThemeResource CanvasBorderBrush}" />
+               Background="{StaticResource CanvasCardBrush}"
+               Foreground="{StaticResource CanvasTextBrush}"
+               BorderBrush="{StaticResource CanvasBorderBrush}" />
 
-      <!-- Contenedor de filtros rápidos de categoría en píldoras con WrapPanel -->
-      <ItemsControl x:Name="CategoryChips" ItemsSource="{x:Bind Vm.AvailableCategories}">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <controls:WrapPanel Spacing="4" />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
+      <ComboBox x:Name="CategoryFilterComboBox"
+                ItemsSource="{x:Bind Vm.AvailableCategories, Mode=OneWay}"
+                SelectedItem="{x:Bind Vm.SelectedCategoryItem, Mode=TwoWay}"
+                SelectionChanged="OnCategoryFilterSelectionChanged"
+                HorizontalAlignment="Stretch"
+                FontSize="12"
+                CornerRadius="6"
+                Padding="8,5"
+                Background="{StaticResource CanvasCardBrush}"
+                Foreground="{StaticResource CanvasTextBrush}"
+                BorderBrush="{StaticResource CanvasBorderBrush}">
+        <ComboBox.ItemTemplate>
           <DataTemplate>
-            <ToggleButton Click="OnCategoryChipClicked" Content="{Binding DisplayName}"
-                          IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                          Style="{StaticResource CategoryChipStyle}"
-                          Tag="{Binding Key}" />
+            <Grid ColumnSpacing="8" VerticalAlignment="Center">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+
+              <Border Grid.Column="0" Width="22" Height="22" CornerRadius="5"
+                      Background="{StaticResource CanvasSurfaceBrush}"
+                      VerticalAlignment="Center">
+                <PathIcon Data="{Binding Icon, Converter={StaticResource IconToGeometry}}"
+                          Width="13" Height="13"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                          Foreground="{StaticResource CanvasAccentGlowBrush}" />
+              </Border>
+
+              <TextBlock Grid.Column="1" Text="{Binding DisplayName}"
+                         FontSize="12" VerticalAlignment="Center"
+                         Foreground="{StaticResource CanvasTextBrush}"
+                         TextTrimming="CharacterEllipsis" />
+
+              <Border Grid.Column="2" CornerRadius="8" MinWidth="18" Padding="5,1"
+                      Background="{StaticResource CanvasSurfaceBrush}"
+                      VerticalAlignment="Center">
+                <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{StaticResource CanvasSecondaryBrush}" />
+              </Border>
+            </Grid>
           </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
     </StackPanel>
 
-    <!-- Grupos acordeón del catálogo de nodos -->
-    <ScrollViewer x:Name="ToolboxScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,2,0,0">
+    <!-- Fila 2 · Catálogo: grupos acordeón con sus nodos -->
+    <ScrollViewer x:Name="ToolboxScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                  Margin="0,2,0,0" Padding="0,0,2,0">
       <ItemsControl x:Name="GroupsHost" ItemsSource="{x:Bind Vm.CategoryGroups}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <StackPanel Margin="0,0,0,4">
-              <!-- Encabezado de categoría con icono, título y contador alineados -->
+            <StackPanel Margin="0,0,0,8">
+
+              <!-- Encabezado de la categoría: Tarjeta de sección destacada (chevron + icono acentuado + nombre + pill badge) -->
               <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                            Checked="OnCategoryGroupExpanded"
                             Style="{StaticResource CategoryGroupHeaderStyle}">
-                <Grid ColumnSpacing="8" VerticalAlignment="Center">
+                <Grid ColumnSpacing="10" VerticalAlignment="Center">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                   </Grid.ColumnDefinitions>
-                  
-                  <Border Grid.Column="0" Width="20" Height="20" CornerRadius="4"
-                          Background="{ThemeResource CanvasCardBrush}"
+
+                  <!-- Icono de categoría: Contenedor 26x26 con realce de acento -->
+                  <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6"
+                          Background="{StaticResource CanvasSurfaceBrush}"
+                          BorderThickness="1" BorderBrush="{StaticResource CanvasAccentGlowBrush}"
                           VerticalAlignment="Center">
                     <PathIcon Data="{Binding Icon, Converter={StaticResource IconToGeometry}}"
-                              Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"
-                              Foreground="{ThemeResource CanvasAccentGlowBrush}" />
+                              Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Foreground="{StaticResource CanvasAccentGlowBrush}" />
                   </Border>
 
-                  <TextBlock Grid.Column="1" Text="{Binding CategoryName}" FontSize="12" FontWeight="SemiBold"
+                  <!-- Título de categoría: Tipografía destacada en negrita -->
+                  <TextBlock Grid.Column="1" Text="{Binding CategoryName}" FontSize="12.5" FontWeight="Bold"
                              VerticalAlignment="Center"
-                             Foreground="{ThemeResource CanvasTextBrush}" TextTrimming="CharacterEllipsis" />
+                             Foreground="{StaticResource CanvasTextBrush}" TextTrimming="CharacterEllipsis" />
 
-                  <Border Grid.Column="2" CornerRadius="8" Padding="6,1"
-                          Background="{ThemeResource CanvasCardBrush}"
-                          BorderThickness="1" BorderBrush="{ThemeResource CanvasBorderBrush}"
+                  <!-- Contador de categoría: Insignia pill destacada -->
+                  <Border Grid.Column="2" CornerRadius="10" MinWidth="22" Padding="7,2"
+                          Background="{StaticResource CanvasSurfaceBrush}"
+                          BorderThickness="1" BorderBrush="{StaticResource CanvasBorderBrush}"
                           VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Items.Count}" FontSize="10" FontWeight="SemiBold"
-                               Foreground="{ThemeResource CanvasSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Items.Count}" FontSize="10.5" FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               Foreground="{StaticResource CanvasAccentGlowBrush}" VerticalAlignment="Center" />
                   </Border>
                 </Grid>
               </ToggleButton>
 
-              <!-- Lista de tarjetas de nodo dentro de la categoría -->
-              <ItemsControl ItemsSource="{Binding Items}" Visibility="{Binding IsExpanded}"
-                            Margin="8,2,0,4">
+              <!-- Nodos de la categoría (indentados en cascada bajo el encabezado, estilo de ítem subordinado) -->
+              <ItemsControl ItemsSource="{Binding Items}" Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}"
+                            Margin="22,3,2,4">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border x:Name="ToolboxItemRoot" DoubleTapped="OnItemDoubleTapped"
-                            Background="Transparent" BorderThickness="1" BorderBrush="Transparent" CornerRadius="6"
-                            Padding="6,4" Margin="0,2" ToolTipService.ToolTip="{Binding Description}">
+                            PointerEntered="OnItemPointerEntered" PointerExited="OnItemPointerExited"
+                            Background="Transparent" BorderThickness="1" BorderBrush="Transparent"
+                            CornerRadius="6" Padding="6,4" Margin="0,1"
+                            ToolTipService.ToolTip="{Binding Description}">
                       <Grid ColumnSpacing="10" VerticalAlignment="Center">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Badge contenedor del icono del nodo, perfectamente cuadrado y centrado -->
-                        <Border Grid.Column="0" Width="28" Height="28" CornerRadius="6"
-                                Background="{ThemeResource CanvasCardBrush}"
-                                BorderThickness="1" BorderBrush="{ThemeResource CanvasBorderBrush}"
+                        <!-- Icono de nodo subordinado: más pequeño (20x20), sutil y con tono secundario en reposo -->
+                        <Border Grid.Column="0" Width="20" Height="20" CornerRadius="4"
+                                Background="Transparent"
+                                BorderThickness="1" BorderBrush="{StaticResource CanvasBorderBrush}"
+                                Opacity="0.8"
                                 VerticalAlignment="Center" HorizontalAlignment="Center">
                           <PathIcon Data="{Binding Icon, Converter={StaticResource IconToGeometry}}"
-                                    Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Foreground="{ThemeResource CanvasAccentGlowBrush}" />
+                                    Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Foreground="{StaticResource CanvasSecondaryBrush}" />
                         </Border>
 
-                        <!-- Bloque de textos (Nombre, Badge de rol y Descripción) -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                          <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium"
-                                     Foreground="{ThemeResource CanvasTextBrush}"
+                          <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="Normal"
+                                     Foreground="{StaticResource CanvasTextBrush}"
                                      TextTrimming="CharacterEllipsis" MaxLines="1"
                                      VerticalAlignment="Center" />
-                          
-                          <!-- Bloque detallado (insignia de rol + descripción) -->
-                          <StackPanel x:Name="ToolboxItemDetails" Tag="ToolboxItemDetails" Loading="OnToolboxItemDetailsLoading" Spacing="1">
+
+                          <StackPanel x:Name="ToolboxItemDetails" Tag="ToolboxItemDetails"
+                                      Visibility="Collapsed"
+                                      Loading="OnToolboxItemDetailsLoading" Spacing="1">
                             <TextBlock Text="{Binding RoleBadge}" FontSize="10" FontWeight="SemiBold"
-                                       Foreground="{ThemeResource CanvasAccentGlowBrush}" />
+                                       Foreground="{StaticResource CanvasAccentGlowBrush}" />
                             <TextBlock Text="{Binding Description}" FontSize="10"
-                                       Foreground="{ThemeResource CanvasSecondaryBrush}"
+                                       Foreground="{StaticResource CanvasSecondaryBrush}"
                                        TextTrimming="CharacterEllipsis" MaxLines="2" Opacity="0.9" />
                           </StackPanel>
                         </StackPanel>

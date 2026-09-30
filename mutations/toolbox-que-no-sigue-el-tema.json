@@ -1,0 +1,26 @@
+{
+  "id": "toolbox-que-no-sigue-el-tema",
+  "hito": 290,
+  "claim": "El cajón de herramientas del host Uno consume los pinceles del tema por StaticResource: el puente de temas (UnoThemeHost) cambia el COLOR del pincel singleton declarado en App.xaml y el StaticResource captura esa MISMA instancia, así que la mutación del color repinta el panel en caliente. El fondo del catálogo (y con él los textos y las tarjetas) sigue al tema activo.",
+  "why": "El hito 288 pidió los pinceles de este panel por ThemeResource creyendo que era lo dinámico, y es justo al revés: un ThemeResource de aplicación no re-evalúa (la lección del 233) y el panel quedaba CONGELADO en los colores de arranque — claro por fuera con el texto claro por dentro, ilegible, y sin seguir al tema. El mutante devuelve el fondo del panel a ThemeResource y el defecto vuelve entero: nadie lo vería en la suite de pruebas (el host es WinUI y no se materializa allí), sólo la guardia que vigila el consumo por StaticResource.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml",
+      "replacements": [
+        {
+          "old": "<Grid Background=\"{StaticResource CanvasSurfaceBrush}\" RowSpacing=\"10\" Padding=\"14,12,12,12\">",
+          "new": "<Grid Background=\"{ThemeResource CanvasSurfaceBrush}\" RowSpacing=\"10\" Padding=\"14,12,12,12\">",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~HostXaml_ShouldConsumeTheThemeBrushesByStaticResource",
+    "why": "La guardia exige que el XAML del panel (y el de la ventana) no tenga ni un {ThemeResource: con el mutante el fondo del catálogo vuelve a pedirlo por ThemeResource y el «no contiene» cae."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ToolboxPanel_ShouldWireSearchAndCategoryFilterToTheViewModel",
+    "why": "La guardia hermana lee el MISMO XAML y sólo afirma los bindings del view model (SearchText, AvailableCategories, CategoryGroups): no depende del pincel del fondo y sigue verde con el mutante, de modo que si la suite entera cayera por otra zona el veredicto sería IMPRECISA."
+  }
+}

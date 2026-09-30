@@ -1,0 +1,138 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Los estilos y plantillas de control COMPARTIDOS del host Uno, en su propio diccionario.
+
+    <b>Por qué un diccionario aparte y no el de la app</b>: los <c>x:Name</c> de <c>VisualStateGroup</c> y
+    <c>VisualState</c> comparten espacio de nombres en TODO el archivo XAML —recursos y contenido—, así que
+    un solo archivo admite UNA máquina de estados con los nombres convencionales. Con la plantilla del chip
+    aquí, su página anfitriona recupera su espacio de nombres y puede dar estados propios a su propia
+    plantilla (el encabezado del catálogo). Cada plantilla tiene, así, su espacio de nombres de estados. La
+    guardia del suite (UnoVisualStateNameGuardTests) barre también este archivo: si alguien repite un nombre
+    de estado aquí, el XamlCompiler saldría con código 1 y SIN MENSAJE.
+
+    <b>Los colores van SIEMPRE por StaticResource</b>, nunca por ThemeResource: el puente de temas
+    (UnoThemeHost) muta el COLOR del pincel singleton declarado en App.xaml, y el StaticResource captura esa
+    MISMA instancia — un ThemeResource de aplicación no re-evalúa y dejaría estos controles congelados en
+    los colores de arranque (la lección del 233).
+
+    <b>El VisualStateManager va DENTRO del elemento raíz de cada plantilla</b> (como primer hijo del
+    <c>Border</c>), no como hermano suyo dentro del <c>ControlTemplate</c>. Los dos compilan, pero sólo la
+    primera forma se aplica: en Uno los grupos tienen que colgar del primer hijo de la raíz de la plantilla,
+    así que unos estados hermanos del raíz se quedan declarados y mudos —el chip seleccionado nunca se
+    pintaba de acento— sin que nada avise.
+  -->
+
+  <!-- ── Chip de categoría (píldora seleccionable) ── -->
+  <Style x:Key="CategoryChipStyle" TargetType="ToggleButton">
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Padding" Value="11,4" />
+    <Setter Property="Margin" Value="0,0,4,4" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="{StaticResource CanvasCardBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource CanvasSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource CanvasBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border x:Name="ChipRoot"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="ChipRoot.BorderBrush" Value="{StaticResource CanvasAccentGlowBrush}" />
+                    <Setter Target="ChipContent.Foreground" Value="{StaticResource CanvasTextBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="ChipRoot.Opacity" Value="0.75" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="ChipRoot.Opacity" Value="0.5" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="ChipRoot.Background" Value="{StaticResource CanvasAccentPrimaryBrush}" />
+                    <Setter Target="ChipRoot.BorderBrush" Value="{StaticResource CanvasAccentPrimaryBrush}" />
+                    <Setter Target="ChipContent.Foreground" Value="{StaticResource CanvasOnAccentBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="CheckedPointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="ChipRoot.Background" Value="{StaticResource CanvasAccentGlowBrush}" />
+                    <Setter Target="ChipRoot.BorderBrush" Value="{StaticResource CanvasAccentGlowBrush}" />
+                    <Setter Target="ChipContent.Foreground" Value="{StaticResource CanvasOnAccentBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="CheckedPressed">
+                  <VisualState.Setters>
+                    <Setter Target="ChipRoot.Background" Value="{StaticResource CanvasAccentPrimaryBrush}" />
+                    <Setter Target="ChipRoot.BorderBrush" Value="{StaticResource CanvasAccentPrimaryBrush}" />
+                    <Setter Target="ChipContent.Foreground" Value="{StaticResource CanvasOnAccentBrush}" />
+                    <Setter Target="ChipRoot.Opacity" Value="0.75" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+            <ContentPresenter x:Name="ChipContent"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              AutomationProperties.AccessibilityView="Raw" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ── Pestaña del inspector (RadioButton sin el glifo circular) ── -->
+  <Style x:Key="InspectorTabRadioButtonStyle" TargetType="RadioButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource CanvasSecondaryBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Border x:Name="RootBorder"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter x:Name="ContentPresenter"
+                              Content="{TemplateBinding Content}"
+                              ContentTransitions="{TemplateBinding ContentTransitions}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                              AutomationProperties.AccessibilityView="Raw" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

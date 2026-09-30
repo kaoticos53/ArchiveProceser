@@ -65,6 +65,9 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
     /// </summary>
     public string DialogKey => FileFlow.Sdk.Services.DialogKeys.DataSetDesigner;
 
+    /// <summary>La acción personalizada que esta superficie sustituye: «📊 Diseñador de Datasets...».</summary>
+    public string? ReplacesCustomActionId => "OpenDataSetDesigner";
+
     /// <inheritdoc />
     ///
     /// <para>Los <b>diálogos del host</b> viajan en el contexto y se le pasan al contenido: el nodo vive en un

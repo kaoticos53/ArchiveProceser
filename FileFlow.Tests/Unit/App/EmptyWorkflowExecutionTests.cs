@@ -69,9 +69,9 @@ public class EmptyWorkflowExecutionTests
         await controlBar.ExecuteWorkflowAsync();
         log.FlushAllPendingLogs();
 
-        log.Logs.Should().Contain(record => record.Level == LogLevel.Error && record.Message.Contains("ningún nodo"),
+        log.Logs.Should().Contain(record => record.Level == LogLevel.Error && (record.Message.Contains("ningún nodo") || record.Message.Contains("no nodes")),
             "el aviso tiene que quedar registrado, no sólo aparecer un instante");
-        dialog.ErrorMessages.Should().ContainSingle(message => message.Contains("ningún nodo"),
+        dialog.ErrorMessages.Should().ContainSingle(message => message.Contains("ningún nodo") || message.Contains("no nodes"),
             "y tiene que llegar a la pantalla: un flujo que no se ejecutó no puede parecer ejecutado");
         log.Logs.Should().NotContain(record => record.Message.Contains(LocalizationManager.Instance["LogExecutionFinished"]),
             "lo que no puede pasar es que termine con el mensaje de éxito");

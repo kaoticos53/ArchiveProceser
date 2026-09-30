@@ -1,0 +1,31 @@
+{
+  "id": "estados-fuera-de-la-raiz-de-la-plantilla",
+  "hito": 291,
+  "claim": "Los grupos de estados del host Uno cuelgan DENTRO del elemento raíz de su ControlTemplate (como primer hijo del Border), que es la única forma que Uno APLICA. La guardia del suite lo vigila: el bloque hermano del raíz se declara muerto y el chip del catálogo deja de pintar su estado seleccionado.",
+  "why": "El hito 290 dejó los VisualStateGroups como HERMANOS del raíz de la plantilla: esa forma COMPILA (por eso nadie la vio) pero en Uno no se aplica — los estados quedan declarados y mudos, y el chip seleccionado nunca se pintó de acento; se descubrió en el 291 al extraer los estilos a Themes/ControlStyles.xaml. El mutante devuelve el bloque del encabezado del catálogo a hermano del raíz: la compilación pasa y ninguna prueba de lógica se entera, sólo la guardia de colocación.",
+  "edits": [
+    {
+      "file": "FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml",
+      "replacements": [
+        {
+          "old": "              <VisualStateManager.VisualStateGroups>\n                <VisualStateGroup x:Name=\"CommonStates\">\n                  <VisualState x:Name=\"Normal\" />\n                  <VisualState x:Name=\"PointerOver\">\n                    <VisualState.Setters>\n                      <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                    </VisualState.Setters>\n                  </VisualState>\n                  <VisualState x:Name=\"Pressed\">\n                    <VisualState.Setters>\n                      <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                      <Setter Target=\"HeaderRoot.Opacity\" Value=\"0.85\" />\n                    </VisualState.Setters>\n                  </VisualState>\n                  <VisualState x:Name=\"Disabled\">\n                    <VisualState.Setters>\n                      <Setter Target=\"HeaderRoot.Opacity\" Value=\"0.5\" />\n                    </VisualState.Setters>\n                  </VisualState>\n                  <!-- El encabezado expandido (IsChecked) no cambia de fondo en reposo —lo dice el chevron—,\n                       pero sí conserva el realce al pasar el puntero. -->\n                  <VisualState x:Name=\"Checked\" />\n                  <VisualState x:Name=\"CheckedPointerOver\">\n                    <VisualState.Setters>\n                      <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                    </VisualState.Setters>\n                  </VisualState>\n                  <VisualState x:Name=\"CheckedPressed\">\n                    <VisualState.Setters>\n                      <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                      <Setter Target=\"HeaderRoot.Opacity\" Value=\"0.85\" />\n                    </VisualState.Setters>\n                  </VisualState>\n                </VisualStateGroup>\n              </VisualStateManager.VisualStateGroups>",
+          "new": "",
+          "count": 1
+        },
+        {
+          "old": "            </Border>\n          </ControlTemplate>",
+          "new": "            </Border>\n            <VisualStateManager.VisualStateGroups>\n              <VisualStateGroup x:Name=\"CommonStates\">\n                <VisualState x:Name=\"Normal\" />\n                <VisualState x:Name=\"PointerOver\">\n                  <VisualState.Setters>\n                    <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                  </VisualState.Setters>\n                </VisualState>\n                <VisualState x:Name=\"Pressed\">\n                  <VisualState.Setters>\n                    <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                    <Setter Target=\"HeaderRoot.Opacity\" Value=\"0.85\" />\n                  </VisualState.Setters>\n                </VisualState>\n                <VisualState x:Name=\"Disabled\">\n                  <VisualState.Setters>\n                    <Setter Target=\"HeaderRoot.Opacity\" Value=\"0.5\" />\n                  </VisualState.Setters>\n                </VisualState>\n                <!-- El encabezado expandido (IsChecked) no cambia de fondo en reposo —lo dice el chevron—,\n                     pero sí conserva el realce al pasar el puntero. -->\n                <VisualState x:Name=\"Checked\" />\n                <VisualState x:Name=\"CheckedPointerOver\">\n                  <VisualState.Setters>\n                    <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                  </VisualState.Setters>\n                </VisualState>\n                <VisualState x:Name=\"CheckedPressed\">\n                  <VisualState.Setters>\n                    <Setter Target=\"HeaderRoot.Background\" Value=\"{StaticResource CanvasCardBrush}\" />\n                    <Setter Target=\"HeaderRoot.Opacity\" Value=\"0.85\" />\n                  </VisualState.Setters>\n                </VisualState>\n              </VisualStateGroup>\n            </VisualStateManager.VisualStateGroups>\n          </ControlTemplate>",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "witness": {
+    "filter": "FullyQualifiedName~EveryVisualStateGroupInTheUnoHost_ShouldLiveInsideItsTemplateRoot",
+    "why": "La guardia exige que ningún VisualStateManager.VisualStateGroups sea hijo directo de un ControlTemplate: con el mutante el encabezado vuelve a colgarlo del template y el «vacío» cae citando la línea."
+  },
+  "control": {
+    "filter": "FullyQualifiedName~ToolboxPanel_ShouldWireSearchAndCategoryFilterToTheViewModel",
+    "why": "La guardia hermana lee el MISMO XAML y sólo afirma los bindings del view model (SearchText, AvailableCategories, CategoryGroups): no depende de dónde cuelguen los estados y sigue verde con el mutante, de modo que si la suite entera cayera por otra zona el veredicto sería IMPRECISA."
+  }
+}

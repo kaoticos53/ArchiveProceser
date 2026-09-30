@@ -40,6 +40,8 @@
       <StackPanel Grid.Column="0" Spacing="6">
         <TextBox x:Name="EditorBox"
                  AcceptsReturn="True" Height="200" TextWrapping="Wrap" FontSize="12"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollMode="Enabled"
                  Text="{Binding Text, Mode=TwoWay}"
                  AutomationProperties.AutomationId="TextEditorBox" />
         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -68,6 +70,8 @@
                    Text="{Binding SideSearchText, Mode=TwoWay}"
                    AutomationProperties.AutomationId="TextEditorVariableSearchBox" />
           <ListView x:Name="VariableList" MaxHeight="220" SelectionMode="Single"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    ScrollViewer.VerticalScrollMode="Enabled"
                     ItemsSource="{Binding FilteredSideVariables}"
                     IsItemClickEnabled="True" ItemClick="OnVariableItemClicked"
                     AutomationProperties.AutomationId="TextEditorVariableList">

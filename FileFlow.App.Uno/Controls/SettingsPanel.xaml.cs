@@ -133,6 +133,51 @@ public sealed partial class SettingsPanel : UserControl
             {
                 SectionButtons[i].IsChecked = true;
             }
+
+            UpdateTabButtonStyle(SectionButtons[i], active);
+        }
+    }
+
+    private static readonly SolidColorBrush TransparentBrush = new(Microsoft.UI.Colors.Transparent);
+
+    private static Brush? ThemeBrush(string key)
+        => Application.Current.Resources.TryGetValue(key, out object? value) && value is Brush brush
+            ? brush
+            : null;
+
+    private void UpdateTabButtonStyle(RadioButton button, bool isSelected)
+    {
+        if (isSelected)
+        {
+            button.Background = ThemeBrush("CanvasSurfaceBrush");
+            button.Foreground = ThemeBrush("CanvasAccentGlowBrush");
+            button.BorderBrush = ThemeBrush("CanvasBorderBrush");
+            button.BorderThickness = new Thickness(1);
+            button.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        }
+        else
+        {
+            button.Background = TransparentBrush;
+            button.Foreground = ThemeBrush("CanvasSecondaryBrush");
+            button.BorderBrush = TransparentBrush;
+            button.BorderThickness = new Thickness(1);
+            button.FontWeight = Microsoft.UI.Text.FontWeights.Medium;
+        }
+    }
+
+    private void OnTabPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: not true } rb)
+        {
+            rb.Foreground = ThemeBrush("CanvasTextBrush");
+        }
+    }
+
+    private void OnTabPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: not true } rb)
+        {
+            rb.Foreground = ThemeBrush("CanvasSecondaryBrush");
         }
     }
 

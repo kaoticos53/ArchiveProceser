@@ -1,7 +1,10 @@
+using System;
 using FileFlow.Sdk.Localization;
 using FileFlow.App.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Windows.Foundation;
 
 namespace FileFlow.App.Uno.Controls;
 
@@ -59,4 +62,102 @@ public sealed partial class VariablePickerDialogBody : UserControl
     {
         Vm?.CopyTokenCommand.Execute(null);
     }
+
+    #region Redimensionamiento y Maximizado Interactivo
+    private bool _isMaximized;
+    private double _prevWidth = 820;
+    private double _prevHeight = 520;
+
+    private void OnMaximizeRestoreClicked(object sender, RoutedEventArgs e)
+    {
+        if (XamlRoot is null) return;
+
+        if (!_isMaximized)
+        {
+            _prevWidth = PickerRoot.ActualWidth > 0 ? PickerRoot.ActualWidth : PickerRoot.Width;
+            _prevHeight = PickerRoot.ActualHeight > 0 ? PickerRoot.ActualHeight : PickerRoot.Height;
+
+            double targetWidth = Math.Max(760, XamlRoot.Size.Width - 60);
+            double targetHeight = Math.Max(480, XamlRoot.Size.Height - 80);
+
+            PickerRoot.Width = targetWidth;
+            PickerRoot.Height = targetHeight;
+            _isMaximized = true;
+
+            MaximizeRestoreIcon.Text = "[-]";
+            MaximizeRestoreLabel.Text = "Restaurar";
+            ToolTipService.SetToolTip(MaximizeRestoreButton, "Restaurar tamaño original del catálogo");
+        }
+        else
+        {
+            PickerRoot.Width = _prevWidth > 0 ? _prevWidth : 820;
+            PickerRoot.Height = _prevHeight > 0 ? _prevHeight : 520;
+            _isMaximized = false;
+
+            MaximizeRestoreIcon.Text = "[+]";
+            MaximizeRestoreLabel.Text = "Maximizar";
+            ToolTipService.SetToolTip(MaximizeRestoreButton, "Maximizar tamaño del catálogo");
+        }
+    }
+
+    private bool _isResizing;
+    private Point _resizeStartPos;
+    private double _startResizeWidth;
+    private double _startResizeHeight;
+
+    private void OnResizeGripPointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        var element = sender as UIElement;
+        if (element != null && element.CapturePointer(e.Pointer))
+        {
+            _isResizing = true;
+            _resizeStartPos = e.GetCurrentPoint(null).Position;
+            _startResizeWidth = PickerRoot.ActualWidth > 0 ? PickerRoot.ActualWidth : (double.IsNaN(PickerRoot.Width) ? 820 : PickerRoot.Width);
+            _startResizeHeight = PickerRoot.ActualHeight > 0 ? PickerRoot.ActualHeight : (double.IsNaN(PickerRoot.Height) ? 520 : PickerRoot.Height);
+            e.Handled = true;
+        }
+    }
+
+    private void OnResizeGripPointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isResizing) return;
+
+        var currentPoint = e.GetCurrentPoint(null).Position;
+        double deltaX = currentPoint.X - _resizeStartPos.X;
+        double deltaY = currentPoint.Y - _resizeStartPos.Y;
+
+        double maxW = 2000;
+        double maxH = 1400;
+        if (XamlRoot != null)
+        {
+            maxW = Math.Max(760, XamlRoot.Size.Width - 40);
+            maxH = Math.Max(480, XamlRoot.Size.Height - 60);
+        }
+
+        double newWidth = Math.Clamp(_startResizeWidth + deltaX, 620, maxW);
+        double newHeight = Math.Clamp(_startResizeHeight + deltaY, 400, maxH);
+
+        PickerRoot.Width = newWidth;
+        PickerRoot.Height = newHeight;
+        _isMaximized = false;
+        MaximizeRestoreIcon.Text = "[+]";
+        MaximizeRestoreLabel.Text = "Maximizar";
+        e.Handled = true;
+    }
+
+    private void OnResizeGripPointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        if (_isResizing)
+        {
+            _isResizing = false;
+            (sender as UIElement)?.ReleasePointerCapture(e.Pointer);
+            e.Handled = true;
+        }
+    }
+
+    private void OnResizeGripPointerCaptureLost(object sender, PointerRoutedEventArgs e)
+    {
+        _isResizing = false;
+    }
+    #endregion
 }

@@ -14,14 +14,48 @@
     Los TEXTOS se aplican por código (SettingsPanel.xaml.cs → ApplyLocalization): el host resuelve sus
     cadenas con LocalizationManager y las reescribe al cambiar de idioma, como el resto del marco.
 
-    LAS CUATRO SECCIONES VIVEN MATERIALIZADAS a la vez: la conmutación es de visibilidad (Collapsed), no de
-    creación. Un contenedor con carga perezosa (Pivot/TabControl) materializa el cuerpo de su pestaña en el
-    pase de layout siguiente, y este host paga dos cosas por ello: el primer clic de una pestaña llega a un
-    cuerpo a medio construir, y la conmutación programática desde el sondeo cae dentro de una medida (medido:
-    «Failed to assign to property ContentControl.Content» desde MeasureOverride con el Pivot). Con el
-    conmutador segmentado, los catálogos y enlaces de las cuatro secciones están vivos desde que el panel
-    existe y la conmutación es instantánea.
+    LAS SEIS SECCIONES VIVEN MATERIALIZADAS a la vez: la conmutación es de visibilidad (Collapsed), no de
+    creación. Con el conmutador de pestañas estilizadas sin glifo circular, los catálogos y enlaces de las
+    secciones están vivos desde que el panel existe y la conmutación es instantánea.
   -->
+  <UserControl.Resources>
+    <!-- ── Estilo de pestaña para los botones de sección (sin glifo circular de RadioButton) ── -->
+    <Style x:Key="SettingsTabButtonStyle" TargetType="RadioButton">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource CanvasSecondaryBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="RootBorder"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}"
+                    Padding="{TemplateBinding Padding}">
+              <ContentPresenter x:Name="ContentPresenter"
+                                Content="{TemplateBinding Content}"
+                                ContentTransitions="{TemplateBinding ContentTransitions}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                AutomationProperties.AccessibilityView="Raw" />
+            </Border>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </UserControl.Resources>
+
   <Grid x:Name="OverlayRoot" Visibility="Collapsed">
     <!-- El velo: clic fuera = cancelar, como el backdrop del cajón del escritorio. -->
     <Border x:Name="Scrim" Background="#A6000000" Tapped="OnScrimTapped"
@@ -67,36 +101,46 @@
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
 
-          <!-- Conmutador de secciones: se PARTE en filas (hito 272). En una sola línea, los seis
-               rótulos pedían ~886 px lógicos contra los 772 del panel de 800, así que la pestaña
-               «Actualizaciones» quedaba recortada contra el borde —rectángulo vacío, sin scroll y
-               con la rueda sin efecto—: la sección existía para el view model y no para el ratón. -->
-          <controls:WrapPanel Grid.Row="0" Spacing="6">
-            <RadioButton x:Name="StorageTabButton" GroupName="SettingsSections" IsChecked="True"
-                         FontSize="12" Padding="10,4" Tag="Storage"
-                         Click="OnSectionClicked"
-                         AutomationProperties.AutomationId="SettingsTabStorage" />
-            <RadioButton x:Name="AppearanceTabButton" GroupName="SettingsSections"
-                         FontSize="12" Padding="10,4" Tag="Appearance"
-                         Click="OnSectionClicked"
-                         AutomationProperties.AutomationId="SettingsTabAppearance" />
-            <RadioButton x:Name="PerformanceTabButton" GroupName="SettingsSections"
-                         FontSize="12" Padding="10,4" Tag="Performance"
-                         Click="OnSectionClicked"
-                         AutomationProperties.AutomationId="SettingsTabPerformance" />
-            <RadioButton x:Name="ToolsTabButton" GroupName="SettingsSections"
-                         FontSize="12" Padding="10,4" Tag="Tools"
-                         Click="OnSectionClicked"
-                         AutomationProperties.AutomationId="SettingsTabTools" />
-            <RadioButton x:Name="AiModelsTabButton" GroupName="SettingsSections"
-                         FontSize="12" Padding="10,4" Tag="AiModels"
-                         Click="OnSectionClicked"
-                         AutomationProperties.AutomationId="SettingsTabAiModels" />
-            <RadioButton x:Name="UpdatesTabButton" GroupName="SettingsSections"
-                         FontSize="12" Padding="10,4" Tag="Updates"
-                         Click="OnSectionClicked"
-                         AutomationProperties.AutomationId="SettingsTabUpdates" />
-          </controls:WrapPanel>
+          <!-- Barra de navegación por pestañas: contenedor unificado tipo Tab Bar -->
+          <Border Grid.Row="0"
+                  Background="{StaticResource CanvasCardBrush}"
+                  BorderBrush="{StaticResource CanvasBorderBrush}"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  Padding="3">
+            <controls:WrapPanel Spacing="3">
+              <RadioButton x:Name="StorageTabButton" GroupName="SettingsSections" IsChecked="True"
+                           Style="{StaticResource SettingsTabButtonStyle}" Tag="Storage"
+                           Click="OnSectionClicked"
+                           PointerEntered="OnTabPointerEntered" PointerExited="OnTabPointerExited"
+                           AutomationProperties.AutomationId="SettingsTabStorage" />
+              <RadioButton x:Name="AppearanceTabButton" GroupName="SettingsSections"
+                           Style="{StaticResource SettingsTabButtonStyle}" Tag="Appearance"
+                           Click="OnSectionClicked"
+                           PointerEntered="OnTabPointerEntered" PointerExited="OnTabPointerExited"
+                           AutomationProperties.AutomationId="SettingsTabAppearance" />
+              <RadioButton x:Name="PerformanceTabButton" GroupName="SettingsSections"
+                           Style="{StaticResource SettingsTabButtonStyle}" Tag="Performance"
+                           Click="OnSectionClicked"
+                           PointerEntered="OnTabPointerEntered" PointerExited="OnTabPointerExited"
+                           AutomationProperties.AutomationId="SettingsTabPerformance" />
+              <RadioButton x:Name="ToolsTabButton" GroupName="SettingsSections"
+                           Style="{StaticResource SettingsTabButtonStyle}" Tag="Tools"
+                           Click="OnSectionClicked"
+                           PointerEntered="OnTabPointerEntered" PointerExited="OnTabPointerExited"
+                           AutomationProperties.AutomationId="SettingsTabTools" />
+              <RadioButton x:Name="AiModelsTabButton" GroupName="SettingsSections"
+                           Style="{StaticResource SettingsTabButtonStyle}" Tag="AiModels"
+                           Click="OnSectionClicked"
+                           PointerEntered="OnTabPointerEntered" PointerExited="OnTabPointerExited"
+                           AutomationProperties.AutomationId="SettingsTabAiModels" />
+              <RadioButton x:Name="UpdatesTabButton" GroupName="SettingsSections"
+                           Style="{StaticResource SettingsTabButtonStyle}" Tag="Updates"
+                           Click="OnSectionClicked"
+                           PointerEntered="OnTabPointerEntered" PointerExited="OnTabPointerExited"
+                           AutomationProperties.AutomationId="SettingsTabUpdates" />
+            </controls:WrapPanel>
+          </Border>
 
           <!-- Los seis cuerpos, todos materializados (sólo cambia la visibilidad) -->
           <Grid Grid.Row="1">

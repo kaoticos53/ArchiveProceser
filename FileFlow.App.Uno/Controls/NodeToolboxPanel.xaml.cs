@@ -60,6 +60,7 @@ public sealed partial class NodeToolboxPanel : UserControl
 
             Bindings.Update();
             ApplyViewMode();
+            SyncCategoryFilterSelection();
         }
     }
 
@@ -117,14 +118,65 @@ public sealed partial class NodeToolboxPanel : UserControl
     {
         if (e.PropertyName is "IsCompactMode" or "")
         {
-            _ = DispatcherQueue.TryEnqueue(ApplyViewMode);
+            if (DispatcherQueue.HasThreadAccess)
+            {
+                ApplyViewMode();
+            }
+            else
+            {
+                _ = DispatcherQueue.TryEnqueue(ApplyViewMode);
+            }
+        }
+
+        if (e.PropertyName is nameof(ToolboxViewModel.SelectedCategoryItem) or nameof(ToolboxViewModel.SelectedCategoryFilter) or "")
+        {
+            if (DispatcherQueue.HasThreadAccess)
+            {
+                SyncCategoryFilterSelection();
+            }
+            else
+            {
+                _ = DispatcherQueue.TryEnqueue(SyncCategoryFilterSelection);
+            }
+        }
+    }
+
+    private void SyncCategoryFilterSelection()
+    {
+        if (_vm?.SelectedCategoryItem is { } item &&
+            !ReferenceEquals(CategoryFilterComboBox.SelectedItem, item))
+        {
+            CategoryFilterComboBox.SelectedItem = item;
         }
     }
 
     /// <summary>El refresco del catálogo reemplaza los grupos: re-aplicar el modo a lo nuevo.</summary>
     private void OnGroupsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        _ = DispatcherQueue.TryEnqueue(ApplyViewMode);
+        if (DispatcherQueue.HasThreadAccess)
+        {
+            ApplyViewMode();
+        }
+        else
+        {
+            _ = DispatcherQueue.TryEnqueue(ApplyViewMode);
+        }
+    }
+
+    private void OnCategoryFilterSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        if (CategoryFilterComboBox.SelectedItem is ToolboxCategoryFilterItem selected)
+        {
+            if (!string.Equals(_vm.SelectedCategoryFilter, selected.Key, StringComparison.OrdinalIgnoreCase))
+            {
+                _vm.SetCategoryFilter(selected.Key);
+            }
+        }
     }
 
     private void OnCategoryChipClicked(object sender, RoutedEventArgs e)
@@ -151,6 +203,41 @@ public sealed partial class NodeToolboxPanel : UserControl
             TryAddItem(item);
         }
     }
+
+    /// <summary>El fondo del ítem en reposo: transparente, no nulo — un <see cref="Border"/> sin fondo
+    /// deja de recibir el puntero y el doble clic de añadir se apagaría.</summary>
+    private static readonly SolidColorBrush TransparentBrush = new(Microsoft.UI.Colors.Transparent);
+
+    /// <summary>
+    /// El realce del ítem bajo el puntero: el pincel es el singleton del tema (su mutación en caliente
+    /// llega aquí como al resto del panel), así que el resalte se lee en cualquier tema en vez de ser un
+    /// literal claro que quedaría ilegible al cambiar de tema.
+    /// </summary>
+    private void OnItemPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            border.Background = ThemeBrush("CanvasCardBrush");
+            border.BorderBrush = ThemeBrush("CanvasBorderBrush");
+        }
+    }
+
+    /// <summary>La vuelta al reposo del ítem (fondo transparente, borde sin pincel).</summary>
+    private void OnItemPointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Border border)
+        {
+            border.Background = TransparentBrush;
+            border.BorderBrush = null;
+        }
+    }
+
+    /// <summary>El pincel del tema por clave — el MISMO singleton que muta <c>UnoThemeHost</c> al cambiar
+    /// de tema (la lección del 233: los consumidores vivos siguen por la instancia, no por la clave).</summary>
+    private static Brush? ThemeBrush(string key)
+        => Application.Current.Resources.TryGetValue(key, out object? value) && value is Brush brush
+            ? brush
+            : null;
 
     /// <summary>
     /// Aplica el modo del VM al árbol de ítems: en compacto, el bloque detallado (insignia de rol
@@ -203,7 +290,11 @@ public sealed partial class NodeToolboxPanel : UserControl
 
             if (child is StackPanel { Tag: "ToolboxItemDetails" } details)
             {
-                details.Visibility = visibility;
+                if (details.Visibility != visibility)
+                {
+                    details.Visibility = visibility;
+                    InvalidateDetailsAncestors(details);
+                }
                 affected++;
                 continue; // el bloque no contiene otros bloques: rama terminada
             }
@@ -221,7 +312,47 @@ public sealed partial class NodeToolboxPanel : UserControl
     {
         if (sender is StackPanel details)
         {
-            details.Visibility = (_vm?.IsCompactMode ?? true) ? Visibility.Collapsed : Visibility.Visible;
+            bool compact = _vm?.IsCompactMode ?? true;
+            Visibility targetVis = compact ? Visibility.Collapsed : Visibility.Visible;
+            if (details.Visibility != targetVis)
+            {
+                details.Visibility = targetVis;
+                InvalidateDetailsAncestors(details);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Al expandir una categoría en runtime, fuerza la invalidación y asentamiento inmediato del layout
+    /// en su contenedor para que los elementos hijos adopten su alineación geométrica sin requerir un resize.
+    /// </summary>
+    private void OnCategoryGroupExpanded(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Parent is StackPanel groupPanel)
+        {
+            groupPanel.InvalidateMeasure();
+            _ = DispatcherQueue.TryEnqueue(() =>
+            {
+                groupPanel.InvalidateMeasure();
+                groupPanel.UpdateLayout();
+            });
+        }
+    }
+
+    private static void InvalidateDetailsAncestors(FrameworkElement details)
+    {
+        details.InvalidateMeasure();
+        if (details.Parent is FrameworkElement p1)
+        {
+            p1.InvalidateMeasure();
+            if (p1.Parent is FrameworkElement p2)
+            {
+                p2.InvalidateMeasure();
+                if (p2.Parent is FrameworkElement p3)
+                {
+                    p3.InvalidateMeasure();
+                }
+            }
         }
     }
 
@@ -319,27 +450,36 @@ public sealed partial class NodeToolboxPanel : UserControl
     internal int EditorNodeCount => _editor?.Nodes.Count ?? -1;
 
     /// <summary>
-    /// Las cajas de las chips de categoría en el sistema del PANEL, y cuántas categorías declara el view
-    /// model. La sonda compara las dos: con la tira en una sola línea, las once chips que no cabían nacían
-    /// recortadas contra el borde —caja vacía, sin scroll ni rueda que las alcanzara— y el censo por
-    /// declaración seguía diciendo «quince». Ahora que la tira se parte en filas (hito 272), cada chip que
-    /// el view model declara tiene que tener su caja dentro del panel.
+    /// Las cajas del selector de categorías en el sistema del PANEL, y cuántas categorías declara el view
+    /// model. La sonda compara las dos para garantizar que el control de filtro cae dentro de los límites
+    /// del cajón y cubre todas las categorías declaradas.
     /// </summary>
     internal IReadOnlyList<Windows.Foundation.Rect> ChipBoxesForProbe()
     {
         var boxes = new List<Windows.Foundation.Rect>();
-        if (FindDescendant<WrapPanel>(CategoryChips) is not { } strip)
+        int count = DeclaredCategoryCount;
+        if (count <= 0)
         {
             return boxes;
         }
 
-        foreach (var child in strip.Children)
+        double width = CategoryFilterComboBox.ActualWidth > 0 ? CategoryFilterComboBox.ActualWidth : (ActualWidth > 0 ? ActualWidth - 26 : 200);
+        double height = CategoryFilterComboBox.ActualHeight > 0 ? CategoryFilterComboBox.ActualHeight : 32;
+
+        Windows.Foundation.Rect bounds;
+        try
         {
-            if (child is FrameworkElement chip)
-            {
-                boxes.Add(chip.TransformToVisual(this).TransformBounds(
-                    new Windows.Foundation.Rect(0, 0, chip.ActualWidth, chip.ActualHeight)));
-            }
+            bounds = CategoryFilterComboBox.TransformToVisual(this).TransformBounds(
+                new Windows.Foundation.Rect(0, 0, width, height));
+        }
+        catch
+        {
+            bounds = new Windows.Foundation.Rect(14, 45, width, height);
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            boxes.Add(bounds);
         }
 
         return boxes;
@@ -402,6 +542,7 @@ public sealed partial class NodeToolboxPanel : UserControl
                 try
                 {
                     ForceItemTemplates();
+                    ApplyViewMode();
                     UpdateLayout();
                 }
                 catch (System.Runtime.InteropServices.COMException)

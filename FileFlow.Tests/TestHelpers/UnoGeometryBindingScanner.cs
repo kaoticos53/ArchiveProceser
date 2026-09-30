@@ -123,18 +123,44 @@ public static class UnoGeometryBindingScanner
         return violations;
     }
 
-    /// <summary>Los XAML del host Uno (sin obj/bin), la superficie que la guardia barre.</summary>
+    /// <summary>
+    /// Los XAML del host Uno (sin obj/bin), la superficie que la guardia barre. Los directorios de
+    /// compilación se <b>podan</b> al recorrer (no se entra en ellos) en vez de filtrar la lista ya
+    /// enumerada: <c>bin</c> lleva el runtime de WinUI entero —miles de ficheros por corrida de compilación—
+    /// y recorrerlo es trabajo de E/S que ninguna guardia necesita. Con varias guardias leyendo el árbol en
+    /// paralelo, ese recorrido gratuito competía por el disco con las pruebas de temporización del suite.
+    /// </summary>
     public static IEnumerable<string> UnoXamlFiles(string repositoryRoot)
+        => XamlFilesUnder(Path.Combine(repositoryRoot, "FileFlow.App.Uno"));
+
+    /// <summary>Los <c>*.xaml</c> de un directorio y sus subdirectorios, sin pisar <c>bin</c> ni <c>obj</c>.</summary>
+    public static IEnumerable<string> XamlFilesUnder(string directory)
     {
-        var host = Path.Combine(repositoryRoot, "FileFlow.App.Uno");
-        if (!Directory.Exists(host))
+        if (!Directory.Exists(directory))
         {
             return [];
         }
 
-        return Directory.EnumerateFiles(host, "*.xaml", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                     && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
+        var found = new List<string>();
+        Collect(directory, found);
+        return found;
+
+        static void Collect(string current, List<string> found)
+        {
+            found.AddRange(Directory.EnumerateFiles(current, "*.xaml"));
+
+            foreach (string child in Directory.EnumerateDirectories(current))
+            {
+                string name = Path.GetFileName(child);
+                if (name.Equals("obj", StringComparison.OrdinalIgnoreCase)
+                    || name.Equals("bin", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Collect(child, found);
+            }
+        }
     }
 
     /// <summary>Un enlace de geometría encontrado: dónde está y si lleva el conversor.</summary>

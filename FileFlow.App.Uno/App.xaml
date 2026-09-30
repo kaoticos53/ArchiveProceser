@@ -6,6 +6,10 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+        <!-- Los estilos/plantillas COMPARTIDOS del host, en su propio diccionario: al vivir en otro
+             archivo, su espacio de nombres de VisualStateGroup/VisualState no choca con el de la página
+             que los consume (cada plantilla tiene su espacio de nombres). Ver Themes/ControlStyles.xaml. -->
+        <ResourceDictionary Source="ms-appx:///Themes/ControlStyles.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <!-- Tokens del lienzo (fase 3.5): valores del preset dark_fluent (builtin_themes.json del núcleo).
@@ -28,39 +32,8 @@
       <SolidColorBrush x:Key="CanvasPurpleBrush" Color="#A855F7" />
       <SolidColorBrush x:Key="CanvasWireBrush" Color="#818CF8" />
       <x:Double x:Key="CanvasGridStep">25</x:Double>
-
-      <!-- Estilo de pestaña para RadioButton (elimina el glifo circular y renderiza como pestaña limpia) -->
-      <Style x:Key="InspectorTabRadioButtonStyle" TargetType="RadioButton">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="{StaticResource CanvasSecondaryBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="Padding" Value="10,5" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="CornerRadius" Value="6" />
-        <Setter Property="Template">
-          <Setter.Value>
-            <ControlTemplate TargetType="RadioButton">
-              <Border x:Name="RootBorder"
-                      Background="{TemplateBinding Background}"
-                      BorderBrush="{TemplateBinding BorderBrush}"
-                      BorderThickness="{TemplateBinding BorderThickness}"
-                      CornerRadius="{TemplateBinding CornerRadius}"
-                      Padding="{TemplateBinding Padding}">
-                <ContentPresenter x:Name="ContentPresenter"
-                                  Content="{TemplateBinding Content}"
-                                  ContentTransitions="{TemplateBinding ContentTransitions}"
-                                  ContentTemplate="{TemplateBinding ContentTemplate}"
-                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                  AutomationProperties.AccessibilityView="Raw" />
-              </Border>
-            </ControlTemplate>
-          </Setter.Value>
-        </Setter>
-      </Style>
+      <x:Double x:Key="ContentDialogMaxWidth">2400</x:Double>
+      <x:Double x:Key="ContentDialogMaxHeight">1600</x:Double>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

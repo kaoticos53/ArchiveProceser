@@ -52,6 +52,37 @@ public class UnoThemeRepaintGuardTests
     }
 
     [Fact]
+    public void HostXaml_ShouldConsumeTheThemeBrushesByStaticResource()
+    {
+        // El testigo del cajón «claro con texto claro»: el panel del catálogo de nodos era el ÚNICO
+        // consumidor del host que pedía los pinceles del tema por `ThemeResource` — y como ese no
+        // re-evalúa (la lección del 233), el panel quedaba congelado en los colores de arranque al
+        // cambiar de tema: claro por fuera, con el texto claro por dentro. La cura es la misma que ya
+        // usaba el resto del host: `StaticResource`, que captura el pincel singleton que
+        // `UnoThemeHost` muta en caliente. La aserción de presencia es el control del mutante: borrar
+        // los consumidores por completo también satisfaría el «no contiene ThemeResource».
+        foreach (string path in new[]
+                 {
+                     "FileFlow.App.Uno/Controls/NodeToolboxPanel.xaml",
+                     "FileFlow.App.Uno/MainWindow.xaml",
+                     "FileFlow.App.Uno/Themes/ControlStyles.xaml",
+                 })
+        {
+            string xaml = SourceText.CodeWithoutComments(path);
+
+            xaml.Should().NotContain(
+                "{ThemeResource",
+                $"{path}: los pinceles del tema se consumen por StaticResource — el ThemeResource de " +
+                "aplicación no re-evalúa y el control queda fuera del repintado en caliente");
+
+            xaml.Should().Contain(
+                "{StaticResource Canvas",
+                $"{path}: el archivo tiene que consumir de verdad los pinceles Canvas* del tema (si no, " +
+                "no habría nada que repintar y el defecto de legibilidad volvería por la puerta de atrás)");
+        }
+    }
+
+    [Fact]
     public void ThemeHost_ShouldKeepCreatingMissingBrushes_AndThePortableGenerator()
     {
         // El caso hermano (el control del mutante): el mutante cambia UNA línea (la asignación del

@@ -16,6 +16,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 
 namespace FileFlow.App.Uno.Platform;
@@ -62,6 +63,7 @@ public sealed class UnoWindowService : IWindowService
         (DialogKeys.AiModelUrlsConfig, nameof(AiModelUrlsConfigBody)),
         (DialogKeys.MediaPresetManager, nameof(MediaPresetManagerBody)),
         (DialogKeys.PasswordManager, nameof(PasswordManagerBody)),
+        (DialogKeys.AdvancedRenamer, nameof(AdvancedRenamerBody)),
     ];
 
     /// <summary>
@@ -94,6 +96,9 @@ public sealed class UnoWindowService : IWindowService
 
     /// <summary>El cuerpo del gestor de contraseñas abierto (null si el diálogo abierto no es ese).</summary>
     internal static PasswordManagerBody? ActivePasswordManager => Body<PasswordManagerBody>();
+
+    /// <summary>El cuerpo del editor de renombrado avanzado abierto (null si el diálogo abierto no es ese).</summary>
+    internal static AdvancedRenamerBody? ActiveAdvancedRenamer => Body<AdvancedRenamerBody>();
 
     /// <summary>
     /// El cuerpo del tipo pedido, dentro del modal abierto. Mientras hay una PREGUNTA en pantalla el cuerpo vive
@@ -182,6 +187,18 @@ public sealed class UnoWindowService : IWindowService
 
             case DialogKeys.AiModelUrlsConfig:
                 Decline(dialogKey, "la edición de URLs por modelo necesita el id del modelo como carga útil y llegó "
+                    + (payload?.GetType().Name ?? "null"));
+                return new DialogResultPayload { Confirmed = false };
+
+            // El ESTUDIO DE RENOMBRADO AVANZADO: la orden de la fila del parámetro o la acción personalizada de
+            // la tarjeta del nodo lo piden por AQUÍ —esperan la vuelta para resincronizar los parámetros— con el
+            // view model PORTABLE que declara el nodo de renombrado.
+            case DialogKeys.AdvancedRenamer when payload is AdvancedRenamerEditorViewModel renamer:
+                return await ShowAdvancedRenamerAsync(renamer, root);
+
+            case DialogKeys.AdvancedRenamer:
+                Decline(dialogKey, "el editor de renombrado avanzado necesita el view model portable que declara el nodo "
+                    + "(AdvancedRenamerEditorViewModel) como carga útil y llegó "
                     + (payload?.GetType().Name ?? "null"));
                 return new DialogResultPayload { Confirmed = false };
 
@@ -292,7 +309,11 @@ public sealed class UnoWindowService : IWindowService
             Content = body,
             CloseButtonText = LocalizationManager.Instance.GetString("Common_Close", "Cerrar"),
             XamlRoot = root,
+            MaxWidth = 2400,
+            MaxHeight = 1600,
         };
+        dialog.Resources["ContentDialogMaxWidth"] = 2400.0;
+        dialog.Resources["ContentDialogMaxHeight"] = 1600.0;
 
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(dialog, automationId);
 
@@ -456,6 +477,42 @@ public sealed class UnoWindowService : IWindowService
     }
 
     /// <summary>
+    /// El ESTUDIO DE RENOMBRADO AVANZADO: la vista del <see cref="AdvancedRenamerEditorViewModel"/> portable —el
+    /// MISMO view model con el que el escritorio monta su ventana—, pedida por la acción «🏷️ Pipeline de Métodos...»
+    /// de la tarjeta del nodo y por la fila del parámetro de renombrado.
+    /// </summary>
+    private static async Task<DialogResultPayload?> ShowAdvancedRenamerAsync(AdvancedRenamerEditorViewModel renamer, XamlRoot root)
+    {
+        var loc = LocalizationManager.Instance;
+        var body = new AdvancedRenamerBody(renamer);
+
+        var dialog = new ContentDialog
+        {
+            Title = loc.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)"),
+            Content = body,
+            PrimaryButtonText = loc.GetString("AdvancedRenamer_SaveAndApply", "✓ Guardar y Aplicar al Nodo"),
+            CloseButtonText = loc.GetString("Common_Cancel", "✕ Cancelar"),
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = root,
+            MaxWidth = 2400,
+            MaxHeight = 1600,
+        };
+        dialog.Resources["ContentDialogMaxWidth"] = 2400.0;
+        dialog.Resources["ContentDialogMaxHeight"] = 1600.0;
+
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(dialog, DialogKeys.AdvancedRenamer);
+
+        ContentDialogResult result = await RunAsync(dialog, DialogKeys.AdvancedRenamer);
+        if (result != ContentDialogResult.Primary)
+        {
+            return new DialogResultPayload { Confirmed = false };
+        }
+
+        renamer.SaveAndClose();
+        return new DialogResultPayload { Confirmed = true };
+    }
+
+    /// <summary>
     /// El DISEÑADOR DE DATASETS por el canal que espera respuesta: es el que usa el BOTÓN DE LA TARJETA del nodo
     /// de datos sintéticos (su acción personalizada), que necesita saber cuándo se cerró para resincronizar sus
     /// parámetros. El cuerpo es el mismo que sirve el cajón (<see cref="DataSetDesignerBody"/> sobre el mismo
@@ -502,7 +559,11 @@ public sealed class UnoWindowService : IWindowService
             CloseButtonText = loc.GetString("Uno_Dialog_Cancel", "✕ Cancelar"),
             DefaultButton = ContentDialogButton.Primary,
             XamlRoot = root,
+            MaxWidth = 2400,
+            MaxHeight = 1600,
         };
+        dialog.Resources["ContentDialogMaxWidth"] = 2400.0;
+        dialog.Resources["ContentDialogMaxHeight"] = 1600.0;
 
         ContentDialogResult result = await RunAsync(dialog, DialogKeys.TextEditor);
 
@@ -536,7 +597,11 @@ public sealed class UnoWindowService : IWindowService
             DefaultButton = ContentDialogButton.Primary,
             IsPrimaryButtonEnabled = vm.HasSelectedVariable,
             XamlRoot = root,
+            MaxWidth = 2400,
+            MaxHeight = 1600,
         };
+        dialog.Resources["ContentDialogMaxWidth"] = 2400.0;
+        dialog.Resources["ContentDialogMaxHeight"] = 1600.0;
 
         // El botón sólo está vivo cuando hay algo que insertar (el mismo criterio que el escritorio,
         // que deshabilita el suyo con el aviso «selecciona una variable»).
@@ -616,6 +681,7 @@ public sealed class UnoWindowService : IWindowService
     private static async Task<ContentDialogResult> ShowOwnedModalAsync(ContentDialog dialog)
     {
         ActiveDialog = dialog;
+        EnableDialogMouseWheelScrolling(dialog);
         try
         {
             return await dialog.ShowAsync();
@@ -630,6 +696,148 @@ public sealed class UnoWindowService : IWindowService
             ActiveDialog = null;
             ActiveWindowKey = null;
         }
+    }
+
+    /// <summary>
+    /// Habilita el desplazamiento por rueda del ratón en los diálogos modales.
+    /// En WinUI 3 desktop, los elementos internos de un ContentDialog (listas, paneles de detalle y
+    /// editores de texto multilínea) pueden quedar desprovistos de scroll por rueda cuando el foco no
+    /// está en el propio control hijo o cuando el contenedor del diálogo intercepta el evento.
+    /// Al capturar el evento a nivel del diálogo con handledEventsToo=true, localizamos el ScrollViewer,
+    /// ListView o TextBox desplazable bajo el puntero y aplicamos el desplazamiento de líneas correspondiente.
+    /// </summary>
+    private static void EnableDialogMouseWheelScrolling(ContentDialog dialog)
+    {
+        dialog.AddHandler(UIElement.PointerWheelChangedEvent, new PointerEventHandler(OnDialogPointerWheelChanged), handledEventsToo: true);
+    }
+
+    private static void OnDialogPointerWheelChanged(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is not ContentDialog dialog)
+        {
+            return;
+        }
+
+        var point = e.GetCurrentPoint(dialog);
+        int delta = point.Properties.MouseWheelDelta;
+        if (delta == 0)
+        {
+            return;
+        }
+
+        ScrollViewer? targetScrollViewer = FindScrollTarget(e.OriginalSource as DependencyObject, dialog);
+        if (targetScrollViewer == null)
+        {
+            return;
+        }
+
+        if (point.Properties.IsHorizontalMouseWheel)
+        {
+            if (targetScrollViewer.ScrollableWidth > 0)
+            {
+                double linesStep = 48.0;
+                double offsetDelta = (delta / 120.0) * linesStep;
+                double currentOffset = targetScrollViewer.HorizontalOffset;
+                double newOffset = Math.Clamp(currentOffset + offsetDelta, 0, targetScrollViewer.ScrollableWidth);
+                if (Math.Abs(newOffset - currentOffset) > 0.1)
+                {
+                    targetScrollViewer.ChangeView(newOffset, null, null, disableAnimation: true);
+                    e.Handled = true;
+                }
+            }
+            return;
+        }
+
+        if (targetScrollViewer.ScrollableHeight > 0)
+        {
+            // Un salto estándar de rueda (120 deltas) desplaza ~3 líneas de texto o elementos (~48px)
+            double linesStep = 48.0;
+            double offsetDelta = -(delta / 120.0) * linesStep;
+            double currentOffset = targetScrollViewer.VerticalOffset;
+            double newOffset = Math.Clamp(currentOffset + offsetDelta, 0, targetScrollViewer.ScrollableHeight);
+
+            if (Math.Abs(newOffset - currentOffset) > 0.1)
+            {
+                targetScrollViewer.ChangeView(null, newOffset, null, disableAnimation: true);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private static ScrollViewer? FindScrollTarget(DependencyObject? hit, ContentDialog dialog)
+    {
+        // 1. Recorrer hacia arriba desde el elemento específico golpeado por el puntero
+        DependencyObject? current = hit;
+        while (current != null && current != dialog)
+        {
+            if (current is ListViewBase lvb)
+            {
+                var sv = FindDescendantScrollViewer(lvb);
+                if (sv != null && sv.ScrollableHeight > 0)
+                {
+                    return sv;
+                }
+            }
+            else if (current is TextBox tb)
+            {
+                var sv = FindDescendantScrollViewer(tb);
+                if (sv != null && sv.ScrollableHeight > 0)
+                {
+                    return sv;
+                }
+            }
+            else if (current is ScrollViewer sv && sv.ScrollableHeight > 0)
+            {
+                return sv;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        // 2. Si no se encontró en la cadena de ancestros directos, buscar en descendientes del contenedor intermedio
+        current = hit;
+        while (current != null && current != dialog)
+        {
+            var sv = FindDescendantScrollViewer(current);
+            if (sv != null && sv.ScrollableHeight > 0)
+            {
+                return sv;
+            }
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        // 3. Fallback: buscar en el Content del diálogo si tiene un ScrollViewer con contenido desplazable
+        if (dialog.Content is DependencyObject content)
+        {
+            var sv = FindDescendantScrollViewer(content);
+            if (sv != null && sv.ScrollableHeight > 0)
+            {
+                return sv;
+            }
+        }
+
+        return null;
+    }
+
+    private static ScrollViewer? FindDescendantScrollViewer(DependencyObject parent)
+    {
+        if (parent is ScrollViewer sv)
+        {
+            return sv;
+        }
+
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            var found = FindDescendantScrollViewer(child);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

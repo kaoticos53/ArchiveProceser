@@ -12,7 +12,7 @@ namespace FileFlow.Plugin.FileSystem;
 
 [NodeDefinition("AdvancedRenamerNode_Name", "Files", "AdvancedRenamerNode_Desc", PipelineRole.Transform,
     "renombrar", "nombre", "patron", "tokens", "exif", "fecha", "rename", "pattern", "batch")]
-public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvider
+public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvider, INodeDialogSurfaceProvider
 {
     private readonly IRenameTransformEngine _transformEngine = new RenameTransformEngine();
     private readonly RenameBatchContext _batchContext = new();
@@ -79,6 +79,20 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
     public override IReadOnlyList<NodeActionDescriptor> CustomActions => [
         new("OpenRenamerPipeline", "🏷️ Pipeline de Métodos...", "🏷️", "Abrir el Estudio de Renombrado Avanzado (7 métodos, presets y vista previa)")
     ];
+
+    /// <summary>
+    /// La superficie modal del nodo, declarada al SDK para que la sirva cualquier host.
+    /// </summary>
+    public string DialogKey => FileFlow.Sdk.Services.DialogKeys.AdvancedRenamer;
+
+    /// <summary>La acción personalizada que esta superficie sustituye: «🏷️ Pipeline de Métodos...».</summary>
+    public string? ReplacesCustomActionId => "OpenRenamerPipeline";
+
+    /// <inheritdoc />
+    public object? CreateDialogPayload(object? context = null) =>
+        new UI.ViewModels.AdvancedRenamerEditorViewModel(
+            this,
+            (context as NodeCustomActionContext)?.Dialogs);
 
     public void ExecuteCustomAction(string actionId, object? context = null)
     {

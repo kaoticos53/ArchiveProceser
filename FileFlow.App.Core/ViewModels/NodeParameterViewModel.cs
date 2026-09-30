@@ -260,6 +260,8 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
 
     public bool IsMediaPreset => EditorType == ParameterEditorType.MediaPreset || Key.Equals("Preset", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsRenamerPipeline => Key.Equals("PipelineName", StringComparison.OrdinalIgnoreCase) && NodeOwner?.IsAdvancedRenamerNode == true;
+
     public bool IsMultiLine => (EditorType == ParameterEditorType.MultiLineText || (!HasOptions && !HasBrowseButton && !IsBooleanAndNoOptions && !IsSlider && !IsPasswordList && !IsMediaPreset && DetectIsMultiLine(Key))) && !IsFileVersionSelector;
 
     public bool HasBrowseButton => (IsFolderPath || IsFilePath) && !IsFileVersionSelector;
@@ -443,6 +445,43 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             string msg = string.Format(_loc.GetString("Msg_OpenPresetsError", "Error al abrir el Gestor de Presets: {0}"), ex.Message);
+            string title = _loc.GetString("Error", "Error");
+            _dialogService.ShowError(msg, title);
+        }
+    }
+
+    /// <summary>
+    /// Abre el ESTUDIO DE RENOMBRADO AVANZADO (Pipeline de Métodos) del nodo por el camino que este host pueda cumplir.
+    /// </summary>
+    [RelayCommand]
+    public async Task OpenRenamerPipelineAsync()
+    {
+        const string ActionId = "OpenRenamerPipeline";
+
+        try
+        {
+            var context = new NodeCustomActionContext(
+                _windows.MainWindowOwner,
+                () => NodeOwner?.SyncParametersFromNodeInstance(),
+                _dialogService);
+
+            if (NodeOwner?.NodeInstance is INodeDialogSurfaceProvider surface
+                && surface.ReplacesCustomActionId is { } replaced
+                && string.Equals(replaced, ActionId, StringComparison.OrdinalIgnoreCase))
+            {
+                await _windows.ShowDialogAsync(surface.DialogKey, surface.CreateDialogPayload(context));
+                NodeOwner?.SyncParametersFromNodeInstance();
+                return;
+            }
+
+            if (NodeOwner?.NodeInstance is INodeCustomActionProvider provider)
+            {
+                provider.ExecuteCustomAction(ActionId, context);
+            }
+        }
+        catch (Exception ex)
+        {
+            string msg = string.Format(_loc.GetString("Msg_OpenRenamerError", "Error al abrir el Estudio de Renombrado: {0}"), ex.Message);
             string title = _loc.GetString("Error", "Error");
             _dialogService.ShowError(msg, title);
         }

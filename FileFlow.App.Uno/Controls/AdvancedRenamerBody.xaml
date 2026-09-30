@@ -1,0 +1,604 @@
+<UserControl
+    x:Class="FileFlow.App.Uno.Controls.AdvancedRenamerBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:platform="using:FileFlow.App.Uno.Platform"
+    xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels"
+    xmlns:renaming="using:FileFlow.Sdk.Renaming"
+    xmlns:models="using:FileFlow.Plugin.FileSystem.UI.Models">
+
+  <UserControl.Resources>
+    <platform:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    <platform:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid x:Name="RenamerRoot" Width="1020" Height="640" MinWidth="800" MaxWidth="2400" MinHeight="520" MaxHeight="1600"
+        AutomationProperties.AutomationId="AdvancedRenamerBody"
+        RowSpacing="10" Margin="14">
+    <Grid.RowDefinitions>
+      <!-- 0: Cabecera y presets -->
+      <RowDefinition Height="Auto" />
+      <!-- 1: Contenido principal (Pasos + Editor + Vista previa) -->
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <!-- ================= 0. Cabecera ================= -->
+    <Grid Grid.Row="0" RowSpacing="8">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <!-- Título, badge, descripción y control de tamaño -->
+      <Grid Grid.Row="0" ColumnSpacing="12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock x:Name="HeaderTitle" FontSize="15" FontWeight="Bold"
+                       Foreground="{StaticResource CanvasAccentGlowBrush}" />
+            <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="4" Padding="6,2"
+                    BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1">
+              <TextBlock x:Name="MethodsBadge" FontSize="10" FontWeight="SemiBold"
+                         Foreground="{StaticResource CanvasAccentPrimaryBrush}" />
+            </Border>
+          </StackPanel>
+          <TextBlock x:Name="HeaderDesc" FontSize="11" TextWrapping="Wrap"
+                     Foreground="{StaticResource CanvasSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- Botones de control de tamaño / maximizar -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button x:Name="MaximizeRestoreButton" Padding="8,4" FontSize="11"
+                  ToolTipService.ToolTip="Alternar tamaño del diálogo (Normal / Maximizado)"
+                  Click="OnMaximizeRestoreClicked"
+                  AutomationProperties.AutomationId="RenamerMaximizeRestoreButton">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBlock x:Name="MaximizeRestoreIcon" Text="[+]" FontSize="11" FontWeight="Bold" />
+              <TextBlock x:Name="MaximizeRestoreLabel" Text="Maximizar" FontSize="10.5" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Barra de configuración rápida del pipeline: Preset, Guardar/Abrir preset, Nombre, Colisión -->
+      <Border Grid.Row="1" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="10,8">
+        <Grid ColumnSpacing="10">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="180" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="16" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="140" />
+          </Grid.ColumnDefinitions>
+
+          <!-- Preset -->
+          <TextBlock Grid.Column="0" x:Name="PresetLabel" FontSize="11" VerticalAlignment="Center"
+                     FontWeight="SemiBold" Foreground="{StaticResource CanvasTextBrush}" />
+          <ComboBox Grid.Column="1" x:Name="PresetCombo" FontSize="11" HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding AvailablePresets}" DisplayMemberPath="Name"
+                    SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="RenamerPresetCombo" />
+
+          <Button Grid.Column="2" x:Name="SavePresetButton" Padding="8,4" FontSize="11"
+                  Command="{Binding SaveCurrentAsPresetCommand}"
+                  AutomationProperties.AutomationId="RenamerSavePresetButton">
+            <TextBlock x:Name="SavePresetLabel" FontSize="11" />
+          </Button>
+
+          <Button Grid.Column="3" x:Name="OpenPresetButton" Padding="8,4" FontSize="11"
+                  Command="{Binding LoadPresetFromFileCommand}"
+                  AutomationProperties.AutomationId="RenamerOpenPresetButton">
+            <TextBlock x:Name="OpenPresetLabel" FontSize="11" />
+          </Button>
+
+          <!-- Pipeline Name -->
+          <TextBlock Grid.Column="5" x:Name="PipelineNameLabel" FontSize="11" VerticalAlignment="Center"
+                     FontWeight="SemiBold" Foreground="{StaticResource CanvasTextBrush}" />
+          <TextBox Grid.Column="6" x:Name="PipelineNameBox" FontSize="11" VerticalAlignment="Center"
+                   Text="{Binding PipelineName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                   AutomationProperties.AutomationId="RenamerPipelineNameBox" />
+
+          <!-- Collision -->
+          <TextBlock Grid.Column="8" x:Name="CollisionLabel" FontSize="11" VerticalAlignment="Center"
+                     FontWeight="SemiBold" Foreground="{StaticResource CanvasTextBrush}" />
+          <ComboBox Grid.Column="9" x:Name="CollisionCombo" FontSize="11" HorizontalAlignment="Stretch"
+                    ItemsSource="{Binding CollisionStrategies}"
+                    SelectedItem="{Binding CollisionStrategy, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="RenamerCollisionCombo" />
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- ================= 1. Contenido Principal ================= -->
+    <Grid Grid.Row="1" ColumnSpacing="12">
+      <Grid.ColumnDefinitions>
+        <!-- Columna Izquierda: Pasos del Pipeline (~300px) -->
+        <ColumnDefinition Width="310" />
+        <!-- Columna Derecha: Editor del Paso y Vista Previa en Vivo -->
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Panel Izquierdo: Lista de Pasos -->
+      <Border Grid.Column="0" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+              BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="8">
+        <Grid RowSpacing="6">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <!-- Barra de herramientas de pasos -->
+          <Grid Grid.Row="0" ColumnSpacing="4">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Botón Añadir Método con Flyout -->
+            <Button Grid.Column="0" x:Name="AddStepButton" HorizontalAlignment="Stretch"
+                    Padding="8,4" FontSize="11" FontWeight="SemiBold"
+                    Background="{StaticResource CanvasAccentPrimaryBrush}"
+                    Foreground="{StaticResource CanvasOnAccentBrush}"
+                    AutomationProperties.AutomationId="RenamerAddStepButton">
+              <TextBlock x:Name="AddStepLabel" FontSize="11" />
+              <Button.Flyout>
+                <MenuFlyout x:Name="AddStepMenuFlyout" Placement="Bottom">
+                  <MenuFlyoutItem Text="Nueva Plantilla (New Name)" Click="OnAddStepNewNameClicked" />
+                  <MenuFlyoutItem Text="Buscar y Reemplazar (Search &amp; Replace)" Click="OnAddStepSearchReplaceClicked" />
+                  <MenuFlyoutItem Text="Insertar Texto (Insert)" Click="OnAddStepInsertClicked" />
+                  <MenuFlyoutItem Text="Eliminar Caracteres (Remove)" Click="OnAddStepRemoveClicked" />
+                  <MenuFlyoutItem Text="Convertir Mayúsculas/Minúsculas (Case)" Click="OnAddStepCaseClicked" />
+                  <MenuFlyoutItem Text="Numeración Incremental (Numbering)" Click="OnAddStepNumberingClicked" />
+                  <MenuFlyoutItem Text="Tabla de Sustituciones (Replace List)" Click="OnAddStepReplaceListClicked" />
+                  <MenuFlyoutItem Text="Limpieza y Recorte (Trim &amp; Clean)" Click="OnAddStepTrimCleanClicked" />
+                  <MenuFlyoutItem Text="Rellenar Números (Normalize Numbers)" Click="OnAddStepNormalizeNumbersClicked" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
+
+            <!-- Subir -->
+            <Button Grid.Column="1" x:Name="MoveUpButton" Padding="6,4" FontSize="11"
+                    ToolTipService.ToolTip="Subir método en el pipeline"
+                    Command="{Binding MoveStepUpCommand}" CommandParameter="{Binding SelectedStep}"
+                    AutomationProperties.AutomationId="RenamerMoveUpButton">
+              <TextBlock Text="↑" FontSize="11" />
+            </Button>
+
+            <!-- Bajar -->
+            <Button Grid.Column="2" x:Name="MoveDownButton" Padding="6,4" FontSize="11"
+                    ToolTipService.ToolTip="Bajar método en el pipeline"
+                    Command="{Binding MoveStepDownCommand}" CommandParameter="{Binding SelectedStep}"
+                    AutomationProperties.AutomationId="RenamerMoveDownButton">
+              <TextBlock Text="↓" FontSize="11" />
+            </Button>
+
+            <!-- Duplicar -->
+            <Button Grid.Column="3" x:Name="DuplicateButton" Padding="6,4" FontSize="11"
+                    ToolTipService.ToolTip="Duplicar método seleccionado"
+                    Command="{Binding DuplicateStepCommand}" CommandParameter="{Binding SelectedStep}"
+                    AutomationProperties.AutomationId="RenamerDuplicateButton">
+              <TextBlock Text="Copiar" FontSize="10" />
+            </Button>
+
+            <!-- Eliminar -->
+            <Button Grid.Column="4" x:Name="RemoveButton" Padding="6,4" FontSize="11"
+                    ToolTipService.ToolTip="Eliminar método seleccionado"
+                    Command="{Binding RemoveStepCommand}" CommandParameter="{Binding SelectedStep}"
+                    AutomationProperties.AutomationId="RenamerRemoveButton">
+              <TextBlock Text="✕" FontSize="11" Foreground="{StaticResource CanvasWarningBrush}" />
+            </Button>
+          </Grid>
+
+          <!-- Lista de pasos -->
+          <ListView Grid.Row="1" x:Name="StepsListView" SelectionMode="Single"
+                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                    ScrollViewer.VerticalScrollMode="Enabled"
+                    ItemsSource="{Binding Steps}"
+                    SelectedItem="{Binding SelectedStep, Mode=TwoWay}"
+                    Background="Transparent" BorderThickness="0"
+                    AutomationProperties.AutomationId="RenamerStepsListView">
+            <ListView.ItemTemplate>
+              <DataTemplate x:DataType="renaming:RenameMethodStep">
+                <Grid Padding="4,4" ColumnSpacing="6">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+
+                  <!-- Activo / Inactivo -->
+                  <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                            MinWidth="20" Margin="0" VerticalAlignment="Center" />
+
+                  <!-- Nombre y resumen -->
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                    <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource CanvasTextBrush}" />
+                    <TextBlock Text="{Binding MethodType}" FontSize="9.5"
+                               Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  </StackPanel>
+
+                  <!-- Badge Aplicar a -->
+                  <Border Grid.Column="2" Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="3"
+                          Padding="4,1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding ApplyTo}" FontSize="9"
+                               Foreground="{StaticResource CanvasAccentGlowBrush}" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListView.ItemTemplate>
+          </ListView>
+        </Grid>
+      </Border>
+
+      <!-- Panel Derecho: Editor del Paso (arriba) + Vista Previa en Vivo (abajo) -->
+      <Grid Grid.Column="1" RowSpacing="10">
+        <Grid.RowDefinitions>
+          <!-- Editor del método seleccionado (flexible) -->
+          <RowDefinition Height="Auto" />
+          <!-- Vista previa en vivo -->
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. Editor del Paso Seleccionado -->
+        <Border Grid.Row="0" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="12">
+          <Grid>
+            <!-- Mensaje cuando no hay paso seleccionado -->
+            <TextBlock x:Name="EmptyStepMessage" FontSize="11" FontStyle="Italic"
+                       Foreground="{StaticResource CanvasSecondaryBrush}" VerticalAlignment="Center"
+                       HorizontalAlignment="Center" Margin="10" />
+
+            <!-- Contenido cuando hay paso seleccionado -->
+            <StackPanel x:Name="StepEditorPanel" Spacing="8">
+              <!-- Propiedades comunes del paso: Nombre, Activo, Aplicar a -->
+              <Grid ColumnSpacing="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="140" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="2">
+                  <TextBlock Text="Nombre del método:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <TextBox x:Name="StepNameBox" FontSize="11" TextChanged="OnStepFieldValueChanged" />
+                </StackPanel>
+
+                <CheckBox Grid.Column="1" x:Name="StepEnabledCheck" Content="Activo" FontSize="11"
+                          VerticalAlignment="Bottom" Checked="OnStepFieldCheckChanged" Unchecked="OnStepFieldCheckChanged" />
+
+                <StackPanel Grid.Column="2" Spacing="2">
+                  <TextBlock Text="Aplicar sobre:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                  <ComboBox x:Name="StepApplyToCombo" FontSize="11" HorizontalAlignment="Stretch"
+                            SelectionChanged="OnStepApplyToChanged" />
+                </StackPanel>
+              </Grid>
+
+              <!-- Paneles específicos según el MethodType -->
+              <Border Background="{StaticResource CanvasSurfaceBrush}" CornerRadius="6"
+                      BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="10">
+                <StackPanel Spacing="6">
+
+                  <!-- 1.1 NewName Panel -->
+                  <StackPanel x:Name="PaneNewName" Spacing="6">
+                    <TextBlock Text="Patrón de Renombrado (acepta variables {ParentDir}, {CreationDate}, {FileNameNoExt}, etc.):"
+                               FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                    <TextBox x:Name="NewNamePatternBox" FontSize="12" FontFamily="Cascadia Code, Consolas, monospace"
+                             TextChanged="OnNewNamePatternChanged" />
+                    <!-- Botones de tags rápidos -->
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <TextBlock Text="Insertar tag:" FontSize="10" VerticalAlignment="Center" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                      <Button Content="{}{ParentDir}" Padding="4,2" FontSize="10" Click="OnInsertTagClicked" />
+                      <Button Content="{}{CreationDate:yyyyMMdd}" Padding="4,2" FontSize="10" Click="OnInsertTagClicked" />
+                      <Button Content="{}{FileNameNoExt}" Padding="4,2" FontSize="10" Click="OnInsertTagClicked" />
+                      <Button Content="{}{Ext}" Padding="4,2" FontSize="10" Click="OnInsertTagClicked" />
+                      <Button Content="{}{Counter:03}" Padding="4,2" FontSize="10" Click="OnInsertTagClicked" />
+                      <Button Content="{}{FileSize}" Padding="4,2" FontSize="10" Click="OnInsertTagClicked" />
+                    </StackPanel>
+                  </StackPanel>
+
+                  <!-- 1.2 SearchReplace Panel -->
+                  <StackPanel x:Name="PaneSearchReplace" Spacing="6">
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Texto a buscar:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="SearchTextBox" FontSize="11" TextChanged="OnSearchReplaceChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="Reemplazar por:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="ReplaceTextBox" FontSize="11" TextChanged="OnSearchReplaceChanged" />
+                      </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                      <CheckBox x:Name="UseRegexCheck" Content="Expresión Regular (Regex)" FontSize="10.5"
+                                Checked="OnSearchReplaceOptionChanged" Unchecked="OnSearchReplaceOptionChanged" />
+                      <CheckBox x:Name="MatchCaseCheck" Content="Coincidir Mayús/Minús" FontSize="10.5"
+                                Checked="OnSearchReplaceOptionChanged" Unchecked="OnSearchReplaceOptionChanged" />
+                      <CheckBox x:Name="ReplaceAllCheck" Content="Reemplazar todas las ocurrencias" FontSize="10.5"
+                                Checked="OnSearchReplaceOptionChanged" Unchecked="OnSearchReplaceOptionChanged" />
+                    </StackPanel>
+                  </StackPanel>
+
+                  <!-- 1.3 Insert Panel -->
+                  <StackPanel x:Name="PaneInsert" Spacing="6">
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="100" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Texto a insertar:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="InsertTextBox" FontSize="11" TextChanged="OnInsertChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="Posición:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <ComboBox x:Name="InsertPositionCombo" FontSize="11" HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnInsertPositionChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="2">
+                        <TextBlock Text="Índice:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="InsertIndexBox" FontSize="11" TextChanged="OnInsertChanged" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- 1.4 Remove Panel -->
+                  <StackPanel x:Name="PaneRemove" Spacing="6">
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="100" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Nº de caracteres:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="RemoveCountBox" FontSize="11" TextChanged="OnRemoveChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="Desde posición:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <ComboBox x:Name="RemovePositionCombo" FontSize="11" HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnRemovePositionChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="2">
+                        <TextBlock Text="Índice:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="RemoveIndexBox" FontSize="11" TextChanged="OnRemoveChanged" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- 1.5 CaseConversion Panel -->
+                  <StackPanel x:Name="PaneCaseConversion" Spacing="6">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="Tipo de conversión:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                      <ComboBox x:Name="CaseTypeCombo" FontSize="11" HorizontalAlignment="Stretch"
+                                SelectionChanged="OnCaseTypeChanged" />
+                    </StackPanel>
+                  </StackPanel>
+
+                  <!-- 1.6 Numbering Panel -->
+                  <StackPanel x:Name="PaneNumbering" Spacing="6">
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Número inicial:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="NumberingStartBox" FontSize="11" TextChanged="OnNumberingChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="Incremento:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="NumberingStepBox" FontSize="11" TextChanged="OnNumberingChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2" Spacing="2">
+                        <TextBlock Text="Dígitos (ceros):" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="NumberingPaddingBox" FontSize="11" TextChanged="OnNumberingChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="3" Spacing="2">
+                        <TextBlock Text="Reiniciar en:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <ComboBox x:Name="NumberingResetCombo" FontSize="11" HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnNumberingResetChanged" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+
+                  <!-- 1.7 ReplaceList Panel -->
+                  <StackPanel x:Name="PaneReplaceList" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="Lista de sustituciones directas:" FontSize="10" VerticalAlignment="Center"
+                                 Foreground="{StaticResource CanvasSecondaryBrush}" />
+                      <Button Content="+ Añadir fila" Padding="6,2" FontSize="10"
+                              Command="{Binding AddReplaceListEntryCommand}" />
+                    </StackPanel>
+                    <ListView x:Name="ReplaceListView" MaxHeight="120" SelectionMode="None"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.VerticalScrollMode="Enabled">
+                      <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="renaming:ReplaceListEntry">
+                          <Grid ColumnSpacing="6" Padding="0,2">
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" />
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" FontSize="11" Text="{Binding Find, Mode=TwoWay}" />
+                            <TextBlock Grid.Column="1" Text="->" VerticalAlignment="Center" FontSize="11" />
+                            <TextBox Grid.Column="2" FontSize="11" Text="{Binding ReplaceWith, Mode=TwoWay}" />
+                            <Button Grid.Column="3" Content="✕" Padding="6,2" FontSize="10"
+                                    Click="OnRemoveReplaceListEntryClicked" />
+                          </Grid>
+                        </DataTemplate>
+                      </ListView.ItemTemplate>
+                    </ListView>
+                  </StackPanel>
+
+                  <!-- 1.8 TrimClean Panel -->
+                  <StackPanel x:Name="PaneTrimClean" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                      <CheckBox x:Name="TrimWhitespaceCheck" Content="Recortar espacios en blanco inicio/fin" FontSize="10.5"
+                                Checked="OnTrimCleanChanged" Unchecked="OnTrimCleanChanged" />
+                      <CheckBox x:Name="CollapseSpacesCheck" Content="Colapsar espacios dobles" FontSize="10.5"
+                                Checked="OnTrimCleanChanged" Unchecked="OnTrimCleanChanged" />
+                      <CheckBox x:Name="SanitizeInvalidCheck" Content="Sanitizar caracteres inválidos de ruta" FontSize="10.5"
+                                Checked="OnTrimCleanChanged" Unchecked="OnTrimCleanChanged" />
+                    </StackPanel>
+                  </StackPanel>
+
+                  <!-- 1.9 NormalizeNumbers Panel -->
+                  <StackPanel x:Name="PaneNormalizeNumbers" Spacing="6">
+                    <Grid ColumnSpacing="8">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="Dígitos de relleno (ej. 2 = 01):" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <TextBox x:Name="NormNumbersPaddingBox" FontSize="11" TextChanged="OnNormalizeNumbersChanged" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="2">
+                        <TextBlock Text="Objetivo:" FontSize="10" Foreground="{StaticResource CanvasSecondaryBrush}" />
+                        <ComboBox x:Name="NormNumbersTargetCombo" FontSize="11" HorizontalAlignment="Stretch"
+                                  SelectionChanged="OnNormalizeNumbersTargetChanged" />
+                      </StackPanel>
+                      <CheckBox Grid.Column="2" x:Name="PadSeasonEpisodeCheck" Content="Rellenar temporadas y episodios (S01E02)"
+                                FontSize="10.5" VerticalAlignment="Bottom"
+                                Checked="OnNormalizeNumbersChanged" Unchecked="OnNormalizeNumbersChanged" />
+                    </Grid>
+                  </StackPanel>
+
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <!-- 2. Vista Previa en Vivo (Live Preview) -->
+        <Border Grid.Row="1" Background="{StaticResource CanvasCardBrush}" CornerRadius="6"
+                BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="10">
+          <Grid RowSpacing="6">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Cabecera de vista previa + Selector de Categoría de Muestra -->
+            <Grid Grid.Row="0" ColumnSpacing="8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="160" />
+              </Grid.ColumnDefinitions>
+
+              <TextBlock Grid.Column="0" x:Name="LivePreviewTitle" FontSize="12" FontWeight="Bold"
+                         VerticalAlignment="Center" Foreground="{StaticResource CanvasTextBrush}" />
+
+              <TextBlock Grid.Column="1" Text="Muestras:" FontSize="10.5" VerticalAlignment="Center"
+                         Foreground="{StaticResource CanvasSecondaryBrush}" />
+              <ComboBox Grid.Column="2" x:Name="SampleCategoryCombo" FontSize="11" HorizontalAlignment="Stretch"
+                        ItemsSource="{Binding SampleCategories}"
+                        SelectedItem="{Binding SelectedSampleCategory, Mode=TwoWay}"
+                        AutomationProperties.AutomationId="RenamerSampleCategoryCombo" />
+            </Grid>
+
+            <!-- Tabla de Previsualización -->
+            <Border Grid.Row="1" Background="{StaticResource CanvasBgDarkBrush}" CornerRadius="4"
+                    BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1" Padding="4">
+              <ListView x:Name="PreviewListView" ItemsSource="{Binding PreviewItems}"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollMode="Enabled"
+                        SelectionMode="None" Background="Transparent"
+                        AutomationProperties.AutomationId="RenamerPreviewListView">
+                <ListView.ItemTemplate>
+                  <DataTemplate x:DataType="models:PreviewRowItem">
+                    <Grid ColumnSpacing="8" Padding="4,3">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+
+                      <TextBlock Grid.Column="0" Text="{Binding OriginalName}" FontSize="11"
+                                 TextTrimming="CharacterEllipsis"
+                                 Foreground="{StaticResource CanvasSecondaryBrush}" />
+
+                      <TextBlock Grid.Column="1" Text="->" FontSize="10" VerticalAlignment="Center"
+                                 Foreground="{StaticResource CanvasAccentPrimaryBrush}" />
+
+                      <TextBlock Grid.Column="2" Text="{Binding ResultName}" FontSize="11" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis"
+                                 Foreground="{StaticResource CanvasTextBrush}" />
+
+                      <TextBlock Grid.Column="3" Text="{Binding StatusMessage}" FontSize="10"
+                                 Foreground="{StaticResource CanvasSuccessBrush}" />
+                    </Grid>
+                  </DataTemplate>
+                </ListView.ItemTemplate>
+              </ListView>
+            </Border>
+
+            <!-- Fila inferior: Muestra rápida personalizada -->
+            <Grid Grid.Row="2" ColumnSpacing="6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+
+              <TextBlock Grid.Column="0" Text="Probar nombre:" FontSize="10" VerticalAlignment="Center"
+                         Foreground="{StaticResource CanvasSecondaryBrush}" />
+              <TextBox Grid.Column="1" FontSize="11"
+                       Text="{Binding NewCustomSampleName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                       PlaceholderText="Escribe un nombre de archivo para probar el pipeline..." />
+              <Button Grid.Column="2" Content="+ Añadir" Padding="8,3" FontSize="10"
+                      Command="{Binding AddCustomSampleCommand}" />
+              <Button Grid.Column="3" Content="Limpiar" Padding="8,3" FontSize="10"
+                      Command="{Binding ClearCustomSamplesCommand}" />
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <!-- Grip de redimensionamiento manual por arrastre -->
+    <Border Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+            Width="22" Height="22" Margin="0,0,-6,-6"
+            Background="Transparent"
+            PointerPressed="OnResizeGripPointerPressed"
+            PointerMoved="OnResizeGripPointerMoved"
+            PointerReleased="OnResizeGripPointerReleased"
+            PointerCaptureLost="OnResizeGripPointerCaptureLost"
+            ToolTipService.ToolTip="Arrastrar para redimensionar el diálogo"
+            AutomationProperties.AutomationId="RenamerResizeGrip">
+      <Path Data="M 16,6 L 6,16 M 16,10 L 10,16 M 16,14 L 14,16"
+            Stroke="{StaticResource CanvasSecondaryBrush}"
+            StrokeThickness="1.5"
+            HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
+  </Grid>
+</UserControl>

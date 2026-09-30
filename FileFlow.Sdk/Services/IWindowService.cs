@@ -44,6 +44,14 @@ public static class DialogKeys
     /// parámetro del nodo.
     /// </summary>
     public const string PasswordManager = "PasswordManager";
+
+    /// <summary>
+    /// El Estudio de Renombrado Avanzado (Pipeline de Métodos): la superficie que declara el nodo de
+    /// renombrado avanzado del plugin de sistema de archivos (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>).
+    /// En el escritorio la monta el propio plugin con su toolkit; en un host sin el toolkit del escritorio
+    /// se sirve con la vista de ESE host sobre el mismo view model portable que declara el nodo.
+    /// </summary>
+    public const string AdvancedRenamer = "AdvancedRenamer";
 }
 
 /// <summary>
