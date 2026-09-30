@@ -33,7 +33,7 @@
       </Grid.ColumnDefinitions>
 
       <controls:NodeToolboxPanel x:Name="Toolbox" Grid.Column="0"
-                                 Background="{StaticResource CanvasSurfaceBrush}" />
+                                 Background="{ThemeResource CanvasSurfaceBrush}" />
 
       <!-- El asa del CAJÓN: su columna está a la izquierda, así que crece al arrastrar hacia la derecha. -->
       <controls:PanelSplitter x:Name="ToolboxSplitter" Grid.Column="1"
@@ -50,13 +50,13 @@
                                    VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
     </Grid>
 
-    <Border Grid.Row="2" Background="#161B22" Padding="16,8">
+    <Border Grid.Row="2" Background="{ThemeResource CanvasBgDarkBrush}" Padding="16,8">
       <!-- El botón Ejecutar (hito 243): el comando canónico del ControlBar del núcleo (el mismo
            del escritorio), montado por código en StatusBarHost para que el guion UIA externo
            pueda invocar el ciclo completo del flujo. -->
       <StackPanel x:Name="StatusBarHost" Spacing="4">
         <TextBlock x:Name="engineStatus" Opacity="0.7" TextWrapping="Wrap" FontSize="11"
-                   Foreground="#F0F6FC" />
+                   Foreground="{ThemeResource CanvasTextBrush}" />
       </StackPanel>
     </Border>
 

@@ -142,8 +142,13 @@ public sealed partial class NodeInspectorPanel : UserControl
         // Cabecera: título + cerrar (el comando del VM de la rebanada del escritorio).
         var closeButton = new Button
         {
-            Padding = new Thickness(8, 2, 8, 2),
+            Padding = new Thickness(10, 4, 10, 4),
             FontSize = 11,
+            CornerRadius = new CornerRadius(6),
+            Background = Brush("CanvasCardBrush"),
+            BorderBrush = Brush("CanvasBorderBrush"),
+            BorderThickness = new Thickness(1),
+            Foreground = Brush("CanvasSecondaryBrush"),
             Content = loc.GetString("Uno_InspectorClose", "Cerrar")
         };
         closeButton.Click += (_, _) => _vm?.ClosePanelCommand.Execute(null);
@@ -154,26 +159,32 @@ public sealed partial class NodeInspectorPanel : UserControl
         // snapshot de entrada, diff de metadatos y diálogos de resultado viven en el núcleo).
         _testButton = new Button
         {
-            Padding = new Thickness(8, 2, 8, 2),
+            Padding = new Thickness(12, 4, 12, 4),
             FontSize = 11,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            CornerRadius = new CornerRadius(6),
+            Background = Brush("CanvasAccentPrimaryBrush"),
+            Foreground = Brush("CanvasOnAccentBrush"),
+            BorderThickness = new Thickness(0),
             Content = loc.GetString("Uno_InspectorTest", "Probar")
         };
         AutomationProperties.SetAutomationId(_testButton, "InspectorTestButton");
         _testButton.Click += (_, _) => _vm?.TestNodeWithCustomFileCommand.Execute(null);
 
-        var header = new Grid { ColumnSpacing = 8 };
+        var header = new Grid { ColumnSpacing = 8, Margin = new Thickness(0, 0, 0, 10) };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _titleText = new TextBlock
         {
-            FontSize = 13,
-            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            FontSize = 14,
+            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
             TextWrapping = TextWrapping.Wrap,
             VerticalAlignment = VerticalAlignment.Center,
             Foreground = Brush("CanvasTextBrush")
         };
         Grid.SetColumn(_titleText, 0);
+        Grid.SetColumn(_testButton, 1);
         Grid.SetColumn(closeButton, 2);
         header.Children.Add(_titleText);
         header.Children.Add(_testButton);
@@ -192,6 +203,7 @@ public sealed partial class NodeInspectorPanel : UserControl
             FontSize = 11,
             Opacity = 0.85,
             TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8),
             Foreground = Brush("CanvasSecondaryBrush")
         };
 
@@ -199,7 +211,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         {
             FontSize = 11,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, 10, 0, 2),
+            Margin = new Thickness(0, 12, 0, 6),
             Foreground = Brush("CanvasTextBrush")
         };
 
@@ -209,7 +221,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         {
             FontSize = 11,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(0, 10, 0, 2),
+            Margin = new Thickness(0, 12, 0, 6),
             Foreground = Brush("CanvasTextBrush")
         };
 
@@ -274,11 +286,13 @@ public sealed partial class NodeInspectorPanel : UserControl
             var button = new RadioButton
             {
                 GroupName = "InspectorSections",
-                FontSize = 12,
-                Padding = new Thickness(10, 4, 10, 4),
+                FontSize = 11,
+                Padding = new Thickness(8, 4, 8, 4),
+                CornerRadius = new CornerRadius(6),
                 Content = loc.GetString(key, fallback),
                 IsChecked = i == 0
             };
+            UpdateTabButtonStyle(button, i == 0);
             AutomationProperties.SetAutomationId(button, aid);
             button.Click += (_, _) => ShowTab(index);
             _tabButtons[i] = button;
@@ -290,12 +304,21 @@ public sealed partial class NodeInspectorPanel : UserControl
             _paneHost.Children.Add(pane);
         }
 
+        var tabContainer = new Border
+        {
+            Background = Brush("CanvasBgDarkBrush"),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(3),
+            Margin = new Thickness(0, 2, 0, 10),
+            Child = _tabStrip
+        };
+
         var bodyGrid = new Grid();
         bodyGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         bodyGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        Grid.SetRow(_tabStrip, 0);
+        Grid.SetRow(tabContainer, 0);
         Grid.SetRow(_paneHost, 1);
-        bodyGrid.Children.Add(_tabStrip);
+        bodyGrid.Children.Add(tabContainer);
         bodyGrid.Children.Add(_paneHost);
         _body = bodyGrid;
 
@@ -316,7 +339,7 @@ public sealed partial class NodeInspectorPanel : UserControl
             BorderThickness = new Thickness(1, 0, 0, 0),
             Child = _root
         };
-        Padding = new Thickness(12, 10, 10, 10);
+        Padding = new Thickness(16, 14, 16, 14);
 
         ApplyLocalization();
 
@@ -398,12 +421,33 @@ public sealed partial class NodeInspectorPanel : UserControl
             if (_tabButtons[i] is not null)
             {
                 _tabButtons[i].IsChecked = i == index;
+                UpdateTabButtonStyle(_tabButtons[i], i == index);
             }
         }
 
         if (ReferenceEquals(_tabPanes[index], _diffPane))
         {
             RebuildDiff();
+        }
+    }
+
+    private void UpdateTabButtonStyle(RadioButton button, bool isSelected)
+    {
+        if (isSelected)
+        {
+            button.Background = Brush("CanvasCardBrush");
+            button.Foreground = Brush("CanvasAccentPrimaryBrush");
+            button.BorderBrush = Brush("CanvasBorderBrush");
+            button.BorderThickness = new Thickness(1);
+            button.FontWeight = Microsoft.UI.Text.FontWeights.SemiBold;
+        }
+        else
+        {
+            button.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            button.Foreground = Brush("CanvasSecondaryBrush");
+            button.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+            button.BorderThickness = new Thickness(0);
+            button.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         }
     }
 
@@ -914,8 +958,13 @@ public sealed partial class NodeInspectorPanel : UserControl
             var button = new Button
             {
                 Content = action.Title,
-                Padding = new Thickness(8, 3, 8, 3),
+                Padding = new Thickness(10, 4, 10, 4),
                 FontSize = 11,
+                CornerRadius = new CornerRadius(6),
+                Background = Brush("CanvasSurfaceBrush"),
+                BorderBrush = Brush("CanvasBorderBrush"),
+                BorderThickness = new Thickness(1),
+                Foreground = Brush("CanvasTextBrush"),
                 HorizontalAlignment = HorizontalAlignment.Left
             };
             AnchorAction("InspectorAction_" + action.ActionId, button);
@@ -934,7 +983,7 @@ public sealed partial class NodeInspectorPanel : UserControl
 
     private UIElement? BuildParameterRow(NodeParameterViewModel p)
     {
-        var root = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 2) };
+        var root = new StackPanel { Spacing = 3 };
 
         var name = new TextBlock
         {
@@ -942,6 +991,7 @@ public sealed partial class NodeInspectorPanel : UserControl
             FontSize = 11,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 2),
             Foreground = Brush("CanvasTextBrush")
         };
         root.Children.Add(name);
@@ -1010,14 +1060,19 @@ public sealed partial class NodeInspectorPanel : UserControl
         }
         else if (p.HasBrowseButton)
         {
-            var box = new TextBox { FontSize = 12 };
+            var box = new TextBox { FontSize = 12, CornerRadius = new CornerRadius(4) };
             Anchor("ParamBox_" + p.Key, box);
             WireBoxToParameter(box, p);
             var browse = new Button
             {
                 Content = "…",
                 Padding = new Thickness(8, 2, 8, 2),
-                FontSize = 12
+                FontSize = 12,
+                CornerRadius = new CornerRadius(4),
+                Background = Brush("CanvasSurfaceBrush"),
+                BorderBrush = Brush("CanvasBorderBrush"),
+                BorderThickness = new Thickness(1),
+                Foreground = Brush("CanvasTextBrush")
             };
             Anchor("ParamBrowse_" + p.Key, browse);
             // La variante ASÍNCRONA del explorador de rutas (hito 273): este host abre sus pickers desde el
@@ -1041,7 +1096,8 @@ public sealed partial class NodeInspectorPanel : UserControl
                 AcceptsReturn = true,
                 Height = 72,
                 TextWrapping = TextWrapping.Wrap,
-                FontSize = 12
+                FontSize = 12,
+                CornerRadius = new CornerRadius(4)
             };
             ScrollViewer.SetVerticalScrollBarVisibility(box, ScrollBarVisibility.Auto);
             Anchor("ParamBox_" + p.Key, box);
@@ -1051,7 +1107,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         else
         {
             // Texto estándar y número: una caja (el número deja la validación al nodo, igual que la ficha).
-            var box = new TextBox { FontSize = 12 };
+            var box = new TextBox { FontSize = 12, CornerRadius = new CornerRadius(4) };
             Anchor("ParamBox_" + p.Key, box);
             WireBoxToParameter(box, p);
             editor = box;
@@ -1096,7 +1152,16 @@ public sealed partial class NodeInspectorPanel : UserControl
             root.Children.Add(copyRow);
         }
 
-        return root;
+        return new Border
+        {
+            Background = Brush("CanvasSurfaceBrush"),
+            BorderBrush = Brush("CanvasBorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(10, 8, 10, 8),
+            Margin = new Thickness(0, 2, 0, 4),
+            Child = root
+        };
     }
 
     /// <summary>
@@ -1221,8 +1286,13 @@ public sealed partial class NodeInspectorPanel : UserControl
         var button = new Button
         {
             Content = glyph,
-            Padding = new Thickness(8, 2, 8, 2),
+            Padding = new Thickness(6, 2, 6, 2),
             FontSize = 11,
+            CornerRadius = new CornerRadius(4),
+            Background = Brush("CanvasSurfaceBrush"),
+            BorderBrush = Brush("CanvasBorderBrush"),
+            BorderThickness = new Thickness(1),
+            Foreground = Brush("CanvasTextBrush"),
             VerticalAlignment = VerticalAlignment.Top,
         };
         button.Click += (_, _) => command.Execute(null);

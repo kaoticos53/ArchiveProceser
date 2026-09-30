@@ -5,6 +5,7 @@ using FileFlow.App.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace FileFlow.App.Uno.Controls;
 

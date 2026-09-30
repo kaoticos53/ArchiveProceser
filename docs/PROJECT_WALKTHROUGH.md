@@ -22,6 +22,47 @@
 
 ## Ventana viva
 
+## [2026-09-30] - Hito 288: Rediseño Visual y Ergonómico de Paneles Laterales (Inspector y Catálogo de Nodos)
+
+### 🎯 El encargo
+«Mejora el aspecto de los paneles laterales: inspector y catálogo de nodos que deberían tener pestañas y no como tienen ahora como botones sueltos; mejora los márgenes que todo está muy pegado a los bordes y la organización de los formularios que se ven desordenados y sin forma; en el catálogo de nodos el icono y el nombre del nodo o categoría a menudo está desalineado; el catálogo de nodos no sigue los colores del tema quedando muchas veces las letras ilegibles. Analiza todo esto y crea un plan detallado para mejorar la interface de usuario de forma que sea más atractiva y ordenada.»
+
+### 🔬 El diagnóstico
+1. **Catálogo de Nodos (`NodeToolboxPanel`)**:
+   - Cabeceras de categorías y chips tipo píldora tenían fondos y textos sin adaptación dinámica al tema activo (`ThemeResource`), generando ilegibilidad por falta de contraste en temas claros/oscuros.
+   - En la lista de nodos, los iconos vectoriales `PathIcon` flotaban en un `StackPanel` horizontal sin contenedor delimitado, produciendo desalineación vertical y descentrado respecto al nombre, rol y descripción.
+   - Cabeceras de acordeón de categorías con icono y contador desalineados.
+2. **Inspector de Nodos (`NodeInspectorPanel`)**:
+   - Conmutador de secciones implementado con botones `RadioButton` sueltos en fila, sin apariencia de pestaña o control segmentado moderno.
+   - Márgenes y paddings muy estrechos (`12,10,10,10`), provocando sensación de ahogo contra el borde de la ventana y el splitter.
+   - Los parámetros del nodo se renderizaban planos en un `StackPanel` sin tarjetas contenedoras ni jerarquía visual.
+   - Botones de acción («…», «✎», «{x}», «🎬», «🔑») con esquinas rectas y sin estilo armonizado.
+
+### 🧱 El arreglo
+- **Catálogo de Nodos (`NodeToolboxPanel.xaml`)**:
+  - Chips de categoría rediseñados como píldoras (`CornerRadius="12"`) con `ThemeResource` dinámico (`CanvasCardBrush`, `CanvasSecondaryBrush`, `CanvasBorderBrush`).
+  - Cabeceras de categorías de acordeón con icono en contenedor cuadrado de `20x20px` (`CornerRadius="4"`) y badge redondeado para el contador (`CornerRadius="8"`, padding `6,1`).
+  - Tarjetas de nodo con contenedor cuadrado redondeado de `28x28px` (`CornerRadius="6"`) para el icono, alineado vertical y horizontalmente al centro, eliminando cualquier descuadre con el texto.
+  - Tipografía refinada: nombres de nodo con peso `Medium`, badges de rol en `CanvasAccentGlowBrush` (`SemiBold`) y descripciones con opacidad cuidada.
+- **Inspector de Nodos (`NodeInspectorPanel.xaml.cs`)**:
+  - Tira de pestañas envuelta en un contenedor segmentado `tabContainer` con fondo `CanvasBgDarkBrush`, `CornerRadius="8"`, padding `3px` y margen inferior espaciado.
+  - Implementado `UpdateTabButtonStyle(RadioButton, bool)` que estiliza la pestaña activa con pastilla elevada (`CanvasCardBrush`, borde sutil y texto acentuado) y las inactivas transparentes.
+  - Cabecera rediseñada con mayor jerarquía (`FontSize="14"`, `FontWeight="Bold"`), botón `Probar` primario (`CornerRadius="6"`, fondo acento) y botón `Cerrar` con borde sutil.
+  - Parámetros organizados en tarjetas individuales (`Border` con `CanvasSurfaceBrush`, `CornerRadius="6"`, `CanvasBorderBrush` y padding `10,8`).
+  - Cajas de texto y botones de acción («…», «✎», «{x}», «🎬», «🔑») con `CornerRadius="4"` homogéneo y bordes sutiles.
+  - Padding general del panel ampliado a `16,14,16,14` para dar respiración al panel.
+- **Ventana Principal (`MainWindow.xaml`)**:
+  - Sustituidos estilos estáticos y colores hexadecimales hardcodeados (`#161B22`, `#F0F6FC`) en Toolbox y StatusBar por tokens dinámicos (`{ThemeResource CanvasSurfaceBrush}`, `{ThemeResource CanvasBgDarkBrush}`, `{ThemeResource CanvasTextBrush}`).
+
+### 📊 Validación del estado
+- **Host Uno (`FileFlow.Uno.slnx`)**: Compila limpio con 0 errores.
+- **Suite de pruebas (`FileFlow.Tests`)**: **1.740 pruebas superadas, 0 fallos, 1 omitida** (100% de éxito).
+- **Sondeos en runtime del Host Uno**:
+  - `.\run-uno-fast.ps1 -SelfCheck`: **VERIFICADO** (83 comprobaciones `[OK]`, lienzo y paneles).
+  - `.\run-uno-fast.ps1 -SelfCheckControlBar`: **VERIFICADO** (ciclo del motor y menú principal).
+  - `.\run-uno-fast.ps1 -SelfCheckSettings`: **VERIFICADO** (superficie de ajustes y temas).
+  - `.\run-uno-fast.ps1 -SelfCheckDialogs`: **VERIFICADO** (diálogos modales y paneles de nodo).
+
 ## [2026-09-29] - Hito 287: Supr se Lleva la Selección Entera — Nodos y Cables — de Una Sola Vez
 
 ### 🎯 El encargo

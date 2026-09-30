@@ -13,6 +13,22 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ## 0. Hito más reciente
 
+- **288. Rediseño Visual y Ergonómico de Paneles Laterales (Inspector y Catálogo de Nodos) (2026-09-30)**:
+  - **El encargo**: Mejorar el aspecto visual y la ergonomía de los paneles laterales: transformar botones sueltos en un sistema de pestañas segmentado, corregir márgenes/paddings ahogados contra los splitters, estructurar los formularios de parámetros en tarjetas ordenadas, resolver la desalineación de iconos y textos en el catálogo de nodos, y garantizar contraste y adaptación dinámica al tema activo (`ThemeResource`).
+  - **Acciones realizadas**:
+    - **Catálogo de Nodos (`NodeToolboxPanel.xaml`)**: Chips de categorías rediseñados como píldoras (`CornerRadius="12"`) con `ThemeResource` dinámico (`CanvasCardBrush`, `CanvasSecondaryBrush`, `CanvasBorderBrush`). Iconos de nodo envueltos en contenedores cuadrados redondeados de `28x28px` (`CornerRadius="6"`) perfectamente centrados. Cabeceras de categorías acordeón con contenedor cuadrado de `20x20px` para el icono y badge redondeado (`CornerRadius="8"`, padding `6,1`) para el recuento. Tipografía con jerarquía semántica (`Medium` para nombres, `SemiBold` en acento para roles).
+    - **Inspector de Nodos (`NodeInspectorPanel.xaml.cs`)**: Conmutador de secciones reestructurado como pestañas segmentadas dentro de `tabContainer` con fondo `CanvasBgDarkBrush`, `CornerRadius="8"`, padding `3px` y margen inferior espaciado. Estilizado dinámico en `UpdateTabButtonStyle(RadioButton, bool)` para pastilla activa y botones transparentes inactivos. Parámetros agrupados en tarjetas individuales (`Border` con `CanvasSurfaceBrush`, `CornerRadius="6"`, `CanvasBorderBrush` y padding `10,8`). Botones de acción («…», «✎», «{x}», «🎬», «🔑») con `CornerRadius="4"` y fondos/bordes sutiles. Padding general del panel ampliado a `16,14,16,14`.
+    - **Ventana Principal (`MainWindow.xaml`)**: Eliminados fondos estáticos y colores hexadecimales hardcodeados (`#161B22`, `#F0F6FC`) en Toolbox y StatusBar, sustituyéndolos por tokens dinámicos (`{ThemeResource CanvasSurfaceBrush}`, `{ThemeResource CanvasBgDarkBrush}`, `{ThemeResource CanvasTextBrush}`).
+  - **Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores de compilación.
+    - Suite de pruebas (`dotnet test`): **1.740 pruebas superadas, 0 fallos, 1 omitida** (100% de éxito).
+    - Guardias de mutaciones (`MutationDeclarationGuardTests`): 9/9 superadas (actualizado snippet del botón de acción en `mutations/acciones-del-nodo-que-solo-se-pulsan-desde-la-tarjeta.json`).
+    - Sondeos en runtime del Host Uno (`.\run-uno-fast.ps1`):
+      - `-SelfCheck`: **VERIFICADO** (83 comprobaciones `[OK]`, lienzo y paneles).
+      - `-SelfCheckControlBar`: **VERIFICADO** (ciclo del motor y menú principal).
+      - `-SelfCheckSettings`: **VERIFICADO** (superficie de ajustes y temas).
+      - `-SelfCheckDialogs`: **VERIFICADO** (diálogos modales y paneles de nodo).
+
 - **285. Purga Total de Avalonia y Consolidación Canónica de Uno Platform (2026-09-29)**:
   - **El encargo**: Eliminar completamente Avalonia de la solución, dejando Uno Platform como único host gráfico multiplataforma y adaptando toda la suite de tests para que pase al 100% en `.NET 10` puro sin dependencias de Avalonia.
   - **🧹 Acciones realizadas**:

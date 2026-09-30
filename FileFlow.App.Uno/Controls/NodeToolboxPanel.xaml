@@ -20,20 +20,6 @@
       <Setter Property="Foreground" Value="{ThemeResource CanvasSecondaryBrush}" />
       <Setter Property="BorderBrush" Value="{ThemeResource CanvasBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Style.Resources>
-        <ResourceDictionary>
-          <SolidColorBrush x:Key="ToggleButtonBackground" Color="#161B22" />
-          <StaticResource x:Key="ToggleButtonBackgroundChecked" ResourceKey="CanvasAccentPrimaryBrush" />
-          <StaticResource x:Key="ToggleButtonForegroundChecked" ResourceKey="CanvasOnAccentBrush" />
-          <StaticResource x:Key="ToggleButtonBorderBrushChecked" ResourceKey="CanvasAccentPrimaryBrush" />
-          <StaticResource x:Key="ToggleButtonBackgroundCheckedPointerOver" ResourceKey="CanvasAccentGlowBrush" />
-          <StaticResource x:Key="ToggleButtonForegroundCheckedPointerOver" ResourceKey="CanvasOnAccentBrush" />
-          <StaticResource x:Key="ToggleButtonBorderBrushCheckedPointerOver" ResourceKey="CanvasAccentGlowBrush" />
-          <StaticResource x:Key="ToggleButtonBackgroundPointerOver" ResourceKey="CanvasCardBrush" />
-          <StaticResource x:Key="ToggleButtonForegroundPointerOver" ResourceKey="CanvasTextBrush" />
-          <StaticResource x:Key="ToggleButtonBorderBrushPointerOver" ResourceKey="CanvasAccentGlowBrush" />
-        </ResourceDictionary>
-      </Style.Resources>
     </Style>
 
     <!-- Estilo para encabezado de grupo acordeón -->

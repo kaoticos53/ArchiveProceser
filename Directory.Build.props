@@ -15,10 +15,14 @@
   <!-- HOST DE UI CANÓNICO: Uno Platform (WinUI 3 / Multiplataforma)        -->
   <!-- =================================================================== -->
   <PropertyGroup>
-    <FileFlowUnoHost>true</FileFlowUnoHost>
-    <FileFlowDesktopToolkit>false</FileFlowDesktopToolkit>
-    <!-- Los plugins y nodos operan desacoplados de toolkits pesados obsoletos -->
-    <DefineConstants>$(DefineConstants);FILEFLOW_NO_DESKTOP_TOOLKIT</DefineConstants>
+    <FileFlowUnoHost Condition="'$(FileFlowUnoHost)' == '' and '$(SolutionFileName)' == 'FileFlow.Uno.slnx'">true</FileFlowUnoHost>
+    <FileFlowUnoHost Condition="'$(FileFlowUnoHost)' == ''">false</FileFlowUnoHost>
+
+    <FileFlowDesktopToolkit Condition="'$(FileFlowUnoHost)' == 'true'">false</FileFlowDesktopToolkit>
+    <FileFlowDesktopToolkit Condition="'$(FileFlowDesktopToolkit)' == ''">true</FileFlowDesktopToolkit>
+
+    <!-- La constante que lee el nodo: sin el toolkit del escritorio no hay ventana que montar. -->
+    <DefineConstants Condition="'$(FileFlowDesktopToolkit)' == 'false'">$(DefineConstants);FILEFLOW_NO_DESKTOP_TOOLKIT</DefineConstants>
   </PropertyGroup>
 
 

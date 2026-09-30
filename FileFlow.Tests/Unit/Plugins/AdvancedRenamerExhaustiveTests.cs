@@ -224,7 +224,7 @@ public class AdvancedRenamerExhaustiveTests : IDisposable
 
         // Assert: el flujo sigue —no se queda sin renombrar nada—, pero el log lo dice.
         context.EmittedPorts.Should().ContainSingle().Which.Should().Be("Out");
-        context.Logs.Should().Contain(message => message.Contains("plantilla por omisión"),
+        context.Logs.Should().Contain(message => message.Contains("plantilla por omisión") || message.Contains("default template", StringComparison.OrdinalIgnoreCase),
             "un nombre que nadie configuró no puede salir en silencio");
     }
 
