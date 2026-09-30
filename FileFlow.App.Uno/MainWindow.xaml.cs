@@ -116,23 +116,38 @@ public sealed partial class MainWindow : Window
     internal PanelSplitter FrameToolboxSplitter => ToolboxSplitter;
     internal ColumnDefinition FrameToolboxColumn => ToolboxColumn;
     internal ColumnDefinition FrameCanvasColumn => CanvasColumn;
+    internal ColumnDefinition FrameInspectorColumn => InspectorColumn;
 
     /// <summary>
     /// Aplica la visibilidad del panel al marco entero: la ficha plegada se lleva su columna (a ancho cero) y su
     /// asa, y al abrirse vuelve al ancho que el usuario le había dado —no al de fábrica—.
     /// </summary>
-    private void ApplyInspectorVisibility(bool isOpen)
+    internal void ApplyInspectorVisibility(bool isOpen)
     {
-        if (isOpen && InspectorColumn.ActualWidth > 0)
+        if (!isOpen && InspectorColumn.ActualWidth > 0)
         {
             _inspectorWidthBeforeCollapse = InspectorColumn.ActualWidth;
+        }
+        else if (!isOpen && InspectorColumn.Width.IsAbsolute && InspectorColumn.Width.Value > 0)
+        {
+            _inspectorWidthBeforeCollapse = InspectorColumn.Width.Value;
         }
 
         Inspector.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
         InspectorSplitter.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
-        InspectorColumn.Width = isOpen
-            ? new GridLength(_inspectorWidthBeforeCollapse, GridUnitType.Pixel)
-            : new GridLength(0, GridUnitType.Pixel);
+
+        if (isOpen)
+        {
+            InspectorColumn.MinWidth = 220;
+            InspectorColumn.MaxWidth = 750;
+            double targetWidth = Math.Clamp(_inspectorWidthBeforeCollapse, 220, 750);
+            InspectorColumn.Width = new GridLength(targetWidth, GridUnitType.Pixel);
+        }
+        else
+        {
+            InspectorColumn.MinWidth = 0;
+            InspectorColumn.Width = new GridLength(0, GridUnitType.Pixel);
+        }
     }
 
     /// <summary>

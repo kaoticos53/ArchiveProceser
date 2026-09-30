@@ -13,6 +13,22 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ## 0. Hito más reciente
 
+- **289. Reclamación de Espacio del Lienzo al Cerrar Inspector y Pestañas Reales sin Glifo Circular (2026-09-30)**:
+  - **El encargo**: Resolver la no recuperación de espacio en el lienzo cuando se cierra el panel lateral inspector y transformar los selectores de páginas del inspector en pestañas auténticas en lugar de radio botones con glifo circular.
+  - **Acciones realizadas**:
+    - **Reclamación de Espacio (`MainWindow.xaml.cs`)**: `ApplyInspectorVisibility` actualizado para fijar `InspectorColumn.MinWidth = 0` y `Width = 0` al cerrarse (`isOpen == false`), lo que permite que la columna de Grid del lienzo (`CanvasColumn`, `Width="*"`) recupere los 305px del inspector y el splitter de inmediato. Al reabrirse (`isOpen == true`), restaura `MinWidth = 220`, `MaxWidth = 750` y el ancho previo fijado por el usuario.
+    - **Pestañas Auténticas (`App.xaml` y `NodeInspectorPanel.xaml.cs`)**: Eliminado el glifo circular de `RadioButton` mediante la declaración de `InspectorTabRadioButtonStyle` en `App.xaml` y la factoría `GetTabButtonTemplate()` en C# sustituyendo la plantilla por un `Border` con `ContentPresenter` limpio. Conmutador de secciones estructurado como pestañas/pastillas en `tabContainer` con fondo oscuro, borde sutil de 1px y esquinas redondeadas. Pestaña activa resaltada con fondo `CanvasCardBrush`, borde sutil y texto en acento primario `SemiBold`. Pestañas inactivas transparentes con borde de 1px estabilizador y feedback hover.
+    - **Sonda en Runtime (`SelfCheckFrame.cs`)**: Nueva comprobación que cierra el inspector, valida que la columna colapsa a 0px y que el lienzo se expande de 1040 a 1345px (+305px), reabre el panel y confirma la restitución exacta de sus 300px previos.
+  - **Validación del estado**:
+    - `FileFlow.Uno.slnx`: 0 errores de compilación.
+    - Sondeos en runtime de Uno (`.\run-uno-fast.ps1`):
+      - `-SelfCheck`: **VERIFICADO** (0 fallos, código 0; sonda del marco confirma recuperación del lienzo).
+      - `-SelfCheckControlBar`: **VERIFICADO** (código 0).
+      - `-SelfCheckSettings`: **VERIFICADO** (código 0).
+      - `-SelfCheckDialogs`: **VERIFICADO** (código 0).
+    - Guardias Uno (`FileFlow.Tests`): 145/145 superadas (100%).
+    - Mutaciones (`MutationDeclarationGuardTests`): 16/16 superadas (100%).
+
 - **288. Rediseño Visual y Ergonómico de Paneles Laterales (Inspector y Catálogo de Nodos) (2026-09-30)**:
   - **El encargo**: Mejorar el aspecto visual y la ergonomía de los paneles laterales: transformar botones sueltos en un sistema de pestañas segmentado, corregir márgenes/paddings ahogados contra los splitters, estructurar los formularios de parámetros en tarjetas ordenadas, resolver la desalineación de iconos y textos en el catálogo de nodos, y garantizar contraste y adaptación dinámica al tema activo (`ThemeResource`).
   - **Acciones realizadas**:

@@ -61,6 +61,18 @@ internal static class SelfCheckFrame
             window.Content.UpdateLayout();
             check(Math.Abs(marco.FrameToolboxColumn.ActualWidth - start) < 0.51,
                 $"el asa devuelve la columna a su ancho de partida: {marco.FrameToolboxColumn.ActualWidth:F0} (era {start:F0})");
+
+            // Comprobación de que cerrar el inspector devuelve el espacio al lienzo (reclamación de espacio)
+            double canvasBeforeCollapse = marco.FrameCanvasColumn.ActualWidth;
+            double inspectorWidthBefore = marco.FrameInspectorColumn.ActualWidth;
+            marco.ApplyInspectorVisibility(false);
+            window.Content.UpdateLayout();
+            check(marco.FrameInspectorColumn.ActualWidth < 0.51 && marco.FrameCanvasColumn.ActualWidth > canvasBeforeCollapse + (inspectorWidthBefore - 1),
+                $"al cerrar el inspector la columna colapsa a 0 y el lienzo recupera su espacio: lienzo {canvasBeforeCollapse:F0} -> {marco.FrameCanvasColumn.ActualWidth:F0} (+{marco.FrameCanvasColumn.ActualWidth - canvasBeforeCollapse:F0}px)");
+            marco.ApplyInspectorVisibility(true);
+            window.Content.UpdateLayout();
+            check(Math.Abs(marco.FrameInspectorColumn.ActualWidth - inspectorWidthBefore) < 0.51,
+                $"al reabrir el inspector recupera su ancho previo: {marco.FrameInspectorColumn.ActualWidth:F0}px (era {inspectorWidthBefore:F0}px)");
         }
         else
         {

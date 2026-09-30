@@ -279,6 +279,12 @@ public sealed partial class NodeInspectorPanel : UserControl
         _diffPane = panes[4] as ScrollViewer;
         _telemetryPane = panes[5] as ScrollViewer;
 
+        Style? tabStyle = null;
+        if (Application.Current?.Resources.TryGetValue("InspectorTabRadioButtonStyle", out object? styleObj) == true)
+        {
+            tabStyle = styleObj as Style;
+        }
+
         for (int i = 0; i < InspectorTabs.Length; i++)
         {
             var (key, fallback, aid) = InspectorTabs[i];
@@ -287,14 +293,39 @@ public sealed partial class NodeInspectorPanel : UserControl
             {
                 GroupName = "InspectorSections",
                 FontSize = 11,
-                Padding = new Thickness(8, 4, 8, 4),
+                Padding = new Thickness(10, 5, 10, 5),
                 CornerRadius = new CornerRadius(6),
                 Content = loc.GetString(key, fallback),
-                IsChecked = i == 0
+                IsChecked = i == 0,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center
             };
+            if (tabStyle is not null)
+            {
+                button.Style = tabStyle;
+            }
+            else
+            {
+                button.Template = GetTabButtonTemplate();
+            }
+
             UpdateTabButtonStyle(button, i == 0);
             AutomationProperties.SetAutomationId(button, aid);
             button.Click += (_, _) => ShowTab(index);
+            button.PointerEntered += (s, _) =>
+            {
+                if (s is RadioButton rb && rb.IsChecked != true)
+                {
+                    rb.Foreground = Brush("CanvasTextBrush");
+                }
+            };
+            button.PointerExited += (s, _) =>
+            {
+                if (s is RadioButton rb && rb.IsChecked != true)
+                {
+                    rb.Foreground = Brush("CanvasSecondaryBrush");
+                }
+            };
             _tabButtons[i] = button;
             _tabStrip.Children.Add(button);
 
@@ -307,6 +338,8 @@ public sealed partial class NodeInspectorPanel : UserControl
         var tabContainer = new Border
         {
             Background = Brush("CanvasBgDarkBrush"),
+            BorderBrush = Brush("CanvasBorderBrush"),
+            BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(3),
             Margin = new Thickness(0, 2, 0, 10),
@@ -431,6 +464,32 @@ public sealed partial class NodeInspectorPanel : UserControl
         }
     }
 
+    private static ControlTemplate? _tabButtonTemplate;
+    private static ControlTemplate GetTabButtonTemplate()
+    {
+        if (_tabButtonTemplate is not null)
+        {
+            return _tabButtonTemplate;
+        }
+
+        const string xaml = @"<ControlTemplate xmlns=""http://schemas.microsoft.com/winfx/2006/xaml/presentation"" TargetType=""RadioButton"">
+            <Border x:Name=""RootBorder""
+                    Background=""{TemplateBinding Background}""
+                    BorderBrush=""{TemplateBinding BorderBrush}""
+                    BorderThickness=""{TemplateBinding BorderThickness}""
+                    CornerRadius=""{TemplateBinding CornerRadius}""
+                    Padding=""{TemplateBinding Padding}"">
+                <ContentPresenter x:Name=""ContentPresenter""
+                                  Content=""{TemplateBinding Content}""
+                                  HorizontalAlignment=""{TemplateBinding HorizontalContentAlignment}""
+                                  VerticalAlignment=""{TemplateBinding VerticalContentAlignment}"" />
+            </Border>
+        </ControlTemplate>";
+
+        _tabButtonTemplate = (ControlTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load(xaml);
+        return _tabButtonTemplate;
+    }
+
     private void UpdateTabButtonStyle(RadioButton button, bool isSelected)
     {
         if (isSelected)
@@ -446,7 +505,7 @@ public sealed partial class NodeInspectorPanel : UserControl
             button.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             button.Foreground = Brush("CanvasSecondaryBrush");
             button.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-            button.BorderThickness = new Thickness(0);
+            button.BorderThickness = new Thickness(1);
             button.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
         }
     }

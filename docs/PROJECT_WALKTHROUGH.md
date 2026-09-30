@@ -22,6 +22,41 @@
 
 ## Ventana viva
 
+## [2026-09-30] - Hito 289: Reclamación de Espacio del Lienzo al Cerrar Inspector y Pestañas Reales sin Glifo Circular
+
+### 🎯 El encargo
+«el panel lateral inspector al cerrarlo el camvas donde se pintan los flujos no recupera ese espacio. Los selectores para elejir las paginas que estan en la parte superior del panel ahora son radio botones y deberian ser pestañas.»
+
+### 🔬 El diagnóstico
+1. **Reclamación de espacio en el lienzo**:
+   - En `MainWindow.xaml`, `InspectorColumn` declaraba `MinWidth="220"`. Al plegarse el inspector (`ApplyInspectorVisibility(false)`), se fijaba `InspectorColumn.Width = 0`, pero `MinWidth="220"` seguía activo. En el sistema de layout de WinUI, `MinWidth` tiene precedencia y restringe el ancho efectivo de la columna a `Math.Max(220, 0) = 220px`. Por consiguiente, la columna colapsada seguía reservando un hueco vacío de 220px y la columna del lienzo (`CanvasColumn`, con `Width="*"`) no podía expandirse hasta el extremo derecho de la ventana.
+   - Además, la anchura antes del repliegue sólo se capturaba condicionalmente en `isOpen == true`, perdiendo el ancho real redimensionado por el usuario al cerrarse.
+2. **Selectores de páginas del inspector**:
+   - En `NodeInspectorPanel.xaml.cs`, las secciones («Parámetros», «Snapshots», «Entradas», «Salidas», «Diff», «Telemetría») utilizaban controles `RadioButton` estándar. Aunque se envolvieron en un contenedor con borde y estilo de píldora, la plantilla por defecto (`ControlTemplate`) de WinUI 3 incluye obligatoriamente un glifo circular de selección de radio button (`RootEllipse` / `CheckGlyph`) a la izquierda del texto. Visualmente se presentaban como botones de opción circulares en lugar de pestañas auténticas.
+
+### 🧱 El arreglo
+- **Reclamación de espacio del lienzo (`MainWindow.xaml.cs`)**:
+  - `ApplyInspectorVisibility` actualizado para alternar dinámicamente `MinWidth`:
+    - Al cerrar (`isOpen == false`): guarda el ancho del usuario (`InspectorColumn.ActualWidth`), colapsa el inspector y el splitter, fija `InspectorColumn.MinWidth = 0` y `Width = 0px`. La columna pasa a 0 px y el lienzo (`CanvasColumn`, `Width="*"`) recupera instantáneamente los 300+ px.
+    - Al abrir (`isOpen == true`): restaura `InspectorColumn.MinWidth = 220`, `MaxWidth = 750` y restituye el ancho previo que el usuario tenía fijado (`Math.Clamp(_inspectorWidthBeforeCollapse, 220, 750)`).
+- **Transformación de Selectores en Pestañas Auténticas (`App.xaml` y `NodeInspectorPanel.xaml.cs`)**:
+  - Declarado `InspectorTabRadioButtonStyle` en `App.xaml` y factoría fallback `GetTabButtonTemplate()` en `NodeInspectorPanel.xaml.cs` sustituyendo la plantilla de `RadioButton` por un `Border` con `ContentPresenter` limpio, eliminando por completo el glifo circular.
+  - Conmutador con aspecto de pestaña / píldora de alta fidelidad: contenedor `tabContainer` con fondo `CanvasBgDarkBrush`, borde `1px CanvasBorderBrush`, esquinas redondeadas `8px` y `Padding="3"`.
+  - Pestaña activa resaltada con fondo `CanvasCardBrush`, borde sutil `CanvasBorderBrush`, texto en acento primario (`CanvasAccentPrimaryBrush`), tipografía `SemiBold` y esquinas redondeadas `6px`.
+  - Pestañas inactivas con fondo transparente, borde transparente de 1px (evita saltos subpixel al alternar), texto secundario y feedback sutil al pasar el puntero (`PointerEntered` / `PointerExited`).
+- **Sonda en Runtime (`SelfCheckFrame.cs`)**:
+  - Añadida comprobación de medición que cierra el inspector, verifica que `InspectorColumn.ActualWidth < 0.51` y que `CanvasColumn.ActualWidth` se expande recuperando los 305px (`1040 -> 1345 (+305px)`), y que al reabrirse recupera con exactitud los 300px previos.
+
+### 📊 Validación del estado
+- **Host Uno (`FileFlow.Uno.slnx`)**: Compila limpio con 0 errores.
+- **Sondeo en runtime del Host Uno (`.\run-uno-fast.ps1`)**:
+  - `-SelfCheck`: **VERIFICADO** (0 fallos, salida con código 0; sondeo del marco confirma `lienzo 1040 -> 1345 (+305px)`).
+  - `-SelfCheckControlBar`: **VERIFICADO** (código 0).
+  - `-SelfCheckSettings`: **VERIFICADO** (código 0).
+  - `-SelfCheckDialogs`: **VERIFICADO** (código 0).
+- **Pruebas de guardias Uno (`FileFlow.Tests`)**: **145/145 superadas, 0 fallos** (100%).
+- **Pruebas de mutaciones (`MutationDeclarationGuardTests`)**: **16/16 superadas, 0 fallos** (100%).
+
 ## [2026-09-30] - Hito 288: Rediseño Visual y Ergonómico de Paneles Laterales (Inspector y Catálogo de Nodos)
 
 ### 🎯 El encargo
