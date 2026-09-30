@@ -65,7 +65,7 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
     /// <summary>El color de acento del nodo como <see cref="Windows.UI.Color"/> de WinUI.</summary>
     public Windows.UI.Color AccentBrushColor => ParseHex(_node.AccentColor);
 
-    /// <summary>El radio de esquina del socket según su forma (la misma geometría que el escritorio).</summary>
+    /// <summary>El radio de esquina del socket según su forma (la misma geometría que la versión anterior).</summary>
     public CornerRadius SocketRadius => new(3);
 
     /// <summary>El icono del tipo de nodo (el enum portable del paquete Material.Icons).</summary>
@@ -92,7 +92,7 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
 
     /// <summary>
     /// El glifo del conmutador de parámetros de la cabecera (chevron arriba con el panel desplegado, abajo
-    /// con la tarjeta plegada): el estado es del núcleo —la misma <c>IsExpanded</c> que el escritorio
+    /// con la tarjeta plegada): el estado es del núcleo —la misma <c>IsExpanded</c> que la versión anterior
     /// conmutaba— y la tarjeta sólo lo pinta.
     /// </summary>
     public Microsoft.UI.Xaml.Media.Geometry ExpandIconGeometry
@@ -100,7 +100,7 @@ public sealed class NodeCardViewModel : INotifyPropertyChanged
             _node.IsExpanded ? MaterialIconKind.ChevronUp : MaterialIconKind.ChevronDown);
 
     /// <summary>
-    /// El rótulo del conmutador de la tarjeta. La CLAVE es la del escritorio —su panel sí son parámetros— y el
+    /// El rótulo del conmutador de la tarjeta. La CLAVE es la de la versión anterior —su panel sí son parámetros— y el
     /// TEXTO es el de este host: aquí lo que se despliega son las ACCIONES del nodo, y el diccionario del host
     /// lo dice así en los dos idiomas. La clave se conserva porque es la que audita la guardia de textos
     /// compartidos entre los dos hosts, y el rótulo dice lo que hace ESTE host.

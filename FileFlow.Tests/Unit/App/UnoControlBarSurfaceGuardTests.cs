@@ -52,8 +52,8 @@ public class UnoControlBarSurfaceGuardTests
     private const string DialogKeysCode = "FileFlow.Sdk/Services/IWindowService.cs";
 
     /// <summary>
-    /// El «Ejecutar» del host y su canal observable: el botón ejecuta la MISMA orden del núcleo que el
-    /// escritorio, canta su ancla para la observación externa y el ciclo deja su línea donde un observador sin
+    /// El «Ejecutar» del host y su canal observable: el botón ejecuta la MISMA orden del núcleo que la
+    /// versión anterior, canta su ancla para la observación externa y el ciclo deja su línea donde un observador sin
     /// UIAccess puede leerla. Este caso vivía en la guardia del panel del inspector (de donde salió en el
     /// reorden del hito 276): su sujeto es la barra de control y la franja de estado, no la ficha.
     /// </summary>
@@ -65,7 +65,7 @@ public class UnoControlBarSurfaceGuardTests
         window.Should().Contain(
             "controlBar.ExecuteWorkflowCommand.ExecuteAsync(null)",
             "el Ejecutar del host Uno es el MISMO comando del ControlBar del núcleo que el botón " +
-            "del escritorio: una segunda vía de ejecución duplicaría la orquestación (coordinador, " +
+            "de la versión anterior: una segunda vía de ejecución duplicaría la orquestación (coordinador, " +
             "dry-run, checkpoint) que la suite ya defiende");
 
         window.Should().Contain(
@@ -155,7 +155,7 @@ public class UnoControlBarSurfaceGuardTests
     }
 
     /// <summary>
-    /// El ESTUDIO DE TEMAS es la ventana que más se apoya en el escritorio, así que declara sus partes
+    /// El ESTUDIO DE TEMAS es la ventana que más se apoya en la versión anterior, así que declara sus partes
     /// pendientes en su propia tabla: las DOS órdenes que necesitan el selector de fichero SÍNCRONO (que desde
     /// el hilo de UI devuelve nulo) y la vista previa en vivo. La guardia exige que estén declaradas y que NO
     /// estén dibujadas —un botón cuyo destino no existe sería la mentira con forma de botón que el proyecto no
@@ -171,7 +171,7 @@ public class UnoControlBarSurfaceGuardTests
         body.Should().Contain("internal static readonly (string Part, string Reason)[] DeclaredPendingParts");
         foreach (string part in new[] { "ExportThemeAsyncCommand", "ImportThemeAsyncCommand", "LivePreviewResources" })
         {
-            body.Should().Contain(part, $"la parte {part} del estudio del escritorio tiene que estar declarada con su razón");
+            body.Should().Contain(part, $"la parte {part} del estudio de la versión anterior tiene que estar declarada con su razón");
             view.Should().NotContain(part, $"y no puede estar además dibujada en la vista: si ya está, se quita de la tabla");
         }
 
@@ -201,7 +201,7 @@ public class UnoControlBarSurfaceGuardTests
 
     /// <summary>
     /// El AVISO DE ACTUALIZACIÓN tiene que estar alimentado por alguien: el host comprueba las actualizaciones
-    /// al arrancar (la misma mitad del escritorio) y ese resultado es el que enciende el distintivo. Sin la
+    /// al arrancar (la misma mitad de la versión anterior) y ese resultado es el que enciende el distintivo. Sin la
     /// comprobación, el distintivo no se enciende nunca y el aviso que el host ya sirve no lo pide nadie.
     /// </summary>
     [Fact]
@@ -215,7 +215,7 @@ public class UnoControlBarSurfaceGuardTests
             "el arranque del host tiene que ARRANCAR la comprobación de actualizaciones: definirla y no "
             + "llamarla deja el aviso invisible para siempre");
         app.Should().Contain("CheckForUpdatesAsync(",
-            "y la comprobación tiene que ser la del servicio del núcleo, la misma que la del escritorio");
+            "y la comprobación tiene que ser la del servicio del núcleo, la misma que la de la versión anterior");
         app.Should().Contain("ApplyPendingUpdate(",
             "y entregar la novedad a la ventana, que es quien tiene el view model de la barra");
         app.Should().Contain("StartsWith(\"--selfcheck\"",
@@ -225,7 +225,7 @@ public class UnoControlBarSurfaceGuardTests
         Code(WindowCode).Should().Contain("internal void ApplyPendingUpdate(",
             "la ventana es la que tiene el ControlBar del núcleo y la que puede encender el distintivo");
         Code(WindowCode).Should().Contain("_controlBar?.SetPendingUpdate(info)",
-            "y lo enciende por el MISMO camino del escritorio (ControlBar.SetPendingUpdate)");
+            "y lo enciende por el MISMO camino de la versión anterior (ControlBar.SetPendingUpdate)");
 
         string bar = Code(BarCode);
         bar.Should().Contain("OpenUpdateDialogCommand", "el distintivo ejecuta la orden canónica del aviso");
@@ -345,6 +345,6 @@ public class UnoControlBarSurfaceGuardTests
         // Y la superficie tiene que estar censada en el cajón, que es por donde el usuario la alcanza.
         Code(DrawerCode).Should().Contain("ControlBarDrawerDataSetButton");
         Code(BarCode).Should().Contain("OpenSyntheticDataSetDesignerCommand",
-            "la orden del escritorio tiene que quedar reconocida en el censo del host (cumplida por su canal)");
+            "la orden de la versión anterior tiene que quedar reconocida en el censo del host (cumplida por su canal)");
     }
 }

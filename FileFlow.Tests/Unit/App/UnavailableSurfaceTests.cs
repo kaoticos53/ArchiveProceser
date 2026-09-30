@@ -6,7 +6,7 @@ using Xunit;
 namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
-/// La costura que declara las superficies del toolkit del escritorio (hito 268), medida por su
+/// La costura que declara las superficies del toolkit de la versión anterior (hito 268), medida por su
 /// <b>comportamiento</b> y no por su texto: un nodo compilado para el host Uno no puede construir su ventana,
 /// así que la frontera se dice por los diálogos de quien lo abrió.
 ///
@@ -15,18 +15,18 @@ namespace FileFlow.Tests.Unit.App;
 /// por un canal que el usuario no ve—, el host Uno volvería a tener puertas mudas, y el resto de la suite no
 /// lo notaría (los nodos siguen declarando la frontera en su código).</para>
 /// </summary>
-public class DesktopOnlySurfaceTests
+public class UnavailableSurfaceTests
 {
     [Fact]
     public void DeclaringTheFrontier_ShouldShowItInTheHostDialogs()
     {
         var dialogs = new RecordingDialogService();
 
-        DesktopOnlySurface.Declare(
+        UnavailableSurface.Declare(
             dialogs,
             "Gestor de Contraseñas",
-            "Ventana del host de escritorio",
-            "«Gestor de Contraseñas» se abre en el host de escritorio.");
+            "Función no disponible",
+            "«Gestor de Contraseñas» no está disponible en este host.");
 
         dialogs.WarningMessages.Should().ContainSingle(
             "la frontera se dice UNA vez, en el canal de avisos: quien la alcanza se entera de qué se perdió")
@@ -39,7 +39,7 @@ public class DesktopOnlySurfaceTests
     {
         // Un host sin diálogos (una prueba, un contexto sin ventana) no puede convertir la frontera en una
         // excepción: el nodo sigue su camino y la traza queda escrita.
-        var act = () => DesktopOnlySurface.Declare(null, "X", "Y", "Z");
+        var act = () => UnavailableSurface.Declare(null, "X", "Y", "Z");
 
         act.Should().NotThrow();
     }

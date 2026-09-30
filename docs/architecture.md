@@ -2,7 +2,7 @@
 
 ## 1. Visión General del Sistema
 
-**FileFlow Studio** es una plataforma de automatización y procesamiento masivo de archivos (*Batch File Processing & Workflow Automation System*) desarrollada con **C# 13**, **.NET 9** y **WPF (Windows Presentation Foundation)**. El sistema permite diseñar, simular, depurar y ejecutar flujos de trabajo visuales basados en grafos dirigidos (DAG - *Directed Acyclic Graphs*, tuberías reactivas con buffers, bifurcaciones de control y barreras de sincronización).
+**FileFlow Studio** es una plataforma de automatización y procesamiento masivo de archivos (*Batch File Processing & Workflow Automation System*) desarrollada con **C# 14** y **.NET 10** sobre un único host de **Uno Platform**. El sistema permite diseñar, simular, depurar y ejecutar flujos de trabajo visuales basados en grafos dirigidos (DAG - *Directed Acyclic Graphs*, tuberías reactivas con buffers, bifurcaciones de control y barreras de sincronización).
 
 El proyecto se rige por un **desacoplamiento estricto por capas**, asegurando que los contratos base (`FileFlow.Sdk`) sean puros y reutilizables, independientes de la lógica de presentación o dependencias externas pesadas.
 
@@ -12,8 +12,8 @@ El proyecto se rige por un **desacoplamiento estricto por capas**, asegurando qu
 
 ```mermaid
 graph TD
-    subgraph Capa_Presentacion ["Capa de Presentación (FileFlow.App)"]
-        UI["WPF UI (Nodify / MVVM / Virtualized DataGrid)"]
+    subgraph Capa_Presentacion ["Capa de Presentación (FileFlow.App.Uno)"]
+        UI["Uno Platform UI (lienzo DAG / MVVM / Virtualized DataGrid)"]
         VM["ViewModels (Main, Editor, Node, ControlBar, Log)"]
         CV["ValueConverters (LogLevel, Badges, EnumToBool)"]
         UI --> VM
@@ -78,7 +78,7 @@ graph TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UI as WPF Editor / Nodify
+    participant UI as Uno Platform Editor / lienzo DAG
     participant Exec as WorkflowExecutor
     participant Telemetry as SqliteLogStore (In-Memory)
     participant NodeA as FolderSourceNode
@@ -125,7 +125,7 @@ sequenceDiagram
 - **Propósito**: Ejecución determinista del DAG, resolución de dependencias topológicas, paralelismo adaptativo y almacenamiento analítico de logs.
 - **Componentes Clave**:
   - `WorkflowExecutor`: Motor de ejecución asíncrono no bloqueante con soporte para sub-grafos, paralelismo multinúcleo configurable, puntos de interrupción (*Breakpoints*), activación automática del store VFS ante flujos virtuales y silenciado selectivo de logs.
-  - `VirtualFileSystemStore`: Almacén VFS thread-safe con `System.Threading.Lock` de .NET 9, resolución incremental de colisiones, generador de árbol ASCII y exportador sandbox a disco.
+  - `VirtualFileSystemStore`: Almacén VFS thread-safe con `System.Threading.Lock` de .NET 10, resolución incremental de colisiones, generador de árbol ASCII y exportador sandbox a disco.
   - `SqliteLogStore`: Motor analítico y almacén de logs estructurados en memoria de ultra-alto rendimiento basado en SQLite (`:memory:`). Emplea canal no bloqueante `Channel<StructuredLogRecord>`, inserción transaccional por lotes en una conexión persistente `_keepAliveConnection` protegida por `System.Threading.Lock`, alcanzando más de 82.000 logs/segundo.
   - `PluginLoader`: Cargador dinámico de extensiones basado en `AssemblyLoadContext` aislado, capaz de descubrir e instanciar nodos desde ensamblados externos.
   - `FolderWatcherService`: Servicio de monitorización reactiva de directorios basado en `FileSystemWatcher` con amortiguación anti-rebote (*debounce*) y control de bloqueo de lectura.
@@ -141,8 +141,8 @@ Colección modular de 24 nodos de procesamiento organizados por dominio:
 5. **`FileFlow.Plugin.Logic` (5 Nodos)**: `SwitchCaseNode` (enrutamiento condicional multi-rama), `ExpressionFilterNode` (evaluador de expresiones booleanas), `ThrottleDelayNode` (control de caudal temporal), `BatchBufferNode` (acumulación por lotes/tamaño), `ForkJoinBarrierNode` (sincronización de ramas paralelas).
 6. **`FileFlow.Plugin.Hashing` (2 Nodos)**: `HashCalculatorNode` (MD5, SHA1, SHA256, SHA384, SHA512, xxHash3, xxHash64), `DeduplicationFilterNode` (detección de duplicados en tiempo real por firma criptográfica).
 
-### 4.4. `FileFlow.App` (Capa de Presentación WPF / MVVM)
-- **Propósito**: Interfaz de usuario rica, reactiva y accesible construida sobre el patrón MVVM y la biblioteca de grafos Nodify.
+### 4.4. `FileFlow.App.Uno` (Capa de Presentación Uno Platform / MVVM)
+- **Propósito**: Interfaz de usuario rica, reactiva y accesible construida sobre el patrón MVVM y el lienzo DAG propio del host.
 - **Componentes Clave**:
   - `EditorView` & `EditorViewModel`: Lienzo visual interactivo con soporte de drag & drop, conexión de pines, zoom infinito, minimapa y control visual de ejecución.
   - `LogView` & `LogViewModel`: Consola de telemetría moderna y compacta con virtualización completa (`Recycling`), selector de filtros por severidad con contadores en vivo, input de búsqueda instantáneo con borrado rápido (`✕`), pill badges translúcidos, alineación vertical uniforme (`RowHeight="24"`), y acordeón de detalles JSON con botón de **Trazabilidad** por `#ShortItemId`.
@@ -209,9 +209,9 @@ sin perder un solo cable (`WorkflowExamplesValidationTests`).
 
 ## 6. Registros de Decisiones Arquitectónicas (ADRs)
 
-### ADR-001: Adopción de .NET 9 y C# 13
+### ADR-001: Adopción de .NET 10 y C# 14
 - **Contexto**: El procesamiento masivo de archivos requiere máxima eficiencia de memoria, paralelismo sin sobrecarga y sincronización ligera.
-- **Decisión**: Utilizar `net9.0` con `<LangVersion>13</LangVersion>`, `<Nullable>enable</Nullable>` y las nuevas primitivas `System.Threading.Lock`.
+- **Decisión**: Utilizar `net10.0` con `<LangVersion>13</LangVersion>`, `<Nullable>enable</Nullable>` y las nuevas primitivas `System.Threading.Lock`.
 - **Consecuencias**: Código más seguro frente a nulos, menor presión en el Garbage Collector y rendimiento I/O optimizado mediante `ValueTask` y `IAsyncEnumerable`.
 
 ### ADR-002: Telemetría Analítica en Memoria con SQLite In-Memory
@@ -220,7 +220,7 @@ sin perder un solo cable (`WorkflowExamplesValidationTests`).
 - **Consecuencias**: Búsquedas e indexación instantáneas sin I/O en disco, rendimiento >82.000 logs/segundo y desacoplamiento total entre los hilos de trabajo y el hilo de la UI.
 
 ### ADR-003: Pureza Absoluta de `FileFlow.Sdk`
-- **Contexto**: Los desarrolladores de plugins necesitan una base estable sin arrastrar dependencias pesadas de UI (WPF) o librerías externas innecesarias.
+- **Contexto**: Los desarrolladores de plugins necesitan una base estable sin arrastrar dependencias pesadas de UI (Uno Platform) o librerías externas innecesarias.
 - **Decisión**: Mantener `FileFlow.Sdk` exclusivamente con dependencias del BCL estándar de .NET.
 - **Consecuencias**: Facilidad para crear nuevos plugins, pruebas unitarias ultrarrápidas y arquitectura desacoplada y mantenible.
 
@@ -231,20 +231,20 @@ sin perder un solo cable (`WorkflowExamplesValidationTests`).
 
 ### ADR-005: Localización Dinámica e Internacionalización de la Interfaz (i18n)
 - **Contexto**: La aplicación debe ser accesible globalmente permitiendo cambiar entre múltiples idiomas (actualmente Español e Inglés) sin reiniciar el software ni comprometer la claridad del código técnico.
-- **Decisión**: Mantener los nombres de variables, identificadores de claves (`Key`), contratos de plugins y serialización en inglés puro, mientras que la interfaz de usuario (`FileFlow.App`) proyecta exclusivamente textos localizados consumiendo `LocalizationManager.Instance` (con soporte reactivo de indexers `"Item[]"` en WPF) y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
+- **Decisión**: Mantener los nombres de variables, identificadores de claves (`Key`), contratos de plugins y serialización en inglés puro, mientras que la interfaz de usuario (`FileFlow.App.Uno`) proyecta exclusivamente textos localizados consumiendo `LocalizationManager.Instance` (con soporte reactivo de indexers `"Item[]"` en Uno Platform) y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
 - **Consecuencias**: Experiencia de usuario enriquecida y natural en el idioma de preferencia, con total reactividad en caliente en pantallas, diálogos, menús y tarjetas de nodos del lienzo.
 
 ### ADR-006: Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins)
-- **Contexto**: Acoplar código de nodos, ventanas modales, configuraciones o cadenas de texto localizadas (i18n) dentro del proyecto principal de la aplicación (`FileFlow.App`) viola el Principio Abierto/Cerrado (OCP), contamina la aplicación host y dificulta la creación, mantenimiento y distribución independiente de extensiones.
+- **Contexto**: Acoplar código de nodos, ventanas modales, configuraciones o cadenas de texto localizadas (i18n) dentro del proyecto principal de la aplicación (`FileFlow.App.Uno`) viola el Principio Abierto/Cerrado (OCP), contamina la aplicación host y dificulta la creación, mantenimiento y distribución independiente de extensiones.
 - **Decisión**: **Todo el código y los recursos asociados a cada plugin o nodo DEBEN residir al 100% dentro del propio directorio del plugin (`FileFlow.Plugin.*`)**. Esto incluye:
   1. Clases de nodo (`IFlowNode`) y lógica de negocio/inferencia.
   2. Ventanas modales, vistas y controles XAML propios (`UI/`).
   3. Servicios auxiliares de dominio y estrategias.
   4. Ficheros de presets o configuraciones (`Config/`).
   5. **Diccionarios de recursos localizados (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** conteniendo los nombres de nodos, descripciones, tooltips y etiquetas de parámetros (`DisplayName`).
-  - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer de navegación, barra de control, barra de estado, consola de logs y ajustes globales).
+  - `FileFlow.App.Uno/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer de navegación, barra de control, barra de estado, consola de logs y ajustes globales).
   - La integración de recursos es automática mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`.
-- **Consecuencias**: Desacoplamiento total (*Zero-Touch en FileFlow.App*). Para añadir, modificar o eliminar un plugin o nodo, únicamente se escribe código en la carpeta del plugin en cuestión, asegurando máxima modularidad y portabilidad.
+- **Consecuencias**: Desacoplamiento total (*Zero-Touch en FileFlow.App.Uno*). Para añadir, modificar o eliminar un plugin o nodo, únicamente se escribe código en la carpeta del plugin en cuestión, asegurando máxima modularidad y portabilidad.
 
 ### ADR-007: Arquitectura de Adaptadores de Modelo para Nodos con IA Intercambiable (Model Adapter Pattern / Zero-Assumption Ingestion)
 - **Contexto**: En nodos con modelos de IA intercambiables (`FileFlow.Plugin.AI`, ej. `ObjectDetectorNode`, `PromptObjectDetectorNode`, `SmartImageClassifierNode`, `BackgroundRemoverNode`, `FaceDetectorNode`), cada arquitectura (YOLO-World / Grounding DINO, Tiny YOLOv3, YOLOv8, MobileNet, RMBG, UltraFace) posee requerimientos únicos de preprocesado (aspect ratio vs letterbox con padding, normalización de canales ImageNet vs [-1..1]), tensores de entrada auxiliares (embeddings semánticos CLIP ViT-B/32, vectores de forma de imagen) y algoritmos de decodificación/NMS. Intentar forzar un pipeline monolítico y genérico genera fallos de detección, desalineación de cajas y resultados inconsistentes.

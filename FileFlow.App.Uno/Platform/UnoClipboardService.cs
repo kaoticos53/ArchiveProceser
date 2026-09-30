@@ -7,7 +7,7 @@ namespace FileFlow.App.Uno.Platform;
 
 /// <summary>
 /// Adaptador de portapapeles implementado sobre Windows.ApplicationModel.DataTransfer (WinRT),
-/// que el host de escritorio Uno expone igual que WinAppSDK. Contrato: <see cref="IClipboardService"/> de Sdk.
+/// que el host Uno en Windows expone igual que WinAppSDK. Contrato: <see cref="IClipboardService"/> de Sdk.
 /// </summary>
 public sealed class UnoClipboardService : IClipboardService
 {

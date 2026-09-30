@@ -11,10 +11,10 @@ $ErrorActionPreference = "Stop"
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
 
-$modeName = if ($FrameworkDependent) { "Framework-Dependent (requiere .NET 9 en el sistema)" } else { "Self-Contained (Autocontenido)" }
+$modeName = if ($FrameworkDependent) { "Framework-Dependent (requiere .NET 10 en el sistema)" } else { "Self-Contained (Autocontenido)" }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  FileFlow Studio - Publicación Multiplataforma (.NET 9)  " -ForegroundColor Cyan
+Write-Host "  FileFlow Studio - Publicación Multiplataforma (.NET 10) " -ForegroundColor Cyan
 Write-Host "  Modo: $modeName" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
@@ -25,7 +25,7 @@ if ($Clean -and (Test-Path $distDir)) {
 }
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
-$appProject = Join-Path $scriptDir "FileFlow.App\FileFlow.App.csproj"
+$appProject = Join-Path $scriptDir "FileFlow.App.Uno\FileFlow.App.Uno.csproj"
 $coreProject = Join-Path $scriptDir "FileFlow.Core\FileFlow.Core.csproj"
 $sdkConfigDir = Join-Path $scriptDir "FileFlow.Sdk\Config"
 

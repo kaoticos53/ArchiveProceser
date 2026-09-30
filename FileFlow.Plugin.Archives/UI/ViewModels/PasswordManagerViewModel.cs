@@ -13,10 +13,10 @@ namespace FileFlow.Plugin.Archives.UI.ViewModels;
 /// línea), cuántas lleva, qué se guarda en el nodo y la lectura/escritura del .txt de importación y exportación.
 ///
 /// <para><b>Por qué existe.</b> Esta lógica vivía en el code-behind de la ventana del plugin —que sólo el host
-/// con el toolkit del escritorio puede montar—, así que ningún otro host podía ofrecer el gestor sin
+/// con el toolkit de UI puede montar—, así que ningún otro host podía ofrecer el gestor sin
 /// reescribirlo (y una segunda copia de la regla es una segunda verdad). Ahora el nodo declara la superficie al
 /// SDK (<see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>) con este view model como contenido:
-/// el escritorio lo pinta en su ventana de Avalonia y un host WinUI en un cuerpo suyo, y los dos escriben la
+/// la versión anterior lo pinta en su ventana nativa del host y un host WinUI en un cuerpo suyo, y los dos escriben la
 /// misma lista en el mismo parámetro del nodo.</para>
 ///
 /// <para><b>Qué decide y qué NO decide la vista.</b> Aquí queda el QUÉ: qué es una clave, cuántas hay, cómo se

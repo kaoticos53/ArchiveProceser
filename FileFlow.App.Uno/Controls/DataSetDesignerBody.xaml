@@ -7,11 +7,11 @@
     xmlns:vm="using:FileFlow.Plugin.FileSystem.UI.ViewModels">
 
   <!--
-    El DISEÑADOR DE DATASETS SINTÉTICOS del host Uno: la misma superficie que la ventana del escritorio
+    El DISEÑADOR DE DATASETS SINTÉTICOS del host Uno: la misma superficie que la ventana de la versión anterior
     (`FileFlow.Plugin.FileSystem/UI/Views/SyntheticDataSetDesignerWindow.axaml`), sobre el MISMO
     `SyntheticDataSetDesignerViewModel` portable que vive en el plugin.
 
-    La frontera que este cuerpo cruza: esa ventana la monta el PROPIO plugin con el toolkit del escritorio, y
+    La frontera que este cuerpo cruza: esa ventana la monta el PROPIO plugin con el toolkit de la versión anterior, y
     un host WinUI no puede montar una ventana ajena. Lo que sí se comparte es la LÓGICA —el view model
     portable, su almacén y su parser—, así que el host pinta aquí su propia vista sobre ella. Ni una regla del
     diseñador se reimplementa: cada botón es un comando del view model y cada dato, una de sus propiedades.

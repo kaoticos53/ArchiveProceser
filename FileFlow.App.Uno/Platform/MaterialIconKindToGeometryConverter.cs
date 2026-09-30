@@ -11,7 +11,7 @@ using Microsoft.UI.Xaml.Media;
 namespace FileFlow.App.Uno.Platform;
 
 /// <summary>
-/// La iconografía del lienzo Uno con <b>los mismos datos</b> que el escritorio: el paquete
+/// La iconografía del lienzo Uno con <b>los mismos datos</b> que la versión anterior: el paquete
 /// <c>Material.Icons</c> (ya referencia del núcleo, donde vive el enum <see cref="MaterialIconKind"/> que
 /// exponen los ViewModels) guarda cada icono como <b>path data SVG</b>, no como font — así que la
 /// mitigación del plan («el font Material Design Icons como recurso del host») se ajusta a lo medido:
@@ -19,9 +19,9 @@ namespace FileFlow.App.Uno.Platform;
 /// <see cref="StreamGeometry"/> que un <see cref="PathIcon"/> de WinUI pinta.
 ///
 /// <para><b>Cómo pinta WinUI</b>: el <see cref="PathIcon"/> estira su geometría al tamaño del control
-/// (estiramiento uniforme, como el <c>MaterialIcon</c> de Avalonia ajusta al suyo), así que los datos en
+/// (estiramiento uniforme, como el <c>MaterialIcon</c> de la interfaz original ajusta al suyo), así que los datos en
 /// su rejilla de diseño de 24×24 entran tal cual — sin transformaciones. El color es el
-/// <c>Foreground</c> del control, igual que en el escritorio.</para>
+/// <c>Foreground</c> del control, igual que en la versión anterior.</para>
 ///
 /// <para><b>Cómo se parsea</b>: WinUI no expone <c>Geometry.Parse</c> (el mini-lenguaje de path lo
 /// procesa el propio parser XAML), así que el parseo va por <see cref="XamlReader.Load"/> de un fragmento
@@ -30,7 +30,7 @@ namespace FileFlow.App.Uno.Platform;
 /// tienen afinidad de hilo y el binding siempre evalúa en ella).</para>
 ///
 /// <para>Es un <see cref="IValueConverter"/> para que el XAML lo cante contra el binding
-/// <c>{Binding Icon}</c> del ViewModel: el mismo modo de consumo que el escritorio
+/// <c>{Binding Icon}</c> del ViewModel: el mismo modo de consumo que la versión anterior
 /// (<c>materialIcons:MaterialIcon Kind="{Binding Icon}"</c>), sin código por tarjeta.</para>
 /// </summary>
 public class MaterialIconKindToGeometryConverter : IValueConverter

@@ -14,7 +14,7 @@ namespace FileFlow.App.Uno.Controls;
 ///
 /// <para><b>Qué es y qué no.</b> El view model —con la lista de claves, su recuento, lo que se guarda en el
 /// parámetro del nodo y la lectura/escritura del .txt— vive en el plugin y lo comparten los dos hosts; lo que
-/// cambia es quién lo pinta. El escritorio monta la ventana del plugin (<c>PasswordManagerWindow</c>, Avalonia);
+/// cambia es quién lo pinta. El host original montaba la ventana del plugin (<c>PasswordManagerWindow</c>);
 /// este host pinta esta vista sobre el MISMO view model, que escribe la MISMA lista en el MISMO parámetro del
 /// nodo. No hay una segunda versión del gestor: hay dos vistas de él.</para>
 ///

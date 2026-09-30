@@ -4,13 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    El EXPLORADOR DEL SISTEMA DE ARCHIVOS VIRTUAL del host Uno: la misma información que la ventana del
-    escritorio (`FileFlow.App/Views/Components/VirtualFileSystemExplorerWindow.axaml`) sobre el MISMO
+    El EXPLORADOR DEL SISTEMA DE ARCHIVOS VIRTUAL del host Uno: la misma información que la ventana de la
+    versión anterior (`FileFlow.App/Views/Components/VirtualFileSystemExplorerWindow.axaml`) sobre el MISMO
     `VirtualFileSystemExplorerViewModel` portable, que este host construye con el almacén que la orden le
     pasa por el catálogo de diálogos (`DialogKeys.VirtualFileSystemExplorer`, payload = el almacén virtual
     de la última ejecución).
 
-    DOS DIFERENCIAS DECLARADAS: el escritorio abre una ventana no modal (aquí es una superficie del host)
+    DOS DIFERENCIAS DECLARADAS: la versión anterior abre una ventana no modal (aquí es una superficie del host)
     y su rejilla es un `DataGrid` cuyas columnas «Tamaño» y «Modificado» no enlazan con ninguna propiedad
     del fichero virtual —se declaran y quedan vacías—: aquí no se dibujan columnas muertas, sólo los cuatro
     campos que el `VirtualFileEntry` del núcleo sí tiene (nombre, ruta virtual, rol y nodo emisor).

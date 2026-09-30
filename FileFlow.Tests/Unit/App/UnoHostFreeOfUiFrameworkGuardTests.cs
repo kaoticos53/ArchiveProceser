@@ -12,7 +12,7 @@ namespace FileFlow.Tests.Unit.App;
 /// Los comentarios que citan "Avalonia" para explicar la migración son legítimos: la guardia no
 /// lee prosa, sólo código.
 /// </summary>
-public class UnoHostFreeOfAvaloniaGuardTests
+public class UnoHostFreeOfUiFrameworkGuardTests
 {
     private static string RepoRoot()
     {

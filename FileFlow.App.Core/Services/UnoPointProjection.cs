@@ -6,7 +6,7 @@ namespace FileFlow.App.Services;
 /// <summary>
 /// La proyección de puntos del <b>host Uno</b>, en su mitad portable: los ViewModels del grafo hablan en
 /// <see cref="Point"/> (Sdk) y WinUI/Uno habla en <c>Windows.Foundation.Point</c> — y el motor de enlaces
-/// de WinUI no convierte entre tipos distintos de punto, igual que el de Avalonia (la lección del hito 211).
+/// de WinUI no convierte entre tipos distintos de punto, igual que el de la interfaz original (la lección del hito 211).
 ///
 /// <para><b>Por qué la mitad portable existe antes que el XAML</b>: la fase 3.1 del plan Uno aún no ha
 /// escrito ningún enlace de geometría, y la regla del plan exige que <b>ninguno</b> pueda existir sin

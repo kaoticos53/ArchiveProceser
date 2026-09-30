@@ -4,17 +4,17 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    El PANEL DE MÉTRICAS del host Uno: la misma información que la ventana del escritorio
+    El PANEL DE MÉTRICAS del host Uno: la misma información que la ventana de la versión anterior
     (`FileFlow.App/Views/Components/WorkflowMetricsDashboardWindow.axaml`) sobre el MISMO
     `WorkflowMetricsDashboardViewModel` portable. No hay una sola cifra calculada aquí: las tarjetas leen
     sus propiedades ya formateadas por el view model y la tabla lee sus filas.
 
-    DOS DIFERENCIAS DECLARADAS con el escritorio:
-      1. El escritorio abre una VENTANA no modal; este host la sirve como superficie dentro de la suya
+    DOS DIFERENCIAS DECLARADAS con la versión anterior:
+      1. La versión anterior abre una VENTANA no modal; este host la sirve como superficie dentro de la suya
          (el mismo criterio que «Acerca de», hito 258).
-      2. La tabla del escritorio es un `DataGrid` con columnas que NO construye el host (WinUI no lo
-         trae): aquí son dos plantillas —cabecera y fila— con los mismos campos, y las columnas que el
-         escritorio declara pero no enlazan a nada (tamaño y fecha del fichero) no se dibujan.
+      2. La tabla de la versión anterior es un `DataGrid` con columnas que NO construye el host (WinUI no lo
+         trae): aquí son dos plantillas —cabecera y fila— con los mismos campos, y las columnas que la
+         versión anterior declara pero no enlazan a nada (tamaño y fecha del fichero) no se dibujan.
   -->
   <Grid x:Name="MetricsRoot" MinWidth="900" MinHeight="520"
         AutomationProperties.AutomationId="MetricsDashboardBody"

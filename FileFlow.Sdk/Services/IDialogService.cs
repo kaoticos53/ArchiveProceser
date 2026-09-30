@@ -50,7 +50,7 @@ public interface IDialogService
     /// Quien la usa se queda con la RESPUESTA REAL del usuario sin bloquear a nadie.
     ///
     /// <para>La implementación por defecto delega en <see cref="ShowConfirmation"/>, en un hilo de fondo:
-    /// los hosts que ya saben confirmar en síncrono (el escritorio, con su bomba anidada de mensajes) y los
+    /// los hosts que ya saben confirmar en síncrono (la versión anterior, con su bomba anidada de mensajes) y los
     /// dobles de prueba siguen funcionando sin cambios, y un host moderno sólo tiene que reescribir ésta.</para>
     /// </summary>
     async Task<bool> ConfirmAsync(string message, string title = "FileFlow Studio")

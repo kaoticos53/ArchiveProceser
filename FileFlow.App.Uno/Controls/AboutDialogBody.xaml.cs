@@ -7,10 +7,10 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// La ventana «Acerca de» del host Uno como superficie propia: la sirve
 /// <see cref="Platform.UnoWindowService"/> cuando una orden del menú pide
-/// <c>DialogKeys.About</c>, que es exactamente lo que hace el escritorio al abrir su
+/// <c>DialogKeys.About</c>, que es exactamente lo que hace la versión anterior al abrir su
 /// <c>AboutDialogWindow</c>.
 ///
-/// <para>Los textos son claves del diccionario del host (<c>Uno_About_*</c>), copiadas del del escritorio;
+/// <para>Los textos son claves del diccionario del host (<c>Uno_About_*</c>), copiadas del de la versión anterior;
 /// la versión sale de la misma fuente que el pie del cajón, para que las dos digan lo mismo.</para>
 /// </summary>
 public sealed partial class AboutDialogBody : UserControl

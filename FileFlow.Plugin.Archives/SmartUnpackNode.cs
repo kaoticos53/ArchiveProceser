@@ -64,10 +64,10 @@ public sealed class SmartUnpackNode : FlowNodeBase, INodeCustomActionProvider, I
     /// El GESTOR DE CONTRASEÑAS que este nodo declara al SDK: es la puerta que CUALQUIER host puede cumplir —la
     /// clave del catálogo (<see cref="DialogKeys.PasswordManager"/>) y el view model portable que la contiene—.
     ///
-    /// <para><b>Por qué existe.</b> La ventana del gestor es una ventana de Avalonia y sólo la puede montar un
-    /// host con el toolkit del escritorio: sin esta declaración, la acción de la tarjeta y el botón de la fila
-    /// no tenían más salida en el host Uno que DECLARAR la frontera —el usuario leía «se abre en el host de
-    /// escritorio» en vez de gestionar sus claves—. Con ella, el host que no puede montar la ventana sirve la
+    /// <para><b>Por qué existe.</b> La ventana del gestor es una ventana nativa del host y sólo la puede montar un
+    /// host con el toolkit de UI: sin esta declaración, la acción de la tarjeta y el botón de la fila
+    /// no tenían más salida en el host Uno que DECLARAR la frontera —el usuario leía «no está disponible en
+    /// este host» en vez de gestionar sus claves—. Con ella, el host que no puede montar la ventana sirve la
     /// MISMA superficie con su propia vista sobre este view model, que es quien escribe la lista en el parámetro
     /// del nodo.</para>
     /// </summary>
@@ -103,13 +103,13 @@ public sealed class SmartUnpackNode : FlowNodeBase, INodeCustomActionProvider, I
             if (actionId.Equals("ManagePasswords", StringComparison.OrdinalIgnoreCase) ||
                 actionId.Equals("OpenPasswordManager", StringComparison.OrdinalIgnoreCase))
             {
-                DesktopOnlySurface.Declare(
+                UnavailableSurface.Declare(
                     (context as NodeCustomActionContext)?.Dialogs,
                     LocalizationManager.Instance.GetString("PasswordManager_WindowTitle", "Gestor de Claves y Contraseñas"),
-                    LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                    LocalizationManager.Instance.GetString("Plugin_SurfaceUnavailable_Title", "Función no disponible"),
                     LocalizationManager.Instance.GetFormattedString(
-                        "Plugin_DesktopOnly_Message",
-                        "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                        "Plugin_SurfaceUnavailable_Message",
+                        "«{0}» no está disponible en este host.",
                         LocalizationManager.Instance.GetString("PasswordManager_WindowTitle", "Gestor de Claves y Contraseñas")));
             }
         }

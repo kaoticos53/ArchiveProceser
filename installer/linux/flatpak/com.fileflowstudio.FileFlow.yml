@@ -3,11 +3,11 @@ runtime: org.freedesktop.Platform
 runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
 sdk-extensions:
-  - org.freedesktop.Sdk.Extension.dotnet9
+  - org.freedesktop.Sdk.Extension.dotnet10
 command: fileflow
 
 finish-args:
-  # Interfaz gráfica Avalonia UI (X11, Wayland e IPC)
+  # Interfaz gráfica (Uno Platform / Skia Desktop): X11, Wayland e IPC
   - --socket=x11
   - --socket=wayland
   - --socket=fallback-x11
@@ -31,18 +31,18 @@ modules:
   - name: fileflow
     buildsystem: simple
     build-options:
-      append-path: /usr/lib/sdk/dotnet9/bin
+      append-path: /usr/lib/sdk/dotnet10/bin
       env:
         DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
         DOTNET_NOLOGO: 'true'
     build-commands:
-      # Compilación de la aplicación Avalonia en modo Release autocontenido
-      - dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o /app/lib/fileflow
+      # Compilación del host Uno (Skia Desktop) en modo Release autocontenido
+      - dotnet publish FileFlow.App.Uno/FileFlow.App.Uno.csproj -c Release -p:FileFlowTarget=desktop -r linux-x64 --self-contained true -p:DebugType=none -p:DebugSymbols=false -o /app/lib/fileflow
       
       # Creación de lanzador en /app/bin
       - mkdir -p /app/bin
-      - ln -sf /app/lib/fileflow/FileFlow.App /app/bin/fileflow
-      - chmod +x /app/bin/fileflow /app/lib/fileflow/FileFlow.App
+      - ln -sf /app/lib/fileflow/FileFlow.App.Uno /app/bin/fileflow
+      - chmod +x /app/bin/fileflow /app/lib/fileflow/FileFlow.App.Uno
       
       # Instalación de metadatos de escritorio, icono y metainfo AppStream
       - install -Dm644 installer/linux/flatpak/com.fileflowstudio.FileFlow.desktop /app/share/applications/com.fileflowstudio.FileFlow.desktop

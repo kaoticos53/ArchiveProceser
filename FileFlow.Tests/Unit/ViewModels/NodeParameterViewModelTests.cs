@@ -15,7 +15,7 @@ public class NodeParameterViewModelTests : IDisposable
 {
     public void Dispose()
     {
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -35,14 +35,14 @@ public class NodeParameterViewModelTests : IDisposable
         var resourceManager = new ResourceManager("FileFlow.App.Core.Resources.Strings", typeof(FileFlow.App.Core.HostUi).Assembly);
         LocalizationManager.Instance.RegisterResourceManager(resourceManager);
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         using var param = new NodeParameterViewModel("Width", 1920);
 
         // Act - En español
         string nameEs = param.DisplayName;
 
         // Cambiar a inglés
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         string nameEn = param.DisplayName;
 
         // Assert
@@ -50,7 +50,7 @@ public class NodeParameterViewModelTests : IDisposable
         nameEn.Should().Be("Width");
 
         // Reset
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     /// <summary>
@@ -269,5 +269,5 @@ public class NodeParameterViewModelTests : IDisposable
     /// motivo que no tiene nada que ver con lo que se está midiendo. Depender de que otra clase haya arrancado la
     /// sesión antes haría que esta prueba pasara o fallara según el orden de ejecución.
     /// </summary>
-    private static void EnsureClipboardHost() => AvaloniaTestHelper.RunOnUI(static () => { });
+    private static void EnsureClipboardHost() => HostUiTestHelper.RunOnUI(static () => { });
 }

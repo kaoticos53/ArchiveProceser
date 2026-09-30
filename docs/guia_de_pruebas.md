@@ -6,14 +6,14 @@ Este documento constituye el manual técnico oficial de pruebas automatizadas de
 
 ## 🏛️ 1. Arquitectura y Estrategia de Testing
 
-El sistema de pruebas de FileFlow Studio está diseñado bajo los siguientes principios de ingeniería en **.NET 9 / C# 13**:
+El sistema de pruebas de FileFlow Studio está diseñado bajo los siguientes principios de ingeniería en **.NET 10 / C# 14**:
 
 1. **Aislamiento Total y Limpieza Determinista**:
    - Toda prueba que manipula archivos reales crea un directorio temporal único con GUID (`Path.Combine(Path.GetTempPath(), "FileFlowTest_" + Guid.NewGuid())`) dentro de un bloque `try-finally` para asegurar su eliminación incluso ante fallos inesperados.
 2. **Mocking y Desacoplamiento**:
    - Se utiliza **Moq** para simular interfaces del orquestador (`IFlowExecutionContext`, `IExecutionJournal`, `ILogStore`), garantizando pruebas unitarias puras y ultrarrápidas sin dependencias de I/O innecesarias.
 3. **Validación de Concurrencia y Thread-Safety**:
-   - Pruebas de estrés multihilo con `Parallel.For`, `Task.WhenAll` y primitivas de .NET 9 (`System.Threading.Lock`) para certificar la ausencia de condiciones de carrera en buffers, telemetría y canales DAG.
+   - Pruebas de estrés multihilo con `Parallel.For`, `Task.WhenAll` y primitivas de .NET 10 (`System.Threading.Lock`) para certificar la ausencia de condiciones de carrera en buffers, telemetría y canales DAG.
 4. **Modo Simulación (Dry Run)**:
    - Verificación de que ningún nodo modifique el sistema de archivos cuando el contexto declare `IsDryRun = true`, validando el registro exclusivo de instancias `PlannedAction`.
 

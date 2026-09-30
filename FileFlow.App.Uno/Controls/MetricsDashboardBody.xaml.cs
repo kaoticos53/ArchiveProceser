@@ -9,12 +9,12 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// El panel de MÉTRICAS del host Uno: la vista del <see cref="WorkflowMetricsDashboardViewModel"/>
 /// portable, servida por <see cref="Platform.UnoWindowService"/> cuando una orden del menú pide
-/// <c>DialogKeys.WorkflowMetricsDashboard</c> — exactamente la clave que pide el escritorio para abrir su
+/// <c>DialogKeys.WorkflowMetricsDashboard</c> — exactamente la clave que pide la versión anterior para abrir su
 /// <c>WorkflowMetricsDashboardWindow</c>.
 ///
 /// <para><b>La vista no calcula nada.</b> Las tarjetas y la tabla leen propiedades del view model (ya
 /// formateadas por él: duraciones, bytes, porcentajes), y el único botón que ejecuta es su comando
-/// canónico <c>RefreshMetricsCommand</c>. La tabla del escritorio es de 7 columnas; aquí se dibujan los
+/// canónico <c>RefreshMetricsCommand</c>. La tabla de la versión anterior es de 7 columnas; aquí se dibujan los
 /// mismos 7 campos y se dejan fuera las columnas que allí declaran pero no enlazan a nada —tamaño y fecha
 /// del fichero, que el <c>VirtualFileEntry</c> del núcleo no tiene en la fila de métricas—.</para>
 /// </summary>

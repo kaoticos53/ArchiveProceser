@@ -214,7 +214,7 @@ public class DeferredWorkInventoryGuardTests
     {
         const string Source = """
             using System.Threading.Tasks;
-            using Avalonia.Threading;
+            using Contoso.Threading;
 
             public class Consola
             {
@@ -294,7 +294,7 @@ public class DeferredWorkInventoryGuardTests
             using System;
             using System.Threading;
             using System.Threading.Tasks;
-            using UiDispatcher = Avalonia.Threading.Dispatcher;
+            using UiDispatcher = Contoso.Threading.Dispatcher;
 
             public class FueraDeAlcance
             {
@@ -319,7 +319,7 @@ public class DeferredWorkInventoryGuardTests
     public void Analyzer_ShouldIgnoreWhatIsCommented()
     {
         const string Source = """
-            using Avalonia.Threading;
+            using Contoso.Threading;
 
             public class Comentado
             {

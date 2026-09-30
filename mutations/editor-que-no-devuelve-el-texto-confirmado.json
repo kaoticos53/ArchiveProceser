@@ -1,7 +1,7 @@
 {
   "id": "editor-que-no-devuelve-el-texto-confirmado",
   "hito": 258,
-  "claim": "El editor de texto del host Uno devuelve el texto confirmado por el MISMO camino que lee el escritorio: `SaveResult()` del TextEditorDialogViewModel deja el texto en `ResultText`, que es lo que el host empaqueta en el `DialogResultPayload` y lo que el parámetro del nodo escribe.",
+  "claim": "El editor de texto del host Uno devuelve el texto confirmado por el MISMO camino que lee la versión anterior: `SaveResult()` del TextEditorDialogViewModel deja el texto en `ResultText`, que es lo que el host empaqueta en el `DialogResultPayload` y lo que el parámetro del nodo escribe.",
   "why": "El diálogo se abre, se escribe y se confirma, pero el valor que viaja de vuelta sale de una propiedad que nadie llenó: el usuario ve su texto en la caja, pulsa «✓ Guardar y Aplicar», el modal se cierra y el parámetro se queda como estaba (o se vacía). Es el defecto sin crash que la sonda del hito 258 mide en el parámetro del nodo, y el mutante lo reproduce quitando la única línea que copia el texto al resultado — exactamente la firma «el editor no devuelve lo que el usuario escribió».",
   "edits": [
     {
@@ -17,7 +17,7 @@
   ],
   "witness": {
     "filter": "FullyQualifiedName~TheDialogs_ShouldBeViewsOfThePortableViewModels_NotCopiesOfThem",
-    "why": "El caso exige que el valor del editor salga por el método del view model (`vm.SaveResult();`), el mismo que lee el escritorio al cerrar su ventana. Con el mutante esa línea deja de existir y el caso cae nombrando la mitad que garantiza que lo confirmado es lo que se escribe."
+    "why": "El caso exige que el valor del editor salga por el método del view model (`vm.SaveResult();`), el mismo que lee la versión anterior al cerrar su ventana. Con el mutante esa línea deja de existir y el caso cae nombrando la mitad que garantiza que lo confirmado es lo que se escribe."
   },
   "control": {
     "filter": "FullyQualifiedName~TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared",

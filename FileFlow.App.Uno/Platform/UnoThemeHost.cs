@@ -12,7 +12,7 @@ namespace FileFlow.App.Uno.Platform;
 
 /// <summary>
 /// Instalación de los bordes de tema del host Uno hacia el núcleo portable — la mitad Uno del
-/// <see cref="ThemeHostBridge"/> (fase 3.5 del plan Uno), espejo de <c>AvaloniaThemeHost</c>.
+/// <see cref="ThemeHostBridge"/> (fase 3.5 del plan Uno), espejo de <c>el host de temas original</c>.
 ///
 /// <para><b>Por qué muta los pinceles en vez de republicar claves</b>: WinUI captura la INSTANCIA
 /// del pincel en <c>StaticResource</c> (evaluación única en la carga del XAML) y no re-evalúa
@@ -107,7 +107,7 @@ public static class UnoThemeHost
 
     /// <summary>
     /// Generador portable de tokens que el núcleo consume como pares clave → valor (el Theme Studio
-    /// y cualquier previsualización viva usan la misma vía que el Avalonia: ThemeHostBridge.BuildResources).
+    /// y cualquier previsualización viva usan la misma vía que el host original: ThemeHostBridge.BuildResources).
     /// </summary>
     private static IReadOnlyDictionary<string, object?> BuildResources(object themeDefinition)
     {

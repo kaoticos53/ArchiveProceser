@@ -6,7 +6,7 @@
 
   <!--
     El ESTUDIO DE TEMAS del host Uno: el catálogo de temas del núcleo y su editor por secciones, sobre el
-    MISMO `ThemeCustomizerViewModel` portable que el escritorio
+    MISMO `ThemeCustomizerViewModel` portable que la versión anterior
     (`FileFlow.App/Views/Components/ThemeCustomizerWindow.axaml`).
 
     EL EDITOR NO ESTÁ ESCRITO A MANO: las secciones y sus filas salen del catálogo del núcleo
@@ -18,7 +18,7 @@
     compara): Importar / Exportar —su camino pasa por el contrato SÍNCRONO de selección de fichero, que desde
     el hilo de UI devuelve nulo y dejaría dos botones mudos— y la vista previa en vivo, cuyo diccionario de
     tokens no es observable para los recursos de WinUI sin una copia por superficie. El color se edita aquí en
-    su campo hex con su muestra, en lugar del selector de color del escritorio (que es un componente de su
+    su campo hex con su muestra, en lugar del selector de color de la versión anterior (que es un componente de su
     toolkit).
 
     ELIMINAR SÍ SE DIBUJA (hito 265): su orden del view model pregunta por el contrato ASÍNCRONO de diálogos

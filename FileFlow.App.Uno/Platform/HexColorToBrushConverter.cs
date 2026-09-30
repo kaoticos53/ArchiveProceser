@@ -9,7 +9,7 @@ namespace FileFlow.App.Uno.Platform;
 /// <summary>
 /// Convierte un color hexadecimal del tema (los tokens del núcleo, p. ej. <c>#161B22</c>) en el pincel
 /// sólido que consume el XAML del lienzo: el host Uno pinta con los mismos valores que genera
-/// <c>ThemeResourceApplier</c> en el escritorio, hasta que la fase 3.5 traiga la republicación en caliente.
+/// <c>ThemeResourceApplier</c> en la versión anterior, hasta que la fase 3.5 traiga la republicación en caliente.
 /// </summary>
 public sealed class HexColorToBrushConverter : IValueConverter
 {

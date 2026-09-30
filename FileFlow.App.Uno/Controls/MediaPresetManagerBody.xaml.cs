@@ -12,7 +12,7 @@ namespace FileFlow.App.Uno.Controls;
 ///
 /// <para><b>Qué es y qué no.</b> El view model —con la lista de presets, el formulario del elegido y las
 /// cuatro órdenes que los tocan— vive en el plugin y lo comparten los dos hosts; lo que cambia es quién lo
-/// pinta. El escritorio monta la ventana del plugin (<c>MediaPresetManagerWindow</c>, Avalonia); este host
+/// pinta. El host original montaba la ventana del plugin (<c>MediaPresetManagerWindow</c>); este host
 /// pinta esta vista sobre el MISMO view model, que escribe en el MISMO almacén (el que lee el motor de
 /// transcodificación). No hay una segunda versión del gestor: hay dos vistas de él.</para>
 ///

@@ -13,14 +13,12 @@ param (
 # =========================================================
 #   FileFlow Studio - Host Uno Platform (WinUI 3) Launcher
 # =========================================================
-# El host Uno compila con `dotnet build` sobre SU solución (FileFlow.Uno.slnx), la misma que se abre
-# en Visual Studio. El proyecto tiene WindowsPackageType=None + WindowsAppSDKSelfContained, así que los
-# targets de WinAppSDK corren sin MSBuild de Visual Studio (era cierto lo contrario hasta el hito 267,
-# cuando el host se compilaba con MSBuild de VS y arrastraba el toolkit del escritorio).
+# El host Uno es la ÚNICA interfaz del producto (Uno Platform sobre WinUI 3 en Windows y Skia Desktop en
+# Linux/macOS) y se compila con `dotnet build` sobre su propio proyecto, que arrastra su grafo entero por
+# referencias de proyecto. Tiene WindowsPackageType=None + WindowsAppSDKSelfContained, así que los targets
+# de WinAppSDK corren sin MSBuild de Visual Studio.
 #
-# Esa solución elige además el SABOR de UI por su nombre: los plugins se compilan SIN Avalonia, así que
-# el binario del host Uno no lleva una sola DLL del toolkit del escritorio. El ejecutable vive en
-# net10.0-windows10.0.19041.0 y los gemelos del Avalonia son .\run.ps1 y .\run-fast.ps1.
+# .\run.ps1 y .\run-fast.ps1 son alias de este lanzador.
 #
 # Uso:
 #   .\run-uno.ps1                       compila (dotnet build) y lanza la app
@@ -60,19 +58,16 @@ Write-Host "=========================================" -ForegroundColor Cyan
 
 $projectDir = Join-Path $scriptDir "FileFlow.App.Uno"
 $projectPath = Join-Path $projectDir "FileFlow.App.Uno.csproj"
-$solutionPath = Join-Path $scriptDir "FileFlow.Uno.slnx"
 
 if (-not $NoBuild) {
-    if (-not (Test-Path $solutionPath)) {
-        Write-Host "`n[ERROR] No se encontro la solucion del host Uno en:" -ForegroundColor Red
-        Write-Host "  $solutionPath" -ForegroundColor White
-        Write-Host "Es la solucion que elige el sabor de UI (sin el toolkit del escritorio)." -ForegroundColor Gray
+    if (-not (Test-Path $projectPath)) {
+        Write-Host "`n[ERROR] No se encontro el proyecto del host Uno en:" -ForegroundColor Red
+        Write-Host "  $projectPath" -ForegroundColor White
         exit 1
     }
 
-    Write-Host "`nCompilando el host Uno ($Configuration) con dotnet build sobre FileFlow.Uno.slnx..." -ForegroundColor Yellow
-    Write-Host "(la solucion compila el grafo SIN Avalonia: el sabor lo elige su nombre)" -ForegroundColor Gray
-    & dotnet build $solutionPath -c $Configuration -p:FileFlowUnoHost=true --nologo -v:m
+    Write-Host "`nCompilando el host Uno ($Configuration) con dotnet build..." -ForegroundColor Yellow
+    & dotnet build $projectPath -c $Configuration --nologo -v:m
     if ($LASTEXITCODE -ne 0) {
         Write-Host "`n[ERROR] La compilacion del host Uno fallo. Revisa los errores." -ForegroundColor Red
         exit $LASTEXITCODE

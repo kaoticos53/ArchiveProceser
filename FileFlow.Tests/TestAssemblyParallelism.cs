@@ -5,7 +5,7 @@ using Xunit;
 // en exclusiva: ni siquiera las colecciones ajenas corren a la vez).
 //
 // Colecciones exclusivas y el estado que confinan:
-//   · Unit.Views.VisualSnapshotsCollection — la sesión headless de Avalonia y su Dispatcher, el tema
+//   · Unit.Views.VisualSnapshotsCollection — la sesión headless del host y su Dispatcher, el tema
 //     activo (ThemeManager) y el diccionario de recursos de la aplicación. Cualquier clase que APLIQUE
 //     un tema (ThemeManager.Instance.SetTheme/SetThemeById) va aquí, corra o no capturas: mutar el tema
 //     desde una colección paralela lo cambia a mitad de una captura y el fallo cae en otra prueba
@@ -39,7 +39,7 @@ using Xunit;
 //     Stopwatch.GetElapsedTime, y una colección vecina compitiendo por la CPU los recorta por debajo del
 //     retardo prometido (medido: 4,911 ms contra 5 ms, flake que no se repite en solitario). La colección
 //     existía implícita desde el confinamiento del proveedor; su definición exclusiva le da la exclusividad
-//     que su contenido ya pedía.
+//     que su contenido ya pedía.
 //   · "Localization" → UNIFICADA en "VisualSnapshots" (2026-09-16): la cultura/idioma del proceso
 //     es estado global que las capturas headless también renderizan, y dos colecciones exclusivas
 //     distintas SÍ corren a la vez entre sí — la carrera culture-vs-captura era posible. Ahora cultura,

@@ -2,7 +2,7 @@
   "id": "toggle-que-no-persiste",
   "hito": 246,
   "claim": "El toggle compacto/detallado del cajón del host Uno persiste su estado en preferencias porque OnIsCompactModeChanged del ToolboxViewModel escribe IsCompactToolbox: si la escritura desaparece, el modo elegido se olvida al reiniciar y la preferencia del usuario se burla.",
-  "why": "El toggle del cajón (hito 246) ató el botón y la vista al comando del VM, pero el valor del modo solo sirve de verdad si sobrevive al reinicio: el VM persiste IsCompactMode en IsCompactToolbox dentro de OnIsCompactModeChanged (el mismo camino que el escritorio consume). El mutante vacía la escritura (la asignación condicional de UpdatePreferences) dejando el cuerpo del partial vacío: la app pinta igual, el toggle conmuta igual, y el modo elegido muere al cerrar — una preferencia que no es preferencia. El testigo es el test nuevo de la suite (la persistencia es lógica del núcleo y SÍ se materializa en la sesión de pruebas, a diferencia del panel WinUI).",
+  "why": "El toggle del cajón (hito 246) ató el botón y la vista al comando del VM, pero el valor del modo solo sirve de verdad si sobrevive al reinicio: el VM persiste IsCompactMode en IsCompactToolbox dentro de OnIsCompactModeChanged (el mismo camino que la versión anterior consume). El mutante vacía la escritura (la asignación condicional de UpdatePreferences) dejando el cuerpo del partial vacío: la app pinta igual, el toggle conmuta igual, y el modo elegido muere al cerrar — una preferencia que no es preferencia. El testigo es el test nuevo de la suite (la persistencia es lógica del núcleo y SÍ se materializa en la sesión de pruebas, a diferencia del panel WinUI).",
   "edits": [
     {
       "file": "FileFlow.App.Core/ViewModels/ToolboxViewModel.cs",

@@ -60,7 +60,7 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
     /// <para>El nodo es el dueño de la superficie (es quien conoce su almacén y su modelo de datos), pero no
     /// del toolkit: declara <b>qué</b> diálogo quiere (<c>DialogKeys.DataSetDesigner</c>) y <b>qué contiene</b>
     /// —el view model portable <see cref="SyntheticDataSetDesignerViewModel"/>, sin un solo tipo de UI—. El
-    /// host con el toolkit del escritorio monta la ventana del plugin; un host sin él pinta su propia vista
+    /// host con el toolkit de UI monta la ventana del plugin; un host sin él pinta su propia vista
     /// sobre el MISMO view model. Sin esta declaración, la entrada del menú sólo funcionaba en un host.</para>
     /// </summary>
     public string DialogKey => FileFlow.Sdk.Services.DialogKeys.DataSetDesigner;
@@ -84,13 +84,13 @@ public sealed class SyntheticDataSourceNode : FlowNodeBase, INodeCustomActionPro
     {
         if (string.Equals(actionId, "OpenDataSetDesigner", StringComparison.OrdinalIgnoreCase))
         {
-            DesktopOnlySurface.Declare(
+            UnavailableSurface.Declare(
                 (context as NodeCustomActionContext)?.Dialogs,
                 LocalizationManager.Instance.GetString("DataSetDesigner_WindowTitle", "Diseñador de Conjuntos de Datos Sintéticos"),
-                LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                LocalizationManager.Instance.GetString("Plugin_SurfaceUnavailable_Title", "Función no disponible"),
                 LocalizationManager.Instance.GetFormattedString(
-                    "Plugin_DesktopOnly_Message",
-                    "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                    "Plugin_SurfaceUnavailable_Message",
+                    "«{0}» no está disponible en este host.",
                     LocalizationManager.Instance.GetString("DataSetDesigner_WindowTitle", "Diseñador de Conjuntos de Datos Sintéticos")));
         }
     }

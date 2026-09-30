@@ -10,12 +10,12 @@ using Xunit;
 namespace FileFlow.Tests.Unit.App;
 /// <summary>
 /// La guardia de la <b>PORTABILIDAD</b> de los diálogos de nodo del host Uno (hito 258): el editor de texto y el
-/// catálogo de variables son VISTAS de los view models portables —los mismos del escritorio— y sus textos son
-/// los del escritorio, copiados clave por clave en los dos idiomas.
+/// catálogo de variables son VISTAS de los view models portables —los mismos de la versión anterior— y sus textos son
+/// los de la versión anterior, copiados clave por clave en los dos idiomas.
 ///
 /// <para><b>Qué protege</b>: que las dos vistas monten el view model portable y no una copia de su lógica
 /// (nada de construir el view model ni de guardar el resultado por su cuenta); que el valor viaje por sus
-/// métodos; y que cada rótulo del host tenga su clave del escritorio con el mismo texto —una traducción propia
+/// métodos; y que cada rótulo del host tenga su clave de la versión anterior con el mismo texto —una traducción propia
 /// del host sería otra interfaz—.</para>
 ///
 /// <para><b>Por qué comparten archivo</b>: los dos sujetos son la MISMA pregunta —¿esto es el producto o una
@@ -45,9 +45,9 @@ public class UnoDialogPortabilityGuardTests
     private const string StringsEnglish = "FileFlow.App.Uno/Resources/Strings.resx";
     private const string StringsSpanish = "FileFlow.App.Uno/Resources/Strings.es.resx";
 
-    /// <summary>La plantilla del ESCRITORIO de una fila de parámetro: la referencia de paridad de esta superficie.</summary>
-    private const string DesktopStringsEnglish = "FileFlow.App.Core/Resources/Strings.resx";
-    private const string DesktopStringsSpanish = "FileFlow.App.Core/Resources/Strings.es.resx";
+    /// <summary>Las cadenas del núcleo portable de una fila de parámetro: la referencia de paridad de esta superficie.</summary>
+    private const string CoreStringsEnglish = "FileFlow.App.Core/Resources/Strings.resx";
+    private const string CoreStringsSpanish = "FileFlow.App.Core/Resources/Strings.es.resx";
 
     /// <summary>
     /// Las familias que NO son del host: cada una la declara el diccionario de SU plugin y sólo él. Ese
@@ -74,12 +74,12 @@ public class UnoDialogPortabilityGuardTests
     {
         string service = Code(WindowService);
 
-        // Los dos diálogos construyen los view models PORTABLES: los mismos que envuelve el escritorio.
+        // Los dos diálogos construyen los view models PORTABLES: los mismos que envuelve la versión anterior.
         service.Should().Contain("new TextEditorDialogViewModel(");
         service.Should().Contain("new VariablePickerViewModel(");
 
-        // Y el valor no se recalcula aquí: sale de los métodos del view model, los mismos que lee el
-        // escritorio al cerrar su ventana.
+        // Y el valor no se recalcula aquí: sale de los métodos del view model, los mismos que lee la
+        // versión anterior al cerrar su ventana.
         service.Should().Contain("vm.SaveResult();");
         service.Should().Contain("string token = vm.SelectedToken;");
 
@@ -109,10 +109,10 @@ public class UnoDialogPortabilityGuardTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 2. Los textos son los del escritorio, en los dos idiomas
+    // 2. Los textos son los de la versión anterior, en los dos idiomas
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>De la clave del host a la clave del diccionario del escritorio: el texto se COPIA, no se re-traduce.</summary>
+    /// <summary>De la clave del host a la clave del diccionario de la versión anterior: el texto se COPIA, no se re-traduce.</summary>
     private static IReadOnlyList<(string Host, string Desktop)> SharedTexts() =>
     [
         ("Uno_Dialog_TextEditor_Title", "TextEditor_WindowTitle"),
@@ -136,17 +136,17 @@ public class UnoDialogPortabilityGuardTests
         ("Uno_Dialog_VarPicker_SampleLabel", "VarPicker_SamplePreviewLabel"),
         ("Uno_Dialog_VarPicker_CopyToken", "VarPicker_CopyToken"),
 
-        // El menú del CABLE del lienzo: el rótulo con el que el escritorio borra una conexión es el suyo.
+        // El menú del CABLE del lienzo: el rótulo con el que la versión anterior borra una conexión es el suyo.
         ("Uno_Connection_Delete", "DeleteConnection"),
     ];
 
     [Fact]
-    public void TheSharedTexts_ShouldBeTheDesktopOnes_InBothLanguages()
+    public void TheSharedTexts_ShouldMatchTheCoreOnes_InBothLanguages()
     {
         foreach (var (hostPath, desktopPath) in new[]
                  {
-                     (StringsEnglish, DesktopStringsEnglish),
-                     (StringsSpanish, DesktopStringsSpanish),
+                     (StringsEnglish, CoreStringsEnglish),
+                     (StringsSpanish, CoreStringsSpanish),
                  })
         {
             var host = HostDictionaries.Of(hostPath);
@@ -174,7 +174,7 @@ public class UnoDialogPortabilityGuardTests
             }
 
             wrong.Should().BeEmpty(
-                "los textos de los dos diálogos son los del escritorio, copiados: una traducción propia sería "
+                "los textos de los dos diálogos son los de la versión anterior, copiados: una traducción propia sería "
                 + $"otra interfaz ({Path.GetFileName(hostPath)})");
         }
     }
@@ -191,7 +191,7 @@ public class UnoDialogPortabilityGuardTests
             + Code(CardViewXaml) + Code(CardViewModelCode) + Code(CanvasCode) + Code(CanvasWiresCode);
 
         // Las claves que las superficies del host citan: las suyas (`Uno_…`), las de la FILA (`Node_Param_…`, que
-        // son las del escritorio) y las que trae consigo la superficie del plugin (`PresetManager_…` /
+        // son las de la versión anterior) y las que trae consigo la superficie del plugin (`PresetManager_…` /
         // `PasswordManager_…`), con el rótulo del conmutador de parámetros de la tarjeta (`ToggleParametersToolTip`).
         var cited = Regex.Matches(views, @"""((?:Uno|PresetManager|PasswordManager|Node_Param)_[A-Za-z_]+|ToggleParametersToolTip)""")
             .Select(m => m.Groups[1].Value)

@@ -8,7 +8,7 @@ namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
 /// Guardia del panel de la caja de herramientas del host Uno (rebanada 4, plan de los paneles): el
-/// panel tiene que <b>consumir el ToolboxViewModel del núcleo</b> — el mismo que el escritorio — y
+/// panel tiene que <b>consumir el ToolboxViewModel del núcleo</b> — el mismo que la versión anterior — y
 /// añadir nodos por el <c>EditorViewModel.AddNode</c> canónico.
 ///
 /// <para><b>Por qué guarda la fuente y no el runtime</b>: el panel es WinUI (host Uno) y no se
@@ -30,7 +30,7 @@ public class UnoToolboxPanelGuardTests
 
         code.Should().Contain(
             "public ToolboxViewModel? Vm",
-            "el panel consume el VM del núcleo portable (el mismo que el escritorio): una vista que " +
+            "el panel consume el VM del núcleo portable (el mismo que la versión anterior): una vista que " +
             "reinventara el catálogo duplicaría la lógica que la suite ya defiende");
 
         code.Should().Contain(
@@ -77,7 +77,7 @@ public class UnoToolboxPanelGuardTests
 
         code.Should().Contain(
             "IconToGeometry",
-            "el icono pasa por el conversor del paquete Material.Icons (los mismos datos que el escritorio)");
+            "el icono pasa por el conversor del paquete Material.Icons (los mismos datos que la versión anterior)");
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class UnoToolboxPanelGuardTests
 
         code.Should().Contain(
             "_vm?.ToggleViewModeCommand.Execute(null);",
-            "el toggle pasa por el MISMO comando del VM del núcleo que el botón del escritorio: conmutar " +
+            "el toggle pasa por el MISMO comando del VM del núcleo que el botón de la versión anterior: conmutar " +
             "la vista por su cuenta duplicaría el estado y burlaría la persistencia en preferencias");
 
         code.Should().Contain(
@@ -147,7 +147,7 @@ public class UnoToolboxPanelGuardTests
     }
 
     /// <summary>
-    /// La paridad del panel con el escritorio: cada paso del flujo con su prueba del SUITE (la lógica
+    /// La paridad del panel con la versión anterior: cada paso del flujo con su prueba del SUITE (la lógica
     /// del VM, verificada contra el índice real) y su cobertura en el HOST (el sondeo del selfcheck o
     /// la guardia de árbol de esta misma clase).
     /// </summary>

@@ -1,9 +1,9 @@
 <#
 .SYNOPSIS
-	Publica FileFlow.App (WPF) lista para empaquetar con Inno Setup.
+	Publica FileFlow.App.Uno (WinUI 3) lista para empaquetar con Inno Setup.
 
 .DESCRIPTION
-	Ejecuta `dotnet publish` sobre FileFlow.App con las opciones indicadas y copia
+	Ejecuta `dotnet publish` sobre FileFlow.App.Uno con las opciones indicadas y copia
 	los plugins (ya gestionados por el target CopyPlugins del csproj) en la carpeta
 	de publicación. El resultado queda en installer/publish/<Runtime>.
 
@@ -14,8 +14,8 @@
 	RID de destino. Por defecto: win-x64.
 
 .PARAMETER SelfContained
-	Si es $true, incluye el runtime de .NET 9 (no requiere tenerlo instalado).
-	Si es $false, genera un publish framework-dependent (requiere .NET 9 Desktop Runtime en la máquina destino).
+	Si es $true, incluye el runtime de .NET 10 (no requiere tenerlo instalado).
+	Si es $false, genera un publish framework-dependent (requiere el runtime de .NET 10 en la máquina destino).
 	Nota: PublishSingleFile requiere SelfContained=$true para incluir también el runtime en el .exe único.
 
 .PARAMETER SingleFile
@@ -41,7 +41,7 @@ $isSelfContained = if ($SelfContained -is [bool]) { $SelfContained } else { [Sys
 $isSingleFile = if ($SingleFile -is [bool]) { $SingleFile } else { [System.Convert]::ToBoolean($SingleFile) }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$projectPath = Join-Path $repoRoot "FileFlow.App\FileFlow.App.csproj"
+$projectPath = Join-Path $repoRoot "FileFlow.App.Uno\FileFlow.App.Uno.csproj"
 $publishRoot = Join-Path $PSScriptRoot "publish\$Runtime"
 
 Write-Host "==> Limpiando carpeta de publicación anterior: $publishRoot" -ForegroundColor Cyan
@@ -49,7 +49,7 @@ if (Test-Path $publishRoot) {
 	Remove-Item $publishRoot -Recurse -Force
 }
 
-Write-Host "==> Publicando FileFlow.App ($Configuration, $Runtime, SelfContained=$isSelfContained, SingleFile=$isSingleFile)..." -ForegroundColor Cyan
+Write-Host "==> Publicando FileFlow.App.Uno ($Configuration, $Runtime, SelfContained=$isSelfContained)..." -ForegroundColor Cyan
 
 if ($isSingleFile -and -not $isSelfContained) {
 	Write-Warning "SingleFile requiere SelfContained=true. Forzando SelfContained=true."
@@ -62,9 +62,6 @@ $publishArgs = @(
 	"-r", $Runtime,
 	"--self-contained", $isSelfContained.ToString().ToLower(),
 	"-o", $publishRoot,
-	"-p:PublishSingleFile=$($SingleFile.ToString().ToLower())",
-	"-p:IncludeNativeLibrariesForSelfExtract=true",
-	"-p:EnableCompressionInSingleFile=true",
 	"-p:DebugType=none",
 	"-p:DebugSymbols=false"
 )
@@ -76,7 +73,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if (-not (Test-Path (Join-Path $publishRoot "Plugins"))) {
-	Write-Warning "No se encontró la carpeta 'Plugins' en el publish. Verifica el target CopyPlugins en FileFlow.App.csproj."
+	Write-Warning "No se encontró la carpeta 'Plugins' en el publish. Verifica el target CopyPlugins en FileFlow.App.Uno.csproj."
 }
 
 # Copiar ejemplos de flujos

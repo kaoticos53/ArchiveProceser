@@ -12,14 +12,14 @@ namespace FileFlow.Tests.Unit.App;
 /// La guardia de atajos de la fase 3.2: <b>las claves de teclado son del producto, no de la vista</b>.
 ///
 /// <para>El §2.1 del plan Uno las declaraba «código de vista hoy» — y así se duplicaban: el switch del
-/// <c>EditorView_KeyDown</c> del Avalonia y el del lienzo Uno eran dos copias de la misma tabla que ya
-/// se habían desincronizado en el 3.1 (el Uno solo tenía pan, el escritorio ya tenía spotlight con
+/// <c>EditorView_KeyDown</c> del host original y el del lienzo Uno eran dos copias de la misma tabla que ya
+/// se habían desincronizado en el 3.1 (el Uno solo tenía pan, la versión anterior ya tenía spotlight con
 /// posición del cursor). La cura es la <see cref="EditorKeyboardShortcuts"/>: una tabla canónica en el
 /// núcleo y un ejecutor sobre el <c>EditorViewModel</c>. Esta guardia impide que vuelva a duplicarse:</para>
 ///
 /// <list type="number">
 /// <item>la tabla no puede quedar vacía ni duplicar combinaciones (misma tecla + modificadores);</item>
-/// <item>el host Avalonia sólo mapea teclas que existen en la tabla, y sus handlers de teclado citan el
+/// <item>el host original sólo mapea teclas que existen en la tabla, y sus handlers de teclado citan el
 /// servicio (nada de switches paralelos con literales de comando);</item>
 /// <item>el host Uno cita el servicio en su handler de teclado y el XAML del lienzo lo cablea;</item>
 /// <item>las ventanas propias (spotlight, renombrado) conservan su teclado local, que no es del lienzo.</item>

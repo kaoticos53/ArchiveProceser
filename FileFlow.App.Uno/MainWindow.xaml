@@ -11,17 +11,17 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- El MENÚ PRINCIPAL del host (hito 257): la barra de control del escritorio —marca, botón de menú y
+    <!-- El MENÚ PRINCIPAL del host (hito 257): la barra de control de la versión anterior —marca, botón de menú y
          las tres islas (modos · ciclo · herramientas)— sobre el MISMO ControlBarViewModel del núcleo. Su
          punto de entrada a los ajustes conserva el AutomationId «SettingsButton» del hito 255. -->
     <controls:ControlBar x:Name="Bar" Grid.Row="0" />
 
-    <!-- Las cinco zonas del editor de escritorio: cajón | asa | lienzo | asa | inspector.
+    <!-- Las cinco zonas del editor de la versión anterior: cajón | asa | lienzo | asa | inspector.
 
-         El escritorio declara esta misma topología en su `MainWindow.axaml` (260 · GridSplitter · lienzo ·
+         La versión anterior declara esta misma topología en su `MainWindow.axaml` (260 · GridSplitter · lienzo ·
          GridSplitter · ficha) y reparte los anchos con sus cotas: cajón 180–480 y ficha 220–750. Aquí las
          asas son `PanelSplitter` —WinUI 3 no trae `GridSplitter` y este host no referencia el paquete de la
-         comunidad—, con el reparto del escritorio y una cota más: el arrastre no puede dejar al lienzo por
+         comunidad—, con el reparto de la versión anterior y una cota más: el arrastre no puede dejar al lienzo por
          debajo de su mínimo, porque el área de clic de las tarjetas se mide del árbol visual. Hito 270. -->
     <Grid x:Name="Workspace" Grid.Row="1">
       <Grid.ColumnDefinitions>
@@ -52,7 +52,7 @@
 
     <Border Grid.Row="2" Background="{StaticResource CanvasBgDarkBrush}" Padding="16,8">
       <!-- El botón Ejecutar (hito 243): el comando canónico del ControlBar del núcleo (el mismo
-           del escritorio), montado por código en StatusBarHost para que el guion UIA externo
+           de la versión anterior), montado por código en StatusBarHost para que el guion UIA externo
            pueda invocar el ciclo completo del flujo. -->
       <StackPanel x:Name="StatusBarHost" Spacing="4">
         <TextBlock x:Name="engineStatus" Opacity="0.7" TextWrapping="Wrap" FontSize="11"
@@ -61,12 +61,12 @@
     </Border>
 
     <!-- El cajón del menú principal (hito 257): el «menú» de la barra, desplegado sobre toda la ventana
-         como el del escritorio (velo + panel de 320 px a la izquierda) y con el mismo estado
+         como el de la versión anterior (velo + panel de 320 px a la izquierda) y con el mismo estado
          (ControlBar.IsMenuOpen) que conmuta el botón «Menú». -->
     <controls:MainMenuDrawer x:Name="Drawer" Grid.Row="0" Grid.RowSpan="3" />
 
-    <!-- La superficie de ajustes (hito 255): se despliega sobre TODA la ventana, como el cajón del
-         escritorio, y vive en su propio control — el host aporta la vista, el núcleo el view model.
+    <!-- La superficie de ajustes (hito 255): se despliega sobre TODA la ventana, como el cajón de la
+         versión anterior, y vive en su propio control — el host aporta la vista, el núcleo el view model.
          Es la última hija de la raíz para que quede POR ENCIMA del marco (y del cajón del menú). -->
     <controls:SettingsPanel x:Name="Settings" Grid.Row="0" Grid.RowSpan="3" />
   </Grid>

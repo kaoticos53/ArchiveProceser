@@ -27,18 +27,16 @@ mkdir -p "${APP_DIR}"
 
 # 1. Publicar versión Release autocontenida
 echo -e "\n\033[0;33m[1/4] Compilando y publicando FileFlow Studio (Release, Self-Contained)...\033[0m"
-dotnet publish "${SCRIPT_DIR}/FileFlow.App/FileFlow.App.csproj" \
+dotnet publish "${SCRIPT_DIR}/FileFlow.App.Uno/FileFlow.App.Uno.csproj" \
     -c Release \
+    -p:FileFlowTarget=desktop \
     -r linux-x64 \
     --self-contained true \
-    -p:PublishSingleFile=true \
-    -p:IncludeNativeLibrariesForSelfExtract=true \
-    -p:EnableCompressionInSingleFile=true \
     -p:DebugType=none \
     -p:DebugSymbols=false \
     -o "${APP_DIR}"
 
-chmod +x "${APP_DIR}/FileFlow.App" 2>/dev/null || true
+chmod +x "${APP_DIR}/FileFlow.App.Uno" 2>/dev/null || true
 
 # 2. Generar Paquete .deb (Ubuntu / Debian / Mint)
 echo -e "\n\033[0;33m[2/4] Generando paquete instalable .deb (Ubuntu/Debian)...\033[0m"
@@ -53,7 +51,7 @@ cp -r "${APP_DIR}/"* "${DEB_PKG_DIR}/opt/fileflow/"
 cp "${SCRIPT_DIR}/assets/FileFlow.png" "${DEB_PKG_DIR}/usr/share/icons/hicolor/256x256/apps/fileflow.png"
 cp "${SCRIPT_DIR}/assets/FileFlow.png" "${DEB_PKG_DIR}/opt/fileflow/fileflow.png"
 cp "${SCRIPT_DIR}/installer/linux/fileflow.desktop" "${DEB_PKG_DIR}/usr/share/applications/"
-ln -sf /opt/fileflow/FileFlow.App "${DEB_PKG_DIR}/usr/bin/fileflow"
+ln -sf /opt/fileflow/FileFlow.App.Uno "${DEB_PKG_DIR}/usr/bin/fileflow"
 
 cat << EOF > "${DEB_PKG_DIR}/DEBIAN/control"
 Package: fileflow
@@ -65,13 +63,13 @@ Depends: libc6, libfontconfig1, libx11-6, libice6, libsm6, libxext6, libxi6, lib
 Maintainer: FileFlow Studio <kaoticos@gmail.com>
 Description: FileFlow Studio - Node-based visual file processing and ETL automation platform.
  FileFlow Studio is a high-performance visual DAG workflow engine and batch
- file processing studio built with .NET 9 and Avalonia UI.
+ file processing studio built with .NET 10 and Uno Platform.
 EOF
 
 cat << 'EOF' > "${DEB_PKG_DIR}/DEBIAN/postinst"
 #!/bin/sh
 set -e
-chmod +x /opt/fileflow/FileFlow.App 2>/dev/null || true
+chmod +x /opt/fileflow/FileFlow.App.Uno 2>/dev/null || true
 if which update-desktop-database >/dev/null 2>&1; then
     update-desktop-database -q /usr/share/applications 2>/dev/null || true
 fi
@@ -109,7 +107,7 @@ cp "${SCRIPT_DIR}/assets/FileFlow.png" "${APPIMAGE_DIR}/fileflow.png"
 cp "${SCRIPT_DIR}/assets/FileFlow.png" "${APPIMAGE_DIR}/usr/share/icons/hicolor/256x256/apps/fileflow.png"
 cp "${SCRIPT_DIR}/installer/linux/fileflow.desktop" "${APPIMAGE_DIR}/fileflow.desktop"
 cp "${SCRIPT_DIR}/installer/linux/AppRun" "${APPIMAGE_DIR}/AppRun"
-chmod +x "${APPIMAGE_DIR}/AppRun" "${APPIMAGE_DIR}/usr/bin/FileFlow.App"
+chmod +x "${APPIMAGE_DIR}/AppRun" "${APPIMAGE_DIR}/usr/bin/FileFlow.App.Uno"
 
 "${SCRIPT_DIR}/installer/linux/build-appimage.sh" "${APPIMAGE_DIR}" "${DIST_DIR}/FileFlow-${VERSION}-x86_64.AppImage"
 rm -rf "${APPIMAGE_DIR}"
@@ -123,7 +121,7 @@ cp "${SCRIPT_DIR}/installer/linux/install.sh" "${PORTABLE_DIR}/" 2>/dev/null || 
 cp "${SCRIPT_DIR}/installer/linux/uninstall.sh" "${PORTABLE_DIR}/" 2>/dev/null || true
 cp "${SCRIPT_DIR}/installer/linux/fileflow.desktop" "${PORTABLE_DIR}/" 2>/dev/null || true
 cp "${SCRIPT_DIR}/assets/FileFlow.png" "${PORTABLE_DIR}/fileflow.png" 2>/dev/null || true
-chmod +x "${PORTABLE_DIR}/install.sh" "${PORTABLE_DIR}/uninstall.sh" "${PORTABLE_DIR}/FileFlow.App" 2>/dev/null || true
+chmod +x "${PORTABLE_DIR}/install.sh" "${PORTABLE_DIR}/uninstall.sh" "${PORTABLE_DIR}/FileFlow.App.Uno" 2>/dev/null || true
 
 tar -czf "${DIST_DIR}/FileFlow-${VERSION}-Linux-x64-Portable.tar.gz" -C "${DIST_DIR}" "FileFlow-Linux-Portable"
 rm -rf "${PORTABLE_DIR}" "${APP_DIR}"

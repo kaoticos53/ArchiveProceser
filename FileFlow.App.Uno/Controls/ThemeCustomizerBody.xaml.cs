@@ -13,7 +13,7 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// El ESTUDIO DE TEMAS del host Uno: la vista del <see cref="ThemeCustomizerViewModel"/> portable, servida
 /// por <see cref="Platform.UnoWindowService"/> cuando una orden pide <c>DialogKeys.ThemeCustomizer</c> —la
-/// misma clave que el escritorio usa para abrir su <c>ThemeCustomizerWindow</c>—.
+/// misma clave que la versión anterior usa para abrir su <c>ThemeCustomizerWindow</c>—.
 ///
 /// <para><b>El editor no está escrito a mano</b>: las secciones y sus filas vienen del catálogo del núcleo y
 /// cada fila escribe sobre la propiedad real del tema. Aquí sólo vive el pegamento de la vista —qué control
@@ -26,7 +26,7 @@ public sealed partial class ThemeCustomizerBody : UserControl
     private bool _syncing;
 
     /// <summary>
-    /// Las partes del estudio del escritorio que este host NO dibuja, con su razón. Es el otro lado del
+    /// Las partes del estudio de la versión anterior que este host NO dibuja, con su razón. Es el otro lado del
     /// censo, igual que las tablas de entradas: lo que falta queda declarado —y la guardia lo compara con
     /// las órdenes del estudio— nunca fingido con un botón que no hace nada.
     /// </summary>
@@ -37,7 +37,7 @@ public sealed partial class ThemeCustomizerBody : UserControl
         // está DIBUJADA y su fila se quitó —una parte dibujada y declarada pendiente sería una mentira—.
         ("ExportThemeAsyncCommand", "elige su fichero por el contrato SÍNCRONO (ServiceHolders.FileDialog), que en este host devuelve nulo"),
         ("ImportThemeAsyncCommand", "elige su fichero por el contrato SÍNCRONO (ServiceHolders.FileDialog), que en este host devuelve nulo"),
-        ("LivePreviewResources", "la vista previa en vivo del escritorio: su diccionario de tokens no es observable para los recursos de WinUI sin una copia por superficie, así que aquí se aplica el tema y se ve en la aplicación"),
+        ("LivePreviewResources", "la vista previa en vivo de la versión anterior: su diccionario de tokens no es observable para los recursos de WinUI sin una copia por superficie, así que aquí se aplica el tema y se ve en la aplicación"),
     ];
 
     public ThemeCustomizerBody(ThemeCustomizerViewModel viewModel)
@@ -129,7 +129,7 @@ public sealed partial class ThemeCustomizerBody : UserControl
 
     /// <summary>
     /// «Guardar y aplicar»: la orden compuesta del propio view model (guarda y luego aplica) y, como en el
-    /// code-behind del escritorio, el cierre de la superficie es del host.
+    /// code-behind de la versión anterior, el cierre de la superficie es del host.
     /// </summary>
     private void OnSaveAndApplyClicked(object sender, RoutedEventArgs e)
     {
@@ -142,7 +142,7 @@ public sealed partial class ThemeCustomizerBody : UserControl
 
     /// <summary>
     /// El campo de una fila de color escribe el valor en el tema EN CUANTO se teclea: es el mismo camino que
-    /// el selector de color del escritorio (que escribe <c>SelectedColorHex</c>), sin esperar a que el campo
+    /// el selector de color de la versión anterior (que escribe <c>SelectedColorHex</c>), sin esperar a que el campo
     /// pierda el foco.
     /// </summary>
     private void OnColorTextChanged(object sender, TextChangedEventArgs e)

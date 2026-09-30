@@ -9,7 +9,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace FileFlow.App.Uno.Controls;
 
 /// <summary>
-/// La barra de control del host Uno (el «menú principal» del encargo): la misma barra del escritorio
+/// La barra de control del host Uno (el «menú principal» del encargo): la misma barra de la versión anterior
 /// (<c>FileFlow.App/Views/ControlBarView.axaml</c>) sobre el MISMO <see cref="ControlBarViewModel"/>
 /// portable, que el contenedor del núcleo ya resolvía para el botón Ejecutar del hito 243.
 ///
@@ -32,8 +32,8 @@ public sealed partial class ControlBar : UserControl
     /// Las entradas que la barra y el cajón del ESCRITORIO tienen y este host NO dibuja, con su razón.
     ///
     /// <para>Es el otro lado del censo: lo que no está no es un olvido, es una declaración. La guardia
-    /// (<c>UnoControlBarParityGuardTests</c>) recorre las órdenes del escritorio y exige que cada una esté
-    /// dibujada aquí o en esta tabla; añadir una entrada al escritorio sin portarla ni declararla la hace
+    /// (<c>UnoControlBarParityGuardTests</c>) recorre las órdenes de la versión anterior y exige que cada una esté
+    /// dibujada aquí o en esta tabla; añadir una entrada a la versión anterior sin portarla ni declararla la hace
     /// caer. «Lo que no llega queda declarado, nunca fingido»: un botón cuyo destino no existe sería una
     /// mentira con forma de botón.</para>
     /// </summary>
@@ -41,7 +41,7 @@ public sealed partial class ControlBar : UserControl
     [
         // VACÍA desde el hito 261: la última orden que quedaba declarada —el Diseñador de Datasets— ya se
         // sirve, por el contrato de superficie del SDK. La tabla se queda (con su guardia) para que la
-        // siguiente orden del escritorio que no se pueda servir tenga dónde declararse en vez de fingirse.
+        // siguiente orden de la versión anterior que no se pueda servir tenga dónde declararse en vez de fingirse.
     ];
 
     /// <summary>
@@ -50,8 +50,8 @@ public sealed partial class ControlBar : UserControl
     /// de temas, las Métricas, el VFS y el aviso de actualización.
     ///
     /// <para>Se declaran como tabla —y no se dejan implícitas en el XAML— para que el censo del host siga
-    /// siendo legible: cada entrada con destino tiene aquí su fila, y la guardia exige que las órdenes del
-    /// escritorio estén dibujadas, en <see cref="DeclaredPendingEntries"/> o en <see cref="HostOwnedOrders"/>.</para>
+    /// siendo legible: cada entrada con destino tiene aquí su fila, y la guardia exige que las órdenes de la
+    /// versión anterior estén dibujadas, en <see cref="DeclaredPendingEntries"/> o en <see cref="HostOwnedOrders"/>.</para>
     /// </summary>
     internal static readonly (string Entry, string Where)[] ServedWindowEntries =
     [
@@ -66,19 +66,19 @@ public sealed partial class ControlBar : UserControl
     /// ASÍNCRONOS— en vez de por el enlace directo del núcleo, con su razón. Es el otro lado del censo: la
     /// orden no se pierde ni se finge, cambia de manos.
     ///
-    /// <para>Son cuatro: <c>OpenWorkflowSettingsCommand</c> —el ítem «Ajustes» del cajón del escritorio—
+    /// <para>Son cuatro: <c>OpenWorkflowSettingsCommand</c> —el ítem «Ajustes» del cajón de la versión anterior—
     /// abre aquí la superficie de ajustes del propio host (hito 255) por el evento
     /// <see cref="SettingsRequested"/> en vez de por el comando del núcleo, porque ese comando delega en
     /// <c>IWindowService</c>, que en este host es el Nulo declarado; las dos de FICHERO (Cargar y Guardar)
     /// pasan por los eventos homónimos porque su selector de fichero sigue siendo síncrono en el contrato y
     /// desde el hilo de UI devuelve nulo; y «Nuevo Flujo» pasa por su evento para que la ventana refresque
     /// además el renglón del ciclo que lee el canal externo, aunque quien pregunta y crea sea ya el comando
-    /// CANÓNICO del núcleo. La orden del escritorio se satisface; el mecanismo es el del host.</para>
+    /// CANÓNICO del núcleo. La orden de la versión anterior se satisface; el mecanismo es el del host.</para>
     /// </summary>
     internal static readonly (string Entry, string Reason)[] HostOwnedOrders =
     [
         ("OpenWorkflowSettingsCommand", "la cumple el evento SettingsRequested de esta barra: el comando del núcleo abre una VENTANA por IWindowService, que en este host es el Nulo declarado"),
-        ("OpenSyntheticDataSetDesignerCommand", "la cumple el evento DataSetDesignerRequested del cajón (hito 261): el comando del núcleo abre la ventana que monta el PROPIO plugin con el toolkit del escritorio, y un host WinUI no puede montar una ventana ajena. La ventana pide al nodo la superficie que declara al SDK (INodeDialogSurfaceProvider: clave DialogKeys.DataSetDesigner y view model portable) y el catálogo de diálogos del host la sirve con SU vista sobre ese mismo view model, sin reimplementar el diseñador"),
+        ("OpenSyntheticDataSetDesignerCommand", "la cumple el evento DataSetDesignerRequested del cajón (hito 261): el comando del núcleo abre la ventana que monta el PROPIO plugin con el toolkit de la versión anterior, y un host WinUI no puede montar una ventana ajena. La ventana pide al nodo la superficie que declara al SDK (INodeDialogSurfaceProvider: clave DialogKeys.DataSetDesigner y view model portable) y el catálogo de diálogos del host la sirve con SU vista sobre ese mismo view model, sin reimplementar el diseñador"),
         // «Nuevo Flujo» ya NO pasa por el host para preguntar (hito 265): la confirmación la hace el comando
         // CANÓNICO del núcleo por el contrato asíncrono, y la ventana sólo lo ejecuta. Sigue declarado aquí
         // porque el disparo —el evento de la barra y del cajón— es del host: por ese camino la ventana
@@ -89,23 +89,23 @@ public sealed partial class ControlBar : UserControl
     ];
 
     /// <summary>
-    /// Los ATAJOS del escritorio que este host NO enruta, con la tecla física que los dispara allí.
+    /// Los ATAJOS de la versión anterior que este host NO enruta, con la tecla física que los dispara allí.
     ///
-    /// <para>El escritorio liga F5 / F10 / Shift+F5 a las órdenes del ciclo y Ctrl+N / Ctrl+O / Ctrl+S a
+    /// <para>La versión anterior liga F5 / F10 / Shift+F5 a las órdenes del ciclo y Ctrl+N / Ctrl+O / Ctrl+S a
     /// las de flujo, todo en los <c>KeyBinding</c> de su ventana. Este host enruta <b>sólo</b> los atajos del
     /// LIENZO (<c>EditorKeyboardShortcuts</c>: Ctrl+Z/Y/C/V/X/D, Supr, Retroceso, F2, Espacio, Escape): no
-    /// tiene la tabla de la ventana del escritorio, así que esas seis combinaciones no hacen nada aquí. Se
+    /// tiene la tabla de la ventana de la versión anterior, así que esas seis combinaciones no hacen nada aquí. Se
     /// declaran —con su tecla, su orden y su razón— para que el hueco sea visible y para que enrutar una de
     /// ellas más adelante obligue a quitar su fila: la guardia exige que ninguna tecla de esta tabla esté en
     /// la tabla canónica del lienzo, así que un enrutado nuevo la pone en rojo en vez de pasar inadvertido.</para>
     /// </summary>
     /// <summary>
-    /// Los ATAJOS del escritorio que este host SÍ enruta (hito 258), con la tecla física, los modificadores
+    /// Los ATAJOS de la versión anterior que este host SÍ enruta (hito 258), con la tecla física, los modificadores
     /// que la acompañan y la orden que dispara.
     ///
     /// <para><b>La tabla es la que enruta</b>: el manejador de teclado de la ventana la recorre y despacha
     /// por la columna <c>Order</c>; no hay una segunda lista en un <c>switch</c> que se pueda desincronizar.
-    /// Quitar una fila deja su tecla muda y la guardia lo dice (el escritorio la liga y aquí ya no estaría
+    /// Quitar una fila deja su tecla muda y la guardia lo dice (la versión anterior la liga y aquí ya no estaría
     /// ni enrutada ni declarada).</para>
     ///
     /// <para><b>Las dos vías</b>: las tres del ciclo ejecutan el comando canónico del view model portable
@@ -123,9 +123,9 @@ public sealed partial class ControlBar : UserControl
     ];
 
     /// <summary>
-    /// Los ATAJOS del escritorio que este host NO enruta, con la tecla física que los dispara allí.
+    /// Los ATAJOS de la versión anterior que este host NO enruta, con la tecla física que los dispara allí.
     ///
-    /// <para>El escritorio liga F5 / F10 / Shift+F5 a las órdenes del ciclo y Ctrl+N / Ctrl+O / Ctrl+S a
+    /// <para>La versión anterior liga F5 / F10 / Shift+F5 a las órdenes del ciclo y Ctrl+N / Ctrl+O / Ctrl+S a
     /// las de flujo, todo en los <c>KeyBinding</c> de su ventana. <b>Los seis están enrutados desde el hito
     /// 258</b> (ver <see cref="RoutedShortcuts"/>), así que esta tabla está vacía —y la guardia lo exige: si
     /// una fila volviera aquí con su tecla ya enrutada, la declaración mentiría—. La tabla se conserva
@@ -133,7 +133,7 @@ public sealed partial class ControlBar : UserControl
     /// </summary>
     internal static readonly (string Gesture, string Key, string Order, string Reason)[] DeclaredUnroutedShortcuts =
     [
-        // (ninguna fila: el hito 258 enrutó los seis atajos del menú del escritorio)
+        // (ninguna fila: el hito 258 enrutó los seis atajos del menú de la versión anterior)
     ];
 
     private ControlBarViewModel? _vm;
@@ -186,7 +186,7 @@ public sealed partial class ControlBar : UserControl
 
     /// <summary>
     /// El idioma vigente en los textos de la barra. Se resuelven con las claves del diccionario del host
-    /// (con el texto del escritorio como fallback): el cambio de idioma reescribe estos controles.
+    /// (con el texto de la versión anterior como fallback): el cambio de idioma reescribe estos controles.
     /// </summary>
     public void RefreshLocalization()
     {
@@ -233,7 +233,7 @@ public sealed partial class ControlBar : UserControl
     /// <summary>
     /// Los rótulos que llevan un NÚMERO del view model: el recuento de archivos virtuales y la versión nueva
     /// anunciada. Se reescriben cuando el view model los mueve (y al cambiar de idioma), porque WinUI no
-    /// compone cadenas en el binding como el <c>StringFormat</c> del escritorio.
+    /// compone cadenas en el binding como el <c>StringFormat</c> de la versión anterior.
     /// </summary>
     private void RefreshContextualLabels()
     {
@@ -309,7 +309,7 @@ public sealed partial class ControlBar : UserControl
     /// <summary>
     /// El explorador virtual de la barra: ejecuta la orden canónica del núcleo, que pide
     /// <c>DialogKeys.VirtualFileSystemExplorer</c> con el almacén de la última ejecución. El botón sólo está
-    /// visible cuando la hay (<c>HasVirtualFiles</c>), así que el camino sin datos del escritorio —su aviso
+    /// visible cuando la hay (<c>HasVirtualFiles</c>), así que el camino sin datos de la versión anterior —su aviso
     /// informativo— no se alcanza desde aquí.
     /// </summary>
     private void OnVfsClicked(object sender, RoutedEventArgs e) =>
@@ -335,18 +335,18 @@ public sealed partial class ControlBar : UserControl
     // ───────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Enruta una tecla de la ventana a la orden que el escritorio le liga en sus <c>KeyBinding</c>
+    /// Enruta una tecla de la ventana a la orden que la versión anterior le liga en sus <c>KeyBinding</c>
     /// (hito 258). Devuelve <c>true</c> si la tecla era de este menú.
     ///
     /// <para>Se llama DESPUÉS del resolver del lienzo y sólo con la tecla sin consumir: el reparto del
-    /// teclado de este host es el del escritorio —un control que maneja su tecla manda en la suya, el
+    /// teclado de este host es el de la versión anterior —un control que maneja su tecla manda en la suya, el
     /// lienzo resuelve las suyas, y lo que queda llega aquí—.</para>
     ///
     /// <para><b>La tabla manda</b>: el bucle recorre <see cref="RoutedShortcuts"/> y despacha por su orden,
     /// así que una fila de menos es una tecla muda y no una lista paralela en un <c>switch</c>. El rastro
     /// (<c>FILEFLOW_CANVAS_TRACE=1</c>) deja el gesto, la orden y su <c>CanExecute</c> para el observador
     /// externo, que es la única prueba posible de un atajo cuyo efecto no se ve (F5 fuera de una ejecución
-    /// no cambia nada, igual que en el escritorio).</para>
+    /// no cambia nada, igual que en la versión anterior).</para>
     /// </summary>
     internal bool RouteShortcut(Windows.System.VirtualKey key, bool control, bool shift)
     {
@@ -409,7 +409,7 @@ public sealed partial class ControlBar : UserControl
 
     /// <summary>
     /// Ejecuta un comando del view model con su <c>CanExecute</c> respetado: exactamente lo que hace un
-    /// <c>Button</c> del escritorio atado por <c>Command</c>. Los asíncronos del toolkit arrancan su tarea
+    /// <c>Button</c> de la versión anterior atado por <c>Command</c>. Los asíncronos del toolkit arrancan su tarea
     /// al ejecutarse; una excepción dentro de ellos queda escrita por el manejador de <c>UnhandledException</c>
     /// del host en vez de morir en silencio.
     /// </summary>

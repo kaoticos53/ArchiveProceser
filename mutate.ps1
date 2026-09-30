@@ -220,7 +220,7 @@ function Invoke-BuildOnce {
     $errors = @($result.Output | Select-String -Pattern "error " | ForEach-Object { $_.Line.Trim() })
 
     # Un fallo de compilacion tiene dos causas que no se parecen en nada: el mutante no compila (defecto
-    # declarado invalido) o el entorno no deja escribir los binarios (un FileFlow.App abierto los bloquea y la
+    # declarado invalido) o el entorno no deja escribir los binarios (un FileFlow.App.Uno abierto los bloquea y la
     # compilacion da MSB3021/MSB3027 tras diez reintentos). Confundirlas seria dictar "la mutacion no vale"
     # sobre un defecto que si vale y no se llego a medir.
     $isCompilerError = @($errors | Where-Object { $_ -match "error CS\d" }).Count -gt 0
@@ -235,12 +235,12 @@ function Invoke-BuildOnce {
     }
 }
 
-# Las instancias de FileFlow.App bloquean los DLL del directorio de salida y hacen fallar la compilacion. Es lo
+# Las instancias de FileFlow.App.Uno bloquean los DLL del directorio de salida y hacen fallar la compilacion. Es lo
 # mismo que hace test.ps1 antes de compilar.
 function Stop-RunningApp {
-    $running = @(Get-Process -Name "FileFlow.App" -ErrorAction SilentlyContinue)
+    $running = @(Get-Process -Name "FileFlow.App.Uno" -ErrorAction SilentlyContinue)
     if ($running.Count -gt 0) {
-        Write-Warn "Cerrando $($running.Count) instancia(s) de FileFlow.App: bloquean los DLL del directorio de salida (igual que test.ps1)."
+        Write-Warn "Cerrando $($running.Count) instancia(s) de FileFlow.App.Uno: bloquean los DLL del directorio de salida (igual que test.ps1)."
         $running | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 500
     }
@@ -440,7 +440,7 @@ function Invoke-Mutation($Mutation) {
 
         $build = Invoke-BuildOnce
         if (-not $build.Ok -and -not $build.IsCompilerError) {
-            $hint = if ($build.IsFileLock) { " (ficheros bloqueados: ¿hay un FileFlow.App abierto?)" } else { "" }
+            $hint = if ($build.IsFileLock) { " (ficheros bloqueados: ¿hay un FileFlow.App.Uno abierto?)" } else { "" }
             throw "la compilacion fallo por el entorno y no por el mutante${hint}: $(($build.Errors | Select-Object -First 1))"
         }
         if (-not $build.Ok) {
@@ -495,7 +495,7 @@ function Invoke-Mutation($Mutation) {
         #    que hacia que una corrida posterior midiera el mutante.
         $rebuild = Invoke-BuildOnce
         if (-not $rebuild.Ok) {
-            $hint = if ($rebuild.IsFileLock) { " (ficheros bloqueados: ¿hay un FileFlow.App abierto?)" } else { "" }
+            $hint = if ($rebuild.IsFileLock) { " (ficheros bloqueados: ¿hay un FileFlow.App.Uno abierto?)" } else { "" }
             $state.Refusal = "la recompilacion tras restaurar fallo${hint}: $(($rebuild.Errors | Select-Object -First 3) -join ' | ')"
         }
 

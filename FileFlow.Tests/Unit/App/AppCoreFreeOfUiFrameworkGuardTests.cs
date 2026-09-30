@@ -10,7 +10,7 @@ namespace FileFlow.Tests.Unit.App;
 /// Guardia de la migración: el núcleo portable <c>FileFlow.App.Core</c> debe vivir sin Avalonia.
 /// Mira paquetes en el csproj, usings y referencias de tipo en el C#. Los comentarios que citan
 /// "Avalonia" para explicar de dónde viene algo son legítimos: la guardia no lee prosa, sólo código.
-/// Es la hermana de <see cref="UnoHostFreeOfAvaloniaGuardTests"/>: entre las dos atienden que el
+/// Es la hermana de <see cref="UnoHostFreeOfUiFrameworkGuardTests"/>: entre las dos atienden que el
 /// producto tenga dos hosts y un único núcleo, sin fugas del framework de uno al otro.
 /// </summary>
 public class AppCoreFreeOfUiFrameworkGuardTests

@@ -21,6 +21,6 @@
   },
   "control": {
     "filter": "FullyQualifiedName~EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost",
-    "why": "El caso hermano audita la paridad de ÓRDENES contra el escritorio (dibujada, pendiente o cumplida por el host), que el mutante no toca: borra una fila del censo de DIÁLOGOS del servicio, no una orden del menú. Si cayera, el mutante estaría rompiendo el menú y no sólo el censo del catálogo. (El caso del contrato del diseñador NO sirve de control: lee la misma tabla que el mutante edita, así que caería con él y la mutación sería imprecisa.)"
+    "why": "El caso hermano audita la paridad de ÓRDENES contra la versión anterior (dibujada, pendiente o cumplida por el host), que el mutante no toca: borra una fila del censo de DIÁLOGOS del servicio, no una orden del menú. Si cayera, el mutante estaría rompiendo el menú y no sólo el censo del catálogo. (El caso del contrato del diseñador NO sirve de control: lee la misma tabla que el mutante edita, así que caería con él y la mutación sería imprecisa.)"
   }
 }

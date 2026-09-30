@@ -5,14 +5,14 @@
     xmlns:platform="using:FileFlow.App.Uno.Platform">
 
   <!--
-    El AVISO DE ACTUALIZACIÓN del host Uno: la misma información que la ventana del escritorio
+    El AVISO DE ACTUALIZACIÓN del host Uno: la misma información que la ventana de la versión anterior
     (`FileFlow.App/Views/Components/UpdateDialogWindow.axaml`) sobre el MISMO `UpdateDialogViewModel`
     portable. La clave del catálogo es `DialogKeys.UpdateDialog`, que es la que pide el propio view model
     del núcleo (`ControlBarViewModel.OpenUpdateDialogAsync`) cuando hay una novedad pendiente.
 
     La entrada que lo abre no se dibuja siempre: en la barra de control vive el distintivo con la versión
     nueva, y sólo aparece cuando el arranque ha encontrado una actualización (`HasPendingUpdate`), que es el
-    mismo estado de contexto del escritorio.
+    mismo estado de contexto de la versión anterior.
   -->
   <UserControl.Resources>
     <platform:BoolToVisibilityConverter x:Key="BoolToVisibility" />

@@ -409,7 +409,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     /// la superficie al SDK (<see cref="INodeDialogSurfaceProvider"/>, con su clave del catálogo y su view model
     /// portable) y dice qué acción sustituye. Cuando la declara, la sirve el servicio de ventanas del host
     /// —el ÚNICO que sabe pintar en este host— sobre ese mismo view model; cuando no, se cae al camino del
-    /// toolkit, que es el del escritorio. La lógica del gestor no se duplica: cambia quién la pinta.</para>
+    /// toolkit, que es el de la versión anterior. La lógica del gestor no se duplica: cambia quién la pinta.</para>
     ///
     /// <para>La vuelta también importa: al cerrarse la superficie se resincronizan los parámetros del nodo,
     /// porque el catálogo de presets pudo cambiar y la fila tiene que enseñar el catálogo nuevo.</para>
@@ -501,7 +501,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     /// superficie al SDK (<see cref="INodeDialogSurfaceProvider"/>, con su clave del catálogo y su view model
     /// portable) y dice qué acción sustituye. Cuando la declara, la sirve el servicio de ventanas del host —el
     /// ÚNICO que sabe pintar en este host— sobre ese mismo view model; cuando no, se cae al camino del toolkit,
-    /// que es el del escritorio. La lógica del gestor no se duplica: cambia quién la pinta.</para>
+    /// que es el de la versión anterior. La lógica del gestor no se duplica: cambia quién la pinta.</para>
     ///
     /// <para>La vuelta también importa: al cerrarse la superficie se resincronizan los parámetros del nodo,
     /// porque la lista de claves es del nodo —la escribe el view model por la vuelta que le dio quien lo abrió—
@@ -933,7 +933,7 @@ public partial class NodeParameterViewModel : ObservableObject, IDisposable
     /// que el servicio de ese host devuelve null (declarado)—: el botón «…» de una fila de ruta quedaba
     /// dibujado, cableado y <b>sin efecto</b> (medido con el ratón). La variante asíncrona es la que ese host ya
     /// usa para el «Probar» del inspector, y la puerta la abre aquí el núcleo, no una copia de la lógica en el
-    /// host. El escritorio sigue usando la síncrona.</para>
+    /// host. La versión anterior sigue usando la síncrona.</para>
     /// </summary>
     public async Task BrowsePathAsync()
     {

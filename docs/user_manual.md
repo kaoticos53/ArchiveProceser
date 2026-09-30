@@ -1,7 +1,7 @@
 # 📖 User Manual & Node Reference Guide
 ## **FileFlow Studio v2.0**
 *Modular File Automation, Batch Processing & DAG Pipeline Platform*
-*Runtime .NET 9 | C# 13 | GNU GPLv3 License | Copyright © 2026 RGLara*
+*Runtime .NET 10 | C# 14 | GNU GPLv3 License | Copyright © 2026 RGLara*
 
 ---
 
@@ -9,7 +9,7 @@
 
 1. [Introduction & Architectural Philosophy](#1-introduction--architectural-philosophy)
 2. [Visual Editor Core Concepts](#2-visual-editor-core-concepts)
-   - [Interactive Node Canvas (Nodify)](#interactive-node-canvas-nodify)
+   - [Interactive Node Canvas (DAG)](#interactive-node-canvas-dag)
    - [File Item Pipeline Context (`FileItemContext`)](#file-item-pipeline-context-fileitemcontext)
    - [Nested Sub-workflows & Macros (Breadcrumbs)](#nested-sub-workflows--macros-breadcrumbs)
    - [Real-time Connection Telemetry Badges](#real-time-connection-telemetry-badges)
@@ -48,7 +48,7 @@
 
 ## 1. Introduction & Architectural Philosophy
 
-**FileFlow Studio** is a modern visual workflow automation engine and batch file transformation platform inspired by state-of-the-art tools like *n8n*, *ComfyUI*, and *Node-RED*, engineered specifically on **.NET 9** and **C# 13**.
+**FileFlow Studio** is a modern visual workflow automation engine and batch file transformation platform inspired by state-of-the-art tools like *n8n*, *ComfyUI*, and *Node-RED*, engineered specifically on **.NET 10** and **C# 14**.
 
 ### Core Tenets:
 - **🛡️ Non-Destructive by Default**: Input files (`OriginalPath`) are never modified or destroyed in place. Source file lifecycle manipulation (preserving, quarantining, recycling, or deleting) is strictly delegated to the specialized `OriginalFileActionNode`.
@@ -60,7 +60,7 @@
 
 ## 2. Visual Editor Core Concepts
 
-### Interactive Node Canvas (Nodify)
+### Interactive Node Canvas (DAG)
 Model pipelines by dragging and connecting nodes from the **Toolbox**:
 - **Input Ports (Left Edge)**: Receive incoming items (`In`, `BranchA`, `Files`).
 - **Output Ports (Right Edge)**: Emit transformed files or conditional branch items (`Out`, `Done`, `Error`, `Matched`, `Unmatched`).

@@ -1,19 +1,36 @@
 <Project Sdk="Uno.Sdk/6.7.30">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <!-- Selección de plataforma: por defecto Windows nativo en Windows_NT, Skia Desktop en Linux/macOS, o explícito con -p:FileFlowTarget=desktop -->
-    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(FileFlowTarget)' == 'desktop'">net10.0-desktop</TargetFramework>
-    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(FileFlowTarget)' == 'wasm'">net10.0-browserwasm</TargetFramework>
-    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(OS)' == 'Windows_NT'">net10.0-windows10.0.19041.0</TargetFramework>
-    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(OS)' != 'Windows_NT'">net10.0-desktop</TargetFramework>
+    <!-- Plataforma de destino, EXPLÍCITA: FileFlowTarget=windows|desktop|wasm|ios. Por defecto, Windows
+         nativo en Windows_NT y Skia Desktop (Linux/macOS) en el resto. La selección NO depende de que el SDK
+         haya dejado TargetFramework vacío (lo daba por sentado y el TFM se quedaba en net10.0). -->
+    <FileFlowTarget Condition="'$(FileFlowTarget)' == '' and '$(OS)' == 'Windows_NT'">windows</FileFlowTarget>
+    <FileFlowTarget Condition="'$(FileFlowTarget)' == ''">desktop</FileFlowTarget>
+
     <UnoSingleProject>true</UnoSingleProject>
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UnoFeatures>Hosting;Configuration;Toolkit</UnoFeatures>
     <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
+    <DefaultLanguage>en</DefaultLanguage>
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
     <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
+  </PropertyGroup>
+
+  <!-- TargetFramework por plataforma: se fija DESPUÉS de los props del SDK para no quedar preemptado. -->
+  <PropertyGroup Condition="'$(FileFlowTarget)' == 'windows'">
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(FileFlowTarget)' == 'desktop'">
+    <TargetFramework>net10.0-desktop</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(FileFlowTarget)' == 'wasm'">
+    <TargetFramework>net10.0-browserwasm</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(FileFlowTarget)' == 'ios'">
+    <TargetFramework>net10.0-ios</TargetFramework>
+    <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <!-- =================================================================== -->

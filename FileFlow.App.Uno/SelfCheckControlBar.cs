@@ -578,7 +578,7 @@ internal static class SelfCheckControlBar
                     //
                     // El chip del VFS y el distintivo de actualización no se ven siempre: aparecen cuando el
                     // view model dice que hay algo que enseñar (HasVirtualFiles / HasPendingUpdate), que es el
-                    // mismo estado del escritorio. Aquí se mide con los dos valores del propio view model.
+                    // mismo estado de la versión anterior. Aquí se mide con los dos valores del propio view model.
                     bool vfsContextOff = Step(() =>
                     {
                         var model = bar!.Vm!;
@@ -598,7 +598,7 @@ internal static class SelfCheckControlBar
                         "el chip del VFS aparece con el estado del view model y lleva su recuento ('"
                         + Probe(() => bar!.VfsChipText) + "')");
 
-                    // El AVISO DE ACTUALIZACIÓN: el host lo comprueba al arrancar (como el escritorio) y su
+                    // El AVISO DE ACTUALIZACIÓN: el host lo comprueba al arrancar (como la versión anterior) y su
                     // distintivo lleva la versión nueva; aquí se le da una novedad para medir el camino
                     // entero, que en la aplicación normal sólo ocurre cuando hay release nueva de verdad.
                     var announcedUpdate = new AppUpdateInfo(
@@ -794,10 +794,10 @@ internal static class SelfCheckControlBar
 
                     // Los ATAJOS: la tabla es la que enruta. F5 se mide por su efecto —reanudar escribe en
                     // la consola—, y los demás por el despacho, que es lo observable cuando no hay nada que
-                    // correr (igual que en el escritorio: F5 sin ejecución tampoco hace nada allí).
+                    // correr (igual que en la versión anterior: F5 sin ejecución tampoco hace nada allí).
                     int shortcutsInTable = ControlBar.RoutedShortcuts.Length;
                     Check(shortcutsInTable == 6 && !ControlBar.DeclaredUnroutedShortcuts.Any(),
-                        "los " + shortcutsInTable + " atajos del menú del escritorio están enrutados y ninguno queda "
+                        "los " + shortcutsInTable + " atajos del menú de la versión anterior están enrutados y ninguno queda "
                         + "declarado sin ruta");
 
                     int logsBeforeF5 = 0;

@@ -11,7 +11,7 @@ namespace FileFlow.App.Uno.Controls;
 /// del núcleo, panel de parámetros y telemetría.
 ///
 /// <para><b>Fase 3.2</b>: el renombrado (F2 en el lienzo) confirma con Enter o al perder el foco, y
-/// cancela con Escape — las mismas teclas de la caja del escritorio (<c>TitleEditBox_KeyDown</c> de
+/// cancela con Escape — las mismas teclas de la caja de la versión anterior (<c>TitleEditBox_KeyDown</c> de
 /// <c>NodeCardView.axaml.cs</c>). Es teclado de la CAJA, no del lienzo: el KeyDown del lienzo no
 /// secuestra las teclas de un TextBox (la guardia de atajos lo vigila).</para>
 ///
@@ -37,7 +37,7 @@ public sealed partial class NodeCardView : UserControl
         InitializeComponent();
 
         // El foco entra a la caja cuando el renombrado la hace visible: el renombrado ocurre donde el
-        // usuario escribe, como en el escritorio. WinUI no tiene IsVisibleChanged (WPF): la vía correcta
+        // usuario escribe, como en la versión anterior. WinUI no tiene IsVisibleChanged (WPF): la vía correcta
         // es el callback de la propiedad Visibility, y el foco se pide en el dispatcher (el binding de
         // IsEditingTitle y el pase de layout llegan después del cambio de estado).
         TitleEditBox.RegisterPropertyChangedCallback(

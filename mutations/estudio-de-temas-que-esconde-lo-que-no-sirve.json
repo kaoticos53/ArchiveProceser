@@ -1,14 +1,14 @@
 {
   "id": "estudio-de-temas-que-esconde-lo-que-no-sirve",
   "hito": 259,
-  "claim": "El ESTUDIO DE TEMAS del host declara en su propia tabla (DeclaredPendingParts) las partes del estudio del escritorio que no puede servir —Eliminar, Importar y Exportar, que dependen del contrato SÍNCRONO de diálogos, y la vista previa en vivo— y NO las dibuja: la vista sólo ejecuta las órdenes canónicas del view model portable que sí puede cumplir. Lo que falta es una decisión escrita, no un botón mudo.",
-  "why": "Aquí el hueco tiene dos formas de mentir y las dos se parecen: dibujar «Eliminar» sabiendo que su confirmación síncrona devuelve «no» desde el hilo de UI (el botón se pulsa y no borra nada), o dejar la parte fuera sin decirlo (el usuario no sabe que el estudio podía hacerlo). El mutante borra la fila de la vista previa de la tabla de declaradas: la aplicación sigue igual, el estudio sigue editando el tema y una parte del escritorio deja de estar declarada. La guardia comprueba las dos direcciones —la parte tiene que estar en la tabla y no puede estar en la vista— igual que las tablas de entradas del menú.",
+  "claim": "El ESTUDIO DE TEMAS del host declara en su propia tabla (DeclaredPendingParts) las partes del estudio de la versión anterior que no puede servir —Eliminar, Importar y Exportar, que dependen del contrato SÍNCRONO de diálogos, y la vista previa en vivo— y NO las dibuja: la vista sólo ejecuta las órdenes canónicas del view model portable que sí puede cumplir. Lo que falta es una decisión escrita, no un botón mudo.",
+  "why": "Aquí el hueco tiene dos formas de mentir y las dos se parecen: dibujar «Eliminar» sabiendo que su confirmación síncrona devuelve «no» desde el hilo de UI (el botón se pulsa y no borra nada), o dejar la parte fuera sin decirlo (el usuario no sabe que el estudio podía hacerlo). El mutante borra la fila de la vista previa de la tabla de declaradas: la aplicación sigue igual, el estudio sigue editando el tema y una parte de la versión anterior deja de estar declarada. La guardia comprueba las dos direcciones —la parte tiene que estar en la tabla y no puede estar en la vista— igual que las tablas de entradas del menú.",
   "edits": [
     {
       "file": "FileFlow.App.Uno/Controls/ThemeCustomizerBody.xaml.cs",
       "replacements": [
         {
-          "old": "        (\"LivePreviewResources\", \"la vista previa en vivo del escritorio: su diccionario de tokens no es observable para los recursos de WinUI sin una copia por superficie, así que aquí se aplica el tema y se ve en la aplicación\"),\n",
+          "old": "        (\"LivePreviewResources\", \"la vista previa en vivo de la versión anterior: su diccionario de tokens no es observable para los recursos de WinUI sin una copia por superficie, así que aquí se aplica el tema y se ve en la aplicación\"),\n",
           "new": "        // mutante: la vista previa en vivo deja de estar declarada\n",
           "count": 1
         }
@@ -17,7 +17,7 @@
   ],
   "witness": {
     "filter": "FullyQualifiedName~TheThemeStudio_ShouldDeclareWhatItCannotServe_AndNotDrawIt",
-    "why": "El caso exige que las cuatro partes del estudio del escritorio que este host no sirve estén en DeclaredPendingParts y que NINGUNA esté dibujada en la vista, y además que las órdenes que sí se dibujan sean las canónicas del view model. Con el mutante falta LivePreviewResources y el caso cae nombrándola."
+    "why": "El caso exige que las cuatro partes del estudio de la versión anterior que este host no sirve estén en DeclaredPendingParts y que NINGUNA esté dibujada en la vista, y además que las órdenes que sí se dibujan sean las canónicas del view model. Con el mutante falta LivePreviewResources y el caso cae nombrándola."
   },
   "control": {
     "filter": "FullyQualifiedName~TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared",

@@ -10,7 +10,7 @@ namespace FileFlow.App.Core;
 /// Ancla mutable a los bordes de interfaz que sólo el host puede dar, para el núcleo portable:
 /// portapapeles del sistema, exportación de registros, vista previa de archivos, generación de
 /// tokens de tema y selector de color. Los ViewModels y servicios portables llaman a esta puerta
-/// en lugar de construir ventanas ni tocar APIs del framework; el host Avalonia la instala en el
+/// en lugar de construir ventanas ni tocar APIs del framework; el host original la instala en el
 /// arranque (<c>HostUi.Install</c>) con sus implementaciones, y sin host todo queda en un no-op
 /// seguro (mismo espíritu que <c>ServiceHolders</c>, al que acompaña).
 /// </summary>
@@ -30,7 +30,7 @@ public static class HostUi
     public static IColorPickerService ColorPicker => s_colorPicker;
 
     /// <summary>
-    /// Ventana anfitriona del host en su representación nativa (un <c>Window</c> de Avalonia, uno de
+    /// Ventana anfitriona del host en su representación nativa (un <c>Window</c> de la interfaz original, uno de
     /// WinUI…), para las APIs de acciones personalizadas de nodos que piden un propietario como
     /// <c>object?</c>. Null cuando aún no hay ventana o no hay host.
     /// </summary>

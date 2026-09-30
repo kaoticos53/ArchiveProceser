@@ -23,7 +23,7 @@ namespace FileFlow.App.Uno;
 /// los otros modos.
 ///
 /// <para><b>Trae consigo</b> sus dos lecturas de fila —<c>IsPlainTextRow</c> (el resto del selector,
-/// compartido con el escritorio) y <c>Truncate</c>— y la lectura del almacén de presets
+/// compartido con la versión anterior) y <c>Truncate</c>— y la lectura del almacén de presets
 /// (<c>PresetDescriptionInFile</c>, que se lee como JSON y no como texto porque el serializador escapa los
 /// acentos con hex en mayúsculas: comparar contra el escapado de otro serializador medía el escapado, no el
 /// valor guardado). Termina con el veredicto por el código de salida y por
@@ -205,7 +205,7 @@ internal static class SelfCheckDialogs
                 int nodesBefore = Probe(() => canvas?.Editor?.Nodes.Count ?? -1);
 
                 // ── 1. El SELECTOR DE VARIABLES sobre un nodo del propio ejemplo ──
-                // El parámetro de texto libre es el que el escritorio manda al catálogo: su fila lleva el
+                // El parámetro de texto libre es el que la versión anterior manda al catálogo: su fila lleva el
                 // botón «{x}» y su valor es un texto que el usuario compone.
                 NodeViewModel? exampleNode = null;
                 NodeParameterViewModel? exampleParam = null;
@@ -383,7 +383,7 @@ internal static class SelfCheckDialogs
 
                     longParam = added.Parameters.FirstOrDefault(p => p.IsMultiLine);
                     // La fila que lleva el botón «{x}» en este nodo: un texto libre si lo hay y, si no, el
-                    // propio texto largo (que también lo lleva, como en la ficha del escritorio).
+                    // propio texto largo (que también lo lleva, como en la ficha de la versión anterior).
                     nodeVariableParam = added.Parameters.FirstOrDefault(IsPlainTextRow) ?? longParam;
                     inspector!.InspectForProbe(added);
                     return longParam is not null && nodeVariableParam is not null;
@@ -443,7 +443,7 @@ internal static class SelfCheckDialogs
                     "la caja del editor canta su AutomationId ('" + editorBoxId + "') y el modal su título ('"
                     + editorTitle + "')");
 
-                // El panel de variables del propio editor (el camino del escritorio dentro del modal).
+                // El panel de variables del propio editor (el camino de la versión anterior dentro del modal).
                 bool panelPressed = Step(() =>
                 {
                     Button? insert = UnoWindowService.ActiveEditor?.InsertVariable;
@@ -519,9 +519,9 @@ internal static class SelfCheckDialogs
                     + "' -> '" + Truncate(nodeVariableParam?.Value?.ToString() ?? string.Empty) + "'");
 
                 // ── 3. El GESTOR DE PRESETS sobre el nodo de transcodificación ──
-                // La MISMA puerta del escritorio: el botón «🎬» de la fila del preset. Lo que se mide no es
+                // La MISMA puerta de la versión anterior: el botón «🎬» de la fila del preset. Lo que se mide no es
                 // que se abra una superficie, sino que la EDICIÓN quede escrita en el almacén que lee el nodo
-                // que transcodifica —y que el view model sea el mismo que pinta el escritorio—.
+                // que transcodifica —y que el view model sea el mismo que pinta la versión anterior—.
                 const string transcoderType = "MediaTranscoderNode";
                 const string presetDescription = "Sondeo de los paneles de nodo: descripción editada en el gestor";
 
@@ -889,7 +889,7 @@ internal static class SelfCheckDialogs
                 // El nodo del desempaquetador ofrece «🔑 Claves...» y el botón de la fila de su lista de claves pide
                 // la MISMA superficie. Lo que se mide es que ESTE host la SIRVA —el cuerpo abre, lo que el usuario
                 // escribe se guarda en el parámetro del nodo y la fila lo enseña— y que NO salga el aviso de
-                // frontera que el usuario leía (que esa ventana era del escritorio).
+                // frontera que el usuario leía (que esa ventana era de la versión anterior).
                 const string unpackType = "SmartUnpackNode";
                 NodeViewModel? unpacker = null;
                 bool unpackerAdded = Step(() =>
@@ -928,7 +928,7 @@ internal static class SelfCheckDialogs
                     UnoWindowService.ActivePasswordManager is not null, 9000);
                 Check(passwordUp,
                     "su botón abre el GESTOR DE CONTRASEÑAS de ESTE host (clave '" + DialogKeys.PasswordManager
-                    + "') en vez de avisar de que la ventana es del escritorio");
+                    + "') en vez de avisar de que la ventana es de la versión anterior");
 
                 const string keysSeed = "alfa\r\nbeta";
                 bool keysTyped = passwordUp && Step(() =>
@@ -1011,40 +1011,40 @@ internal static class SelfCheckDialogs
                     + UnoWindowService.ImplementedDialogs.Length + " servidas + "
                     + UnoWindowService.DeclaredPendingDialogs.Length + " declaradas)");
 
-                // ── 4b. La frontera del ESCRITORIO en el botón de un nodo (hito 270) ──
+                // ── 4b. La frontera de la versión anterior en el botón de un nodo (hito 270) ──
                 // Un nodo con ventana del toolkit no puede montarla aquí: la DECLARA (hito 268) por los diálogos
                 // de quien lo abrió. Lo que se mide es que el aviso LLEGUE de verdad —el contexto del botón iba
                 // sin el servicio, así que la frontera se quedaba en una traza de consola y el usuario pulsaba un
                 // botón que no hacía nada y no avisaba— y que la escena quede limpia al retirarlo.
-                const string desktopOnlyType = "CustomScriptNode";
-                const string desktopOnlyAction = "OpenScriptStudio";
-                NodeViewModel? desktopOnlyNode = null;
-                bool desktopOnlyAdded = Step(() =>
+                const string unavailableType = "CustomScriptNode";
+                const string unavailableAction = "OpenScriptStudio";
+                NodeViewModel? unavailableNode = null;
+                bool unavailableAdded = Step(() =>
                 {
-                    desktopOnlyNode = canvas!.Editor!.AddNode(desktopOnlyType, new Point(120, 260));
-                    return desktopOnlyNode is not null;
+                    unavailableNode = canvas!.Editor!.AddNode(unavailableType, new Point(120, 260));
+                    return unavailableNode is not null;
                 });
-                bool desktopOnlyAnchored = desktopOnlyAdded && Step(() =>
+                bool unavailableAnchored = unavailableAdded && Step(() =>
                 {
-                    inspector!.InspectForProbe(desktopOnlyNode!);
-                    return inspector.ActionControl(desktopOnlyAction) is not null;
+                    inspector!.InspectForProbe(unavailableNode!);
+                    return inspector.ActionControl(unavailableAction) is not null;
                 });
-                Check(desktopOnlyAnchored,
-                    "el nodo con ventana del ESCRITORIO declara su acción y la ficha la pinta (ancla '"
-                    + "InspectorAction_" + desktopOnlyAction + "')");
+                Check(unavailableAnchored,
+                    "el nodo con ventana de la versión anterior declara su acción y la ficha la pinta (ancla '"
+                    + "InspectorAction_" + unavailableAction + "')");
 
                 // El nombre de la ventana que el aviso tiene que nombrar lo pone el diccionario del plugin (el
                 // host no escribe las palabras): la sonda lo lee en vez de fijar un literal de un idioma.
                 string surfaceName = Probe(() => FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString(
                     "ScriptStudio_Title", "Estudio de Scripts")) ?? "Estudio de Scripts";
-                bool desktopOnlyPressed = desktopOnlyAnchored && Step(() =>
-                    UnoWindowService.Press(inspector!.ActionControl(desktopOnlyAction)!));
+                bool unavailablePressed = unavailableAnchored && Step(() =>
+                    UnoWindowService.Press(inspector!.ActionControl(unavailableAction)!));
 
                 // La espera y la lectura van SEPARADAS a propósito: `WaitUntil` ya envuelve la condición en
                 // `Probe`, así que anidar un `Probe` dentro de él deja al hilo de UI esperándose a sí mismo
                 // (la lectura interior sólo corre cuando la exterior suelta el hilo, o sea tarde) y devuelve
                 // un «no» falso —medido al escribir esta misma sonda—.
-                bool warned = desktopOnlyPressed
+                bool warned = unavailablePressed
                     && WaitUntil(() => UnoWindowService.ActiveDialog?.Content is string, 9000);
                 string warningText = Probe(() => UnoWindowService.ActiveDialog?.Content as string) ?? string.Empty;
                 Check(warned && warningText.Contains(surfaceName, StringComparison.Ordinal),
@@ -1112,7 +1112,7 @@ internal static class SelfCheckDialogs
     }
 
     /// <summary>
-    /// ¿La fila es de TEXTO LIBRE? Es el mismo resto del selector del escritorio y del inspector del host:
+    /// ¿La fila es de TEXTO LIBRE? Es el mismo resto del selector de la versión anterior y del inspector del host:
     /// ni casilla, ni deslizador, ni desplegable, ni ruta con explorar, ni multilínea. Sólo esas filas llevan
     /// el botón «{x}» del catálogo.
     /// </summary>

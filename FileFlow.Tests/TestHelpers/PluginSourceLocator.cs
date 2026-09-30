@@ -18,7 +18,8 @@ internal static class PluginSourceLocator
     /// <summary>Proyectos de la solución que no son plugins (no contienen nodos).</summary>
     public static readonly string[] NonPluginProjects =
     [
-        "FileFlow.App",
+        "FileFlow.App.Core",
+        "FileFlow.App.Uno",
         "FileFlow.Core",
         "FileFlow.Sdk",
         "FileFlow.Tests"

@@ -18,17 +18,17 @@ namespace FileFlow.App.Uno.Controls;
 
 /// <summary>
 /// El inspector de nodos del host Uno, montado sobre el <see cref="NodeInspectorViewModel"/> del
-/// núcleo portable (el mismo que el escritorio): la ficha del nodo seleccionado con su descripción,
-/// los parámetros con los MISMOS editores que el escritorio decide por los flags del
+/// núcleo portable (el mismo que la versión anterior): la ficha del nodo seleccionado con su descripción,
+/// los parámetros con los MISMOS editores que la versión anterior decide por los flags del
 /// <see cref="NodeParameterViewModel"/> (toggle, slider, número, desplegable, ruta con explorar,
 /// multilínea, texto) y la sección de telemetría del nodo —montada desde el hito 275 en su propio control
 /// (<see cref="NodeInspectorTelemetrySection"/>), que sólo LEE las medidas que el motor escribe en él.
 ///
-/// <para><b>Por qué por código y no XAML</b>: el escritorio decide los editores con un Selector de
-/// estilos de Avalonia sobre los flags del VM; WinUI no tiene un equivalente directo (los DataTemplate
+/// <para><b>Por qué por código y no XAML</b>: la versión anterior decide los editores con un Selector de
+/// estilos de la interfaz original sobre los flags del VM; WinUI no tiene un equivalente directo (los DataTemplate
 /// de WinUI no seleccionan por propiedad del ítem), así que la tabla de editores vive aquí como el
-/// mismo orden de flags que el escritorio — la guardia de la rebanada compara esa tabla contra el VM.
-/// El botón «Probar» del escritorio (prueba aislada con fichero) está ACTIVADO desde el hito 240:
+/// mismo orden de flags que la versión anterior — la guardia de la rebanada compara esa tabla contra el VM.
+/// El botón «Probar» de la versión anterior (prueba aislada con fichero) está ACTIVADO desde el hito 240:
 /// ejecuta TestNodeWithCustomFileAsync del núcleo, que consume la variante asíncrona del
 /// IFileDialogService — el picker se abre desde el click de UI sin bloquear el hilo de UI.</para>
 ///
@@ -48,7 +48,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     private readonly StackPanel _paramsHost = new() { Spacing = 4 };
 
     /// <summary>
-    /// La pila de las ACCIONES del nodo (el bloque de acciones rápidas del escritorio): un botón por acción
+    /// La pila de las ACCIONES del nodo (el bloque de acciones rápidas de la versión anterior): un botón por acción
     /// declarada, que ejecuta la misma orden del núcleo que el botón de la tarjeta del lienzo.
     /// </summary>
     private readonly StackPanel _actionsHost = new() { Spacing = 4 };
@@ -81,7 +81,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     /// <summary>
     /// La sección de TELEMETRÍA de la ficha (hito 275): sus filas salen del <c>CurrentStats</c> del nodo
     /// inspeccionado —el agregado que escribe el motor— y de su estado, y las pinta ella. Vive en su propio
-    /// archivo porque es una superficie con entidad propia (la pestaña de Telemetría del escritorio), no un
+    /// archivo porque es una superficie con entidad propia (la pestaña de Telemetría de la versión anterior), no un
     /// bloque más de este panel: el panel la monta y le dice qué nodo, nada más.
     /// </summary>
     private readonly NodeInspectorTelemetrySection _telemetrySection;
@@ -94,7 +94,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     /// los envuelve. Con la ficha en sus 300 lógicos de fábrica —y sus rótulos en español o inglés— medía
     /// «Salidas» y «Diff» con <b>caja vacía</b> (rectángulo (0,0,0,0), fuera del alcance del ratón) y
     /// «Entradas» recortada a 36 px, así que dos de las cinco secciones no se podían pulsar y no había
-    /// scroll, ni rueda, ni chevron de desbordamiento que las alcanzara. El escritorio usa un
+    /// scroll, ni rueda, ni chevron de desbordamiento que las alcanzara. La versión anterior usa un
     /// <c>TabControl</c>, que ENVUELVE sus cabeceras; aquí se usa el mismo conmutador segmentado que la
     /// superficie de Ajustes del propio host, sobre el <see cref="WrapPanel"/> del hito 272.</para>
     /// </summary>
@@ -107,7 +107,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     /// <summary>
     /// Las seis secciones de la ficha, en orden: su clave de idioma, su rótulo de fábrica y su ancla de
     /// automatización (las MISMAS que llevaba el Pivot, porque la observación UIA externa y las guardias
-    /// las buscan por ahí). Telemetría va al final, como en el escritorio: es la sección que CIERRA la ficha.
+    /// las buscan por ahí). Telemetría va al final, como en la versión anterior: es la sección que CIERRA la ficha.
     /// </summary>
     private static readonly (string Key, string Fallback, string Aid)[] InspectorTabs =
     {
@@ -139,7 +139,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     {
         var loc = LocalizationManager.Instance;
 
-        // Cabecera: título + cerrar (el comando del VM de la rebanada del escritorio).
+        // Cabecera: título + cerrar (el comando del VM de la rebanada de la versión anterior).
         var closeButton = new Button
         {
             Padding = new Thickness(10, 4, 10, 4),
@@ -153,7 +153,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         };
         closeButton.Click += (_, _) => _vm?.ClosePanelCommand.Execute(null);
 
-        // El «Probar» del escritorio (hito 240): el comando canónico del núcleo abre el picker con
+        // El «Probar» de la versión anterior (hito 240): el comando canónico del núcleo abre el picker con
         // la variante asíncrona del IFileDialogService — desde el click de UI sin interbloqueo —
         // y ejecuta el nodo con el fichero elegido (estados Running/Completed/PausedOnError,
         // snapshot de entrada, diff de metadatos y diálogos de resultado viven en el núcleo).
@@ -215,7 +215,7 @@ public sealed partial class NodeInspectorPanel : UserControl
             Foreground = Brush("CanvasTextBrush")
         };
 
-        // El encabezado del bloque de ACCIONES del nodo (el que la ficha del escritorio pinta sobre su lista
+        // El encabezado del bloque de ACCIONES del nodo (el que la ficha de la versión anterior pinta sobre su lista
         // de acciones): se colapsa entero cuando el nodo no declara ninguna.
         _actionsHeader = new TextBlock
         {
@@ -230,10 +230,10 @@ public sealed partial class NodeInspectorPanel : UserControl
         // aquí el panel construía sus filas y no las montaba en ninguna parte: se rellenaban para nadie.
         _telemetrySection = new NodeInspectorTelemetrySection();
 
-        // Las tres pestañas del escritorio (hito 242): Parámetros, Snapshots (los snapshots del
+        // Las tres pestañas de la versión anterior (hito 242): Parámetros, Snapshots (los snapshots del
         // nodo con su vista) y Diff (el diff de metadatos que el VM del núcleo computa al
         // seleccionar un snapshot). Los AIDs dan anclas a la observación UIA externa.
-        // La ficha en el orden del escritorio: descripción, ACCIONES del nodo (la puerta a sus superficies —
+        // La ficha en el orden de la versión anterior: descripción, ACCIONES del nodo (la puerta a sus superficies —
         // el gestor de presets, la configuración del VLM, el estudio de scripts...) y, debajo, los editores de
         // sus parámetros. Las acciones vivían sólo en la tarjeta del lienzo: sin este bloque, el usuario que
         // no supiera desplegar la tarjeta no tenía forma de llegar a la superficie del nodo.
@@ -619,9 +619,9 @@ public sealed partial class NodeInspectorPanel : UserControl
 
     /// <summary>
     /// La pestaña de snapshots (hito 242): los snapshots del NODO (entradas y salidas), con la
-    /// cabecera del escritorio (puerto, timestamp, ruta actual), el contenido desplegable (ruta
+    /// cabecera de la versión anterior (puerto, timestamp, ruta actual), el contenido desplegable (ruta
     /// original, tamaño, metadatos, tags, error) y el botón «Ver» por el comando canónico del VM
-    /// (<c>PreviewSpecificSnapshotCommand</c> — la misma vista previa del escritorio).
+    /// (<c>PreviewSpecificSnapshotCommand</c> — la misma vista previa de la versión anterior).
     /// </summary>
     /// <summary>
     /// Un cambio en las colecciones reconstruye las TRES vistas que comparten el dato (la
@@ -733,7 +733,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         Grid.SetColumn(headerLines, 0);
         header.Children.Add(headerLines);
 
-        // El «Ver» del escritorio: el comando canónico del VM (la vista previa vive en el núcleo).
+        // El «Ver» de la versión anterior: el comando canónico del VM (la vista previa vive en el núcleo).
         var viewButton = new Button
         {
             Padding = new Thickness(8, 2, 8, 2),
@@ -747,7 +747,7 @@ public sealed partial class NodeInspectorPanel : UserControl
 
         root.Children.Add(header);
 
-        // El contenido desplegable: la misma información que el Expander del escritorio.
+        // El contenido desplegable: la misma información que el Expander de la versión anterior.
         var details = new StackPanel { Spacing = 3, Margin = new Thickness(12, 2, 0, 0) };
         details.Children.Add(new TextBlock
         {
@@ -820,7 +820,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     /// <summary>
     /// La pestaña de diff (hito 242): las filas de <c>MetadataDiffs</c> que el VM del núcleo
     /// computa (al inspeccionar y al seleccionar un snapshot) — Added/Removed/Modified con los
-    /// colores del escritorio.
+    /// colores de la versión anterior.
     /// </summary>
     private void RebuildDiff()
     {
@@ -956,7 +956,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         _rowValueSubscriptions.Add((p, OnParameterChanged));
     }
 
-    // ── La tabla de editores: los mismos flags del VM que el escritorio usa en su Selector ──
+    // ── La tabla de editores: los mismos flags del VM que la versión anterior usa en su Selector ──
 
     private void RebuildParameters()
     {
@@ -997,8 +997,8 @@ public sealed partial class NodeInspectorPanel : UserControl
     ///
     /// <para><b>Por qué la ficha las lleva</b>. Hasta aquí estas acciones vivían SÓLO en el panel plegable de
     /// la tarjeta del lienzo, y son la única puerta a las superficies del nodo (el gestor de presets, la
-    /// configuración del VLM, el estudio de scripts, el diseñador de datasets...). El inspector es donde el
-    /// escritorio las pinta y donde el usuario las busca: sin este bloque, la acción existía, el comando
+    /// configuración del VLM, el estudio de scripts, el diseñador de datasets...). El inspector es donde la
+    /// versión anterior las pinta y donde el usuario las busca: sin este bloque, la acción existía, el comando
     /// existía y no había dónde pulsarlo desde la ficha.</para>
     /// </summary>
     private void RebuildActions()
@@ -1173,13 +1173,13 @@ public sealed partial class NodeInspectorPanel : UserControl
         }
 
         // Las ACCIONES de la fila (rebanada 5.3): abrir el EDITOR enriquecido —sólo donde el valor es un
-        // texto largo, como la ficha del escritorio— e insertar una VARIABLE por el selector. Son la
+        // texto largo, como la ficha de la versión anterior— e insertar una VARIABLE por el selector. Son la
         // puerta del usuario a los dos diálogos del host: sin ellas los comandos del núcleo existirían y
         // no habría quien los pulsara, que es exactamente el botón-que-no-hace-nada que este tramo viene
         // a quitar.
         root.Children.Add(WrapWithRowActions(p, editor));
 
-        // El valor evaluado con su copia (la fila que el escritorio pinta bajo el campo).
+        // El valor evaluado con su copia (la fila que la versión anterior pinta bajo el campo).
         if (p.HasExpression)
         {
             var evaluated = new TextBlock
@@ -1225,7 +1225,7 @@ public sealed partial class NodeInspectorPanel : UserControl
 
     /// <summary>
     /// Los DIÁLOGOS DE FILA que este host sirve, con el prefijo de AutomationId de su botón. Es la mitad
-    /// positiva de la tabla de paridad: cada orden de fila del escritorio tiene que estar aquí —dibujada— o
+    /// positiva de la tabla de paridad: cada orden de fila de la versión anterior tiene que estar aquí —dibujada— o
     /// en <see cref="DeclaredPendingRowActions"/>. La mitad negativa no es adorno: un portado a medias se ve
     /// igual desde dentro que un portado completo, y el usuario sólo descubre el hueco cuando busca el botón.
     /// </summary>
@@ -1240,12 +1240,12 @@ public sealed partial class NodeInspectorPanel : UserControl
     ];
 
     /// <summary>
-    /// Los diálogos que el escritorio abre desde una fila de parámetro y este host NO sirve, cada uno con su
+    /// Los diálogos que la versión anterior abre desde una fila de parámetro y este host NO sirve, cada uno con su
     /// razón. Lo que no llega queda declarado, nunca fingido.
     /// </summary>
     internal static readonly (string Command, string Reason)[] DeclaredPendingRowActions =
     [
-        ("OpenVariablePickerCommand", "el menú emergente de variables del escritorio (el botón «{x}» despliega un menú con el catálogo agrupado): este host no tiene menú emergente y su «{x}» abre directamente el CATÁLOGO COMPLETO, que es la primera entrada de aquél"),
+        ("OpenVariablePickerCommand", "el menú emergente de variables de la versión anterior (el botón «{x}» despliega un menú con el catálogo agrupado): este host no tiene menú emergente y su «{x}» abre directamente el CATÁLOGO COMPLETO, que es la primera entrada de aquél"),
     ];
 
     /// <summary>
@@ -1253,12 +1253,12 @@ public sealed partial class NodeInspectorPanel : UserControl
     /// abren los diálogos del host. Se envuelve SÓLO cuando la fila tiene alguna acción, así que el
     /// resto de filas quedan exactamente como estaban.
     ///
-    /// <para><b>Qué acción lleva cada fila</b>, con los mismos flags del VM que usa el escritorio: el
+    /// <para><b>Qué acción lleva cada fila</b>, con los mismos flags del VM que usa la versión anterior: el
     /// EDITOR de texto va en el valor largo (<c>IsMultiLine</c>) y el botón de VARIABLES en las filas
     /// cuyo valor es texto —el multilínea, la ruta con explorar y el texto estándar—, el GESTOR DE PRESETS en la
-    /// fila del preset y el GESTOR DE CONTRASEÑAS en la de la lista de claves, que son las mismas filas que el
-    /// escritorio marca. El selector de
-    /// variables del host abre el CATÁLOGO COMPLETO (el mismo diálogo al que el escritorio llega por el
+    /// fila del preset y el GESTOR DE CONTRASEÑAS en la de la lista de claves, que son las mismas filas que la
+    /// versión anterior marca. El selector de
+    /// variables del host abre el CATÁLOGO COMPLETO (el mismo diálogo al que la versión anterior llega por el
     /// menú rápido del botón «{x}»): este host todavía no tiene el menú emergente, y ese paso de menos
     /// está declarado.</para>
     /// </summary>
@@ -1299,8 +1299,8 @@ public sealed partial class NodeInspectorPanel : UserControl
                 p.OpenVariableCatalogCommand));
         }
 
-        // El GESTOR DE PRESETS: la misma fila que el escritorio marca con su «Presets» (la del editor de
-        // presets de medios). La orden es la de la fila —la misma que el escritorio—, y la cumple la
+        // El GESTOR DE PRESETS: la misma fila que la versión anterior marca con su «Presets» (la del editor de
+        // presets de medios). La orden es la de la fila —la misma que la versión anterior—, y la cumple la
         // superficie que declara el nodo: el host no reimplementa el gestor, lo sirve.
         if (wantsPresets)
         {
@@ -1312,8 +1312,8 @@ public sealed partial class NodeInspectorPanel : UserControl
                 p.OpenMediaPresetManagerCommand));
         }
 
-        // El GESTOR DE CONTRASEÑAS: la misma fila que el escritorio marca con su botón «Claves» (la de la lista
-        // de claves del nodo). La orden es la de la fila —la misma que el escritorio— y la cumple la superficie
+        // El GESTOR DE CONTRASEÑAS: la misma fila que la versión anterior marca con su botón «Claves» (la de la lista
+        // de claves del nodo). La orden es la de la fila —la misma que la versión anterior— y la cumple la superficie
         // que declara el nodo: el host no reimplementa el gestor, lo sirve. Antes esta fila no tenía botón y la
         // capacidad se declaraba pendiente en la tabla mientras la TARJETA del nodo la ofrecía: dos puertas de
         // acuerdo es lo que esta línea cierra.
@@ -1327,7 +1327,7 @@ public sealed partial class NodeInspectorPanel : UserControl
                 p.OpenPasswordManagerCommand));
         }
 
-        // El ESTUDIO DE RENOMBRADO AVANZADO: la misma fila que el escritorio marca para el pipeline de
+        // El ESTUDIO DE RENOMBRADO AVANZADO: la misma fila que la versión anterior marca para el pipeline de
         // métodos del nodo de renombrado. La orden es la de la fila y la cumple la superficie que declara
         // el nodo —igual que la acción «🏷️ Pipeline de Métodos...» de su tarjeta—.
         if (wantsRenamer)
@@ -1351,7 +1351,7 @@ public sealed partial class NodeInspectorPanel : UserControl
     }
 
     /// <summary>
-    /// ¿La fila es de texto libre? Es el mismo resto del selector del escritorio: ni casilla, ni
+    /// ¿La fila es de texto libre? Es el mismo resto del selector de la versión anterior: ni casilla, ni
     /// deslizador, ni desplegable, ni ruta con explorar. Sólo esas filas llevan el botón de variables.
     /// </summary>
     private static bool RowValueIsPlainText(NodeParameterViewModel p) =>

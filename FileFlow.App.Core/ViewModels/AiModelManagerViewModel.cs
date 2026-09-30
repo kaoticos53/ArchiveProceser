@@ -430,7 +430,7 @@ public partial class AiModelManagerViewModel : ObservableObject
         if (item == null) return;
 
         // El diálogo de URLs es un diálogo del host: se pide por clave a través del servicio de ventanas
-        // portable y el host resuelve la ventana concreta (Avalonia: AiModelUrlsConfigDialog; Uno: la suya).
+        // portable y el host resuelve la ventana concreta (host original: AiModelUrlsConfigDialog; Uno: la suya).
         var result = await _windows.ShowDialogAsync(DialogKeys.AiModelUrlsConfig, item?.ModelId);
         if (result?.Confirmed == true && item != null)
         {

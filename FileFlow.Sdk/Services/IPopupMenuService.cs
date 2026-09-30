@@ -37,8 +37,8 @@ public sealed record PopupMenuItem
 
 /// <summary>
 /// Contrato para mostrar menús emergentes desde los ViewModels sin conocer el framework de UI.
-/// El ancla es <c>object?</b> a propósito: el host la interpreta (en Avalonia, el control desde el
-/// que abrir el menú); cuando no hay ancla el host no muestra nada, igual que hacía el ViewModel.
+/// El ancla es <c>object?</c> a propósito: el host la interpreta (el control desde el que abrir el menú);
+/// cuando no hay ancla el host no muestra nada.
 /// </summary>
 public interface IPopupMenuService
 {

@@ -21,7 +21,7 @@ namespace FileFlow.Tests.TestHelpers;
 /// en vez de devolver nada.</para>
 ///
 /// <para><b>Qué admite</b>: que la tabla esté VACÍA (<paramref name="allowEmpty"/>). Desde el hito 261 no
-/// queda ninguna orden del escritorio sin servir, y una tabla vacía es la verdad —no una tabla que no se
+/// queda ninguna orden de la versión anterior sin servir, y una tabla vacía es la verdad —no una tabla que no se
 /// lee—. Que la tabla EXISTA (con su guardia y su razón) lo comprueba el caso del censo en su propia
 /// guardia.</para>
 /// </summary>

@@ -6,8 +6,8 @@ Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host "  FileFlow Studio - Code Coverage Report " -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 
-# 0. Stop any running instance of FileFlow.App to prevent file locks on DLLs
-Get-Process -Name "FileFlow.App" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+# 0. Stop any running instance of FileFlow.App.Uno to prevent file locks on DLLs
+Get-Process -Name "FileFlow.App.Uno" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
 # 1. Check & Install ReportGenerator Tool if missing
 if (-not (Get-Command "reportgenerator" -ErrorAction SilentlyContinue)) {

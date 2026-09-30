@@ -37,7 +37,7 @@ FileFlow Studio features **two independent execution runtimes**:
 | Feature | ⚡ C# (Roslyn Scripting) | 🌐 JavaScript (Jint Sandbox) |
 | :--- | :--- | :--- |
 | **Target Audience** | Maximum performance or familiarity with C# and .NET. | Developers preferring lightweight, flexible web-style syntax. |
-| **Performance** | **Ultra-fast** (.NET 9 in-memory JIT compilation with SHA256 caching). | **Fast and safe** (Managed in-memory sandboxed engine). |
+| **Performance** | **Ultra-fast** (.NET 10 in-memory JIT compilation with SHA256 caching). | **Fast and safe** (Managed in-memory sandboxed engine). |
 | **Async Dispatch** | `await EmitAsync("PortName");` | `emit("PortName", item);` |
 | **Best Suited For** | Mathematical calculations, file system manipulations, and .NET types. | String manipulation, regular expressions, and JSON parsing. |
 

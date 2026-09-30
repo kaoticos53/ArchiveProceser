@@ -171,8 +171,8 @@ public class ToolboxOrganizationTests
             // Spanish
             // En el hilo de UI: el setter de CurrentCulture dispara PropertyChanged y con él la
             // reevaluación de los bindings residuales de capturas anteriores — en el hilo runner eso
-            // revienta con 'The calling thread cannot access this object' (ver AvaloniaTestHelper).
-            AvaloniaTestHelper.SetCultureOnUI("es-ES");
+            // revienta con 'The calling thread cannot access this object' (ver HostUiTestHelper).
+            HostUiTestHelper.SetCultureOnUI("es-ES");
             foreach (var role in roles)
             {
                 string locRole = LocalizationManager.Instance.GetString($"Role_{role}", string.Empty);
@@ -186,7 +186,7 @@ public class ToolboxOrganizationTests
             }
 
             // English
-            AvaloniaTestHelper.SetCultureOnUI("en-US");
+            HostUiTestHelper.SetCultureOnUI("en-US");
             foreach (var role in roles)
             {
                 string locRole = LocalizationManager.Instance.GetString($"Role_{role}", string.Empty);
@@ -201,7 +201,7 @@ public class ToolboxOrganizationTests
         }
         finally
         {
-            AvaloniaTestHelper.RunOnUI(() => LocalizationManager.Instance.CurrentCulture = originalCulture);
+            HostUiTestHelper.RunOnUI(() => LocalizationManager.Instance.CurrentCulture = originalCulture);
         }
     }
 

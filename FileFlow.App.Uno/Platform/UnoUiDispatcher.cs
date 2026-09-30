@@ -24,7 +24,7 @@ public sealed class UnoUiDispatcher : IUiDispatcher
 
     public UnoUiDispatcher()
     {
-        // En el host de escritorio el proceso ya tiene su DispatcherQueue en el hilo principal.
+        // En el host WinUI de Windows el proceso ya tiene su DispatcherQueue en el hilo principal.
         _queue = DispatcherQueue.GetForCurrentThread();
     }
 

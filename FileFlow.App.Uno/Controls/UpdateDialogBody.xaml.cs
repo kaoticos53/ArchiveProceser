@@ -9,7 +9,7 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// El AVISO DE ACTUALIZACIÓN del host Uno: la vista del <see cref="UpdateDialogViewModel"/> portable,
 /// servida por <see cref="Platform.UnoWindowService"/> cuando el núcleo pide <c>DialogKeys.UpdateDialog</c>
-/// —la misma clave que el escritorio usa para abrir su <c>UpdateDialogWindow</c>—.
+/// —la misma clave que la versión anterior usa para abrir su <c>UpdateDialogWindow</c>—.
 ///
 /// <para><b>La información es del view model</b>: versiones, título del release, formato del paquete,
 /// novedades y el progreso de la descarga. La vista sólo pinta y las tres órdenes (omitir esta versión,

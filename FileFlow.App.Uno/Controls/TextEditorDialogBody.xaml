@@ -6,7 +6,7 @@
 
   <!--
     El CUERPO del diálogo de edición de texto y prompts del host Uno: es la vista del view model
-    PORTABLE `TextEditorDialogViewModel` (el mismo que envuelve la ventana del escritorio), servido
+    PORTABLE `TextEditorDialogViewModel` (el mismo que envuelve la ventana de la versión anterior), servido
     dentro de un `ContentDialog` de WinUI por `UnoWindowService`.
 
     Lo que hace, y de dónde sale cada cosa:
@@ -18,7 +18,7 @@
         abre un segundo diálogo encima del primero (WinUI no admite dos a la vez en la misma raíz);
       - la VISTA PREVIA es la del VM (`VariableTemplateResolver` sobre el contexto real);
       - los TEXTOS son las claves del diccionario del host (`Uno_Dialog_*`), cuyos valores se copian
-        del diccionario del escritorio: la misma regla que la barra del menú.
+        del diccionario de la versión anterior: la misma regla que la barra del menú.
   -->
   <UserControl.Resources>
     <conv:BoolToVisibilityConverter x:Key="BoolToVis" />

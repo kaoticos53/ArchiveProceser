@@ -10,10 +10,10 @@ using Xunit;
 namespace FileFlow.Tests.Unit.App;
 /// <summary>
 /// La guardia de los <b>TEXTOS</b> del menú principal del host Uno (hito 257): las cadenas que la barra y su
-/// cajón enseñan son las del ESCRITORIO, copiadas clave por clave en los dos idiomas.
+/// cajón enseñan son las del núcleo portable, copiadas clave por clave en los dos idiomas.
 ///
 /// <para><b>Por qué es una guardia aparte</b>: el sujeto no es lo que la barra hace sino lo que dice, y su
-/// referencia no es el código del núcleo sino los diccionarios del escritorio. Una traducción propia del host
+/// referencia no es el código del host sino los diccionarios del núcleo portable. Una traducción propia del host
 /// sería otra interfaz —el usuario vería dos productos— y un texto sin entrada en el diccionario sale en la
 /// interfaz como su clave.</para>
 ///
@@ -26,9 +26,9 @@ public class UnoControlBarTextsGuardTests
     private const string StringsEnglish = "FileFlow.App.Uno/Resources/Strings.resx";
     private const string StringsSpanish = "FileFlow.App.Uno/Resources/Strings.es.resx";
 
-    /// <summary>La barra del escritorio y su cajón: la referencia de paridad.</summary>
-    private const string DesktopStringsEnglish = "FileFlow.App.Core/Resources/Strings.resx";
-    private const string DesktopStringsSpanish = "FileFlow.App.Core/Resources/Strings.es.resx";
+    /// <summary>Las cadenas del núcleo portable: la referencia de paridad de estos textos.</summary>
+    private const string CoreStringsEnglish = "FileFlow.App.Core/Resources/Strings.resx";
+    private const string CoreStringsSpanish = "FileFlow.App.Core/Resources/Strings.es.resx";
 
     /// <summary>Dónde vive la orden de una entrada: en el code-behind (un comando) o en el XAML (un enlace).</summary>
     private enum Home
@@ -43,10 +43,10 @@ public class UnoControlBarTextsGuardTests
         File.ReadAllText(Path.Combine(TestRepositoryLocator.RepositoryRoot(), relativePath));
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 1. Los textos son los del escritorio, en los dos idiomas
+    // 1. Los textos son los de la versión anterior, en los dos idiomas
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>De la clave del host a la clave del diccionario del escritorio: el texto se COPIA, no se re-traduce.</summary>
+    /// <summary>De la clave del host a la clave del diccionario de la versión anterior: el texto se COPIA, no se re-traduce.</summary>
     private static IReadOnlyList<(string Host, string Desktop)> SharedTexts() =>
     [
         ("Uno_ControlBar_Menu", "MenuBtn"),
@@ -99,12 +99,12 @@ public class UnoControlBarTextsGuardTests
     ];
 
     [Fact]
-    public void TheSharedTexts_ShouldBeTheDesktopOnes_InBothLanguages()
+    public void TheSharedTexts_ShouldMatchTheCoreOnes_InBothLanguages()
     {
         foreach (var (hostPath, desktopPath) in new[]
                  {
-                     (StringsEnglish, DesktopStringsEnglish),
-                     (StringsSpanish, DesktopStringsSpanish),
+                     (StringsEnglish, CoreStringsEnglish),
+                     (StringsSpanish, CoreStringsSpanish),
                  })
         {
             var host = HostDictionaries.Of(hostPath);
@@ -132,7 +132,7 @@ public class UnoControlBarTextsGuardTests
             }
 
             wrong.Should().BeEmpty(
-                "los textos de la barra y del cajón son los del escritorio, copiados: una traducción propia "
+                "los textos de la barra y del cajón son los de la versión anterior, copiados: una traducción propia "
                 + $"sería otra interfaz ({Path.GetFileName(hostPath)})");
         }
     }

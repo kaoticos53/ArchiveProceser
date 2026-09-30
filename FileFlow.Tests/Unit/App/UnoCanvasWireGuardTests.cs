@@ -15,7 +15,7 @@ namespace FileFlow.Tests.Unit.App;
 /// <list type="number">
 /// <item>La figura del cable abría en el primer punto de control, así que el cable quedaba separado de cada
 /// socket y salía invertido —el rulo con forma de «2»— cuando las anclas estaban cerca; su segundo intento
-/// añadió los dos tramos rectos del trazo del control de Nodify y el resultado se leía como una <b>Z</b>.</item>
+/// añadió los dos tramos rectos del trazo de la versión anterior y el resultado se leía como una <b>Z</b>.</item>
 /// <item>El centro del socket se medía transformando el vértice <c>(0, 0)</c> y <b>sumando</b> después la mitad
 /// del tamaño, lo que ignora la escala de la cadena: al 125 % el ancla se quedaba corta
 /// <c>0,25 · (w/2)</c> y el cable aparecía desplazado en cuanto se tocaba el zoom.</item>
@@ -106,7 +106,7 @@ public class UnoCanvasWireGuardTests
 
         code.Should().NotContain(
             "new LineSegment",
-            "ni un tramo recto: los dos bajíos del trazo del control de Nodify son los que se leían como una Z " +
+            "ni un tramo recto: los dos bajíos del trazo de la versión anterior son los que se leían como una Z " +
             "en pantalla, que es lo que el usuario pidió quitar. El cable sale del socket ya curvando");
 
         code.Split("CreateWireGeometry(wire)").Length.Should().Be(
@@ -330,7 +330,7 @@ public class UnoCanvasWireGuardTests
             "curva sería otro cable), y es una figura PROPIA: una `Geometry` de WinUI no se puede compartir " +
             "entre dos `Path` —medido: la segunda asignación levanta excepción y la capa queda a medias—");
 
-        // 3. El botón derecho sobre el cable no es el pan del lienzo (el escritorio abre su menú por el mismo
+        // 3. El botón derecho sobre el cable no es el pan del lienzo (la versión anterior abre su menú por el mismo
         //    motivo: el desplazamiento no puede robarse el gesto de la conexión).
         code.Should().Contain(
             "hit.PointerPressed += (_, e) => OnWirePressed(connection, e);",
@@ -428,7 +428,7 @@ public class UnoCanvasWireGuardTests
 
         // 3b. Y sale DONDE ESTÁ EL PUNTERO. Anclado a la diana —cuyo rectángulo es TODO el cable, de un
         //     socket al otro— el menú aparecía en una esquina del cable: medido con el ratón inyectado,
-        //     a **855 px** del cursor. El escritorio lo abre en el puntero (su `ContextMenu` de Avalonia),
+        //     a **855 px** del cursor. La versión anterior lo abre en el puntero (su `ContextMenu` del host original),
         //     así que la posición explícita es la paridad, no un adorno.
         code.Should().Contain(
             "ShowWireMenuAt(connection, e.GetPosition(RootGrid));",
@@ -444,13 +444,13 @@ public class UnoCanvasWireGuardTests
             "anclar el menú a la DIANA es el defecto medido: su rectángulo es el cable entero y el menú sale en su esquina");
 
         // 4. Y la orden es la del NÚCLEO, con su rótulo del diccionario del host: la misma que cumple el menú
-        //    del cable del escritorio, con su undo.
+        //    del cable de la versión anterior, con su undo.
         code.Should().Contain(
             "Command = connection.DeleteCommand",
             "el host no borra nada por su cuenta: pide la orden del núcleo, y el grafo se entera");
         code.Should().Contain(
             "LocalizationManager.Instance.GetString(\"Uno_Connection_Delete\", \"Eliminar conexión\")",
-            "el rótulo sale del diccionario del host (y es el texto con el que el escritorio rotula el suyo)");
+            "el rótulo sale del diccionario del host (y es el texto con el que la versión anterior rotula el suyo)");
 
         // 5. La sonda mide las dos mitades en la app viva: una diana sin orden es un clic que no borra nada, y
         //    una orden sin diana es una capacidad invisible.
@@ -522,7 +522,7 @@ public class UnoCanvasWireGuardTests
         code.Should().Contain(
             "private static bool TryFigureEnds(",
             "el extremo dibujado se lee del ÚLTIMO segmento de la figura, no del último punto de control: con " +
-            "la figura de Nodify el cable no acaba en la Bézier");
+            "la figura de la versión anterior el cable no acaba en la Bézier");
 
         code.Should().Contain(
             "private static bool CrowdedShapeFitsTheHueco(out string detail)",

@@ -345,7 +345,7 @@ internal static class SelfCheckCanvas
         {
             var (noteOk, groupOk, spotlightOk, breadcrumbOk) = canvas.ProbeDecoratorsRoundTrip();
             Check(noteOk, "nota creada, movida por su Location y borrada (capa de decoradores al día)");
-            Check(groupOk, "grupo creado y borrado (detras de las notas, como en el escritorio)");
+            Check(groupOk, "grupo creado y borrado (detras de las notas, como en la versión anterior)");
             Check(spotlightOk, "spotlight añade un nodo real en el punto del grafo pedido");
             Check(breadcrumbOk, "migas de subflujo navegables (comando del núcleo)");
         }

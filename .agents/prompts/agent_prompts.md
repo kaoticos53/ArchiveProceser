@@ -1,4 +1,4 @@
-# Guías y Prompts Operativos para Agentes de IA (.NET 9 & C# 13)
+# Guías y Prompts Operativos para Agentes de IA (.NET 10 & C# 14)
 
 Este documento contiene los playbooks y secuencias operativas activas para guiar tareas de auditoría, refactorización y extensión de **FileFlow Studio**.
 
@@ -11,7 +11,7 @@ Este documento contiene los playbooks y secuencias operativas activas para guiar
 ## 🛠️ Playbook 1: Auditoría y Refactorización Limpia (Clean Code)
 
 ```text
-Actúa como Arquitecto de Software Senior y Especialista en Clean Code en .NET 9 y C# 13.
+Actúa como Arquitecto de Software Senior y Especialista en Clean Code en .NET 10 y C# 14.
 Realizaremos una auditoría y refactorización estructurada sin aplicar cambios masivos de golpe:
 
 FASE 1: AUDITORÍA Y MAPA DE RIESGOS
@@ -19,7 +19,7 @@ FASE 1: AUDITORÍA Y MAPA DE RIESGOS
    - Archivos que concentran múltiples responsabilidades (violación de SRP) o superan 300-400 líneas.
    - Posibles fugas de memoria (event handlers no desenganchados, disposables huérfanos).
    - Primitivas de sincronización obsoletas (usar System.Threading.Lock en lugar de object).
-   - Acoplamiento indebido con capas externas (Zero-Touch en FileFlow.App).
+   - Acoplamiento indebido con capas externas (Zero-Touch en FileFlow.App.Uno).
 2. Presenta un Plan de Modularización proponiendo la extracción a servicios o handlers especializados.
 *Espera aprobación antes de modificar código.*
 

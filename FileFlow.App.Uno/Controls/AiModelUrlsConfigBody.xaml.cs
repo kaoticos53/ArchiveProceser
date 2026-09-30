@@ -10,11 +10,11 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// El editor de URLs de descarga de un modelo de IA del host Uno: la vista del
 /// <see cref="AiModelUrlsConfigViewModel"/> portable —el MISMO view model que envuelve la ventana
-/// <c>AiModelUrlsConfigDialog</c> del escritorio, y al que se llega por la MISMA clave del catálogo
+/// <c>AiModelUrlsConfigDialog</c> de la versión anterior, y al que se llega por la MISMA clave del catálogo
 /// (<c>DialogKeys.AiModelUrlsConfig</c>) desde la MISMA orden canónica del gestor
 /// (<c>AiModelManagerViewModel.ConfigureUrlsCommand</c>, que dispara la acción de la fila)—.
 ///
-/// <para><b>Dónde queda escrito el cambio</b>: en el mismo sitio que en el escritorio, porque lo escribe el
+/// <para><b>Dónde queda escrito el cambio</b>: en el mismo sitio que en la versión anterior, porque lo escribe el
 /// propio view model portable —su método <c>Save()</c> llama a <c>AiModelManager.SetCustomUrls(modelId, urls)</c>,
 /// que es el almacén que el motor de descargas lee—. Esta vista no guarda nada por su cuenta: pinta el
 /// <c>UrlsText</c> en dos sentidos, ofrece las tres órdenes del view model (probar, restablecer y guardar) y
@@ -57,12 +57,12 @@ public sealed partial class AiModelUrlsConfigBody : UserControl
     internal string RefusalNote => RequiredNote.Visibility == Visibility.Visible ? RequiredNote.Text : string.Empty;
 
     /// <summary>
-    /// Pide al view model que escriba lo escrito donde lo escribe el escritorio y devuelve si lo aceptó:
+    /// Pide al view model que escriba lo escrito donde lo escribe la versión anterior y devuelve si lo aceptó:
     /// es lo que el servicio usa para cerrar (o no) el modal. La lógica es del view model; aquí sólo se
-    /// llama a la misma operación que su ventana del escritorio.
+    /// llama a la misma operación que su ventana de la versión anterior.
     ///
     /// <para><b>Por qué el aviso se repite aquí</b>: el view model pide su aviso por <see cref="IDialogService"/>
-    /// —la misma vía que el escritorio—, y en este host esa petición cae en la frontera ya medida de WinUI:
+    /// —la misma vía que la versión anterior—, y en este host esa petición cae en la frontera ya medida de WinUI:
     /// no se puede abrir un segundo <c>ContentDialog</c> encima del editor, así que la petición queda escrita
     /// en la consola pero no se ve. Sin esta nota, rechazar lo escrito dejaría la ventana abierta sin decir
     /// por qué: un no-op mudo. El texto es la MISMA frase que el view model manda al servicio de diálogos,
@@ -81,7 +81,7 @@ public sealed partial class AiModelUrlsConfigBody : UserControl
         return accepted;
     }
 
-    /// <summary>Los rótulos del host, con las claves del diccionario del escritorio (los mismos textos).</summary>
+    /// <summary>Los rótulos del host, con las claves del diccionario de la versión anterior (los mismos textos).</summary>
     public void RefreshLocalization()
     {
         var loc = LocalizationManager.Instance;

@@ -11,17 +11,17 @@
   </UserControl.Resources>
 
   <!--
-    La BARRA DE CONTROL del host Uno: la misma barra del escritorio (ControlBarView.axaml) sobre el MISMO
+    La BARRA DE CONTROL del host Uno: la misma barra de la versión anterior (ControlBarView.axaml) sobre el MISMO
     view model portable (ControlBarViewModel, resuelto por el contenedor del núcleo), montada aquí como
     control del host.
 
-    Tres islas semánticas, las del escritorio, con las entradas que en ESTE host tienen destino real:
+    Tres islas semánticas, las de la versión anterior, con las entradas que en ESTE host tienen destino real:
 
       1. Modos        → Modo Prueba (IsDryRun) y Vigilante (ToggleWatchModeCommand)
       2. Ciclo        → Ejecutar / Depurar / Siguiente Paso / Continuar / Pausar / Detener
       3. Herramientas → Deshacer / Rehacer / Revertir / Inspector, más el punto de entrada a los AJUSTES
 
-    LO QUE NO ESTÁ, Y POR QUÉ (nunca fingido): el botón de VFS y el aviso de actualización del escritorio
+    LO QUE NO ESTÁ, Y POR QUÉ (nunca fingido): el botón de VFS y el aviso de actualización de la versión anterior
     no se dibujan porque sus destinos no existen en este host — la ventana del explorador virtual vive en
     IWindowService (aquí el Nulo declarado) y el host no tiene servicio de actualizaciones—. Tampoco se
     dibujan las entradas del cajón cuyas órdenes mueren en un contrato síncrono de diálogo que este host no
@@ -74,7 +74,7 @@
                    Foreground="{StaticResource CanvasTextBrush}" />
       </StackPanel>
 
-      <!-- ── Las tres islas, en el mismo orden que el escritorio ── -->
+      <!-- ── Las tres islas, en el mismo orden que la versión anterior ── -->
       <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
 
         <!-- Isla 1: modos y herramientas del espacio de trabajo -->
@@ -98,7 +98,7 @@
               </StackPanel>
             </Button>
 
-            <!-- El EXPLORADOR VIRTUAL del escritorio: su isla aparece sólo cuando la última ejecución dejó
+            <!-- El EXPLORADOR VIRTUAL de la versión anterior: su isla aparece sólo cuando la última ejecución dejó
                  archivos virtuales (HasVirtualFiles), el mismo estado de contexto que su botón allí. -->
             <Button x:Name="VfsButton" Click="OnVfsClicked"
                     Padding="8,3" FontSize="11" VerticalAlignment="Center"
@@ -114,7 +114,7 @@
               </StackPanel>
             </Button>
 
-            <!-- El AVISO DE ACTUALIZACIÓN del escritorio: aparece cuando el arranque encontró una novedad
+            <!-- El AVISO DE ACTUALIZACIÓN de la versión anterior: aparece cuando el arranque encontró una novedad
                  (HasPendingUpdate) y lleva la versión nueva, como el distintivo de su barra. -->
             <Button x:Name="UpdateBadge" Click="OnUpdateBadgeClicked"
                     Padding="8,3" FontSize="11" VerticalAlignment="Center"

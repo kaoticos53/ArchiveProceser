@@ -8,7 +8,7 @@
       "file": "FileFlow.App.Uno/Controls/SettingsPanel.xaml.cs",
       "replacements": [
         {
-          "old": "                case \"urls\":\n                    // La orden canónica del gestor: pide el diálogo por el catálogo del host, que ahora SÍ lo\n                    // sirve (hito 262). La vista no edita URLs por su cuenta; el cambio lo escribe el view\n                    // model del editor en el mismo sitio que el escritorio.\n                    await manager.ConfigureUrlsCommand.ExecuteAsync(model);\n                    RefreshAiModelsSection();\n                    break;\n\n",
+          "old": "                case \"urls\":\n                    // La orden canónica del gestor: pide el diálogo por el catálogo del host, que ahora SÍ lo\n                    // sirve (hito 262). La vista no edita URLs por su cuenta; el cambio lo escribe el view\n                    // model del editor en el mismo sitio que la versión anterior.\n                    await manager.ConfigureUrlsCommand.ExecuteAsync(model);\n                    RefreshAiModelsSection();\n                    break;\n\n",
           "new": "                // mutante: la rama de URLs desaparece y el `default` la sustituye por la descarga\n",
           "count": 1
         }

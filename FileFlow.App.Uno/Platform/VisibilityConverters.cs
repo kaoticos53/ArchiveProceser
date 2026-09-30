@@ -5,9 +5,9 @@ using Microsoft.UI.Xaml.Data;
 namespace FileFlow.App.Uno.Platform;
 
 /// <summary>
-/// WinUI no convierte <c>bool</c> a <see cref="Visibility"/> por sí solo (el escritorio lo hace con su
+/// WinUI no convierte <c>bool</c> a <see cref="Visibility"/> por sí solo (la versión anterior lo hace con su
 /// propia coerción de <c>IsVisible</c>): los bindings de la tarjeta usan estos dos conversores — uno para
-/// «visible cuando true» y el inverso para «visible cuando false» (el <c>!IsVisible</c> del escritorio).
+/// «visible cuando true» y el inverso para «visible cuando false» (el <c>!IsVisible</c> de la versión anterior).
 /// </summary>
 public class BoolToVisibilityConverter : IValueConverter
 {
@@ -18,7 +18,7 @@ public class BoolToVisibilityConverter : IValueConverter
         => value is Visibility v && v == Visibility.Visible;
 }
 
-/// <summary>El inverso: el equivalente del <c>!IsVisible</c> del editor de escritorio.</summary>
+/// <summary>El inverso: el equivalente del <c>!IsVisible</c> del editor de la versión anterior.</summary>
 public class InverseBoolToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)

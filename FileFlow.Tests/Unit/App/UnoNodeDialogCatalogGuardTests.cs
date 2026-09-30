@@ -14,9 +14,9 @@ namespace FileFlow.Tests.Unit.App;
 ///
 /// <para><b>Qué protege</b>: que el catálogo cubra TODAS las claves de <c>DialogKeys</c> —cada una servida o
 /// declarada, ninguna en silencio—; que las pendientes se contesten con su razón y no con un «cancelar» mudo;
-/// que cada diálogo de fila del ESCRITORIO tenga destino aquí (dibujado, o declarado pendiente con su razón) y
-/// que lo declarado no esté además cableado; que cada acción de fila se dibuje en las MISMAS filas que el
-/// escritorio; y que el botón de texto libre siga a su parámetro en los dos sentidos.</para>
+/// que cada diálogo de fila de la versión anterior tenga destino aquí (dibujado, o declarado pendiente con su razón) y
+/// que lo declarado no esté además cableado; que cada acción de fila se dibuje en las MISMAS filas que la
+/// versión anterior; y que el botón de texto libre siga a su parámetro en los dos sentidos.</para>
 ///
 /// <para><b>Qué NO vive aquí</b>: que esos diálogos sean VISTAS de los view models portables está en
 /// <c>UnoDialogPortabilityGuardTests</c>, las superficies que el nodo declara y sus órdenes destructivas en
@@ -29,7 +29,7 @@ public class UnoNodeDialogCatalogGuardTests
     private const string SelfCheckCode = "FileFlow.App.Uno/SelfCheckDialogs.cs";
     private const string AppCode = "FileFlow.App.Uno/App.xaml.cs";
 
-    private const string DesktopDialogKeys = "FileFlow.Sdk/Services/IWindowService.cs";
+    private const string DialogKeysFile = "FileFlow.Sdk/Services/IWindowService.cs";
 
     private static string Code(string relativePath) => SourceText.CodeWithoutComments(relativePath);
 
@@ -43,7 +43,7 @@ public class UnoNodeDialogCatalogGuardTests
     /// <summary>Las claves canónicas de <c>DialogKeys</c>, leídas del SDK (la fuente, no una copia).</summary>
     private static IReadOnlyList<string> CanonicalDialogKeys()
     {
-        var keys = Regex.Matches(Code(DesktopDialogKeys), @"public const string \w+ = ""([^""]+)"";")
+        var keys = Regex.Matches(Code(DialogKeysFile), @"public const string \w+ = ""([^""]+)"";")
             .Select(m => m.Groups[1].Value)
             .OrderBy(k => k, StringComparer.Ordinal)
             .ToList();
@@ -80,7 +80,7 @@ public class UnoNodeDialogCatalogGuardTests
     private static string Resolve(string reference)
     {
         string name = reference.Replace("DialogKeys.", string.Empty);
-        var match = Regex.Match(Code(DesktopDialogKeys), @"public const string " + name + @" = ""([^""]+)"";");
+        var match = Regex.Match(Code(DialogKeysFile), @"public const string " + name + @" = ""([^""]+)"";");
         match.Success.Should().BeTrue($"el host nombra el diálogo {reference}, que tiene que existir en DialogKeys");
         return match.Groups[1].Value;
     }
@@ -133,7 +133,7 @@ public class UnoNodeDialogCatalogGuardTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 2. La paridad de fila contra el escritorio
+    // 2. La paridad de fila contra la versión anterior
     // ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -161,7 +161,7 @@ public class UnoNodeDialogCatalogGuardTests
             .Where(command => !served.ContainsKey(command) && !declared.ContainsKey(command))
             .ToList();
         orphan.Should().BeEmpty(
-            "toda orden que el escritorio dispara desde una fila de parámetro tiene que estar dibujada en el "
+            "toda orden que la versión anterior dispara desde una fila de parámetro tiene que estar dibujada en el "
             + "host o declarada en DeclaredPendingRowActions con su razón");
 
         // Lo declarado NO puede estar cableado: sería una mentira en la tabla (y un botón que nadie ve).
@@ -250,20 +250,20 @@ public class UnoNodeDialogCatalogGuardTests
     {
         string inspector = Code(InspectorCode);
 
-        // La tabla de editores y la de acciones salen de los MISMOS flags del view model que el escritorio usa
+        // La tabla de editores y la de acciones salen de los MISMOS flags del view model que la versión anterior usa
         // en su selector: el editor expandido en el valor largo, el catálogo en las filas de texto.
         inspector.Should().Contain("bool wantsEditor = p.IsMultiLine;",
-            "el editor expandido va donde el escritorio lo pone: el valor largo (IsMultiLine)");
+            "el editor expandido va donde la versión anterior lo pone: el valor largo (IsMultiLine)");
         inspector.Should().Contain("bool wantsVariables = p.IsMultiLine || p.HasBrowseButton || RowValueIsPlainText(p);");
         inspector.Should().Contain(
             "!p.IsToggle && !p.IsSlider && !p.IsDropdown && !p.HasBrowseButton && !p.IsMultiLine;",
-            "el resto de texto libre es exactamente el mismo del selector del escritorio");
+            "el resto de texto libre es exactamente el mismo del selector de la versión anterior");
 
-        // El GESTOR DE CONTRASEÑAS va en la fila de la lista de claves, que es donde el escritorio pone su botón
+        // El GESTOR DE CONTRASEÑAS va en la fila de la lista de claves, que es donde la versión anterior pone su botón
         // «Claves»: la misma fila, el mismo flag del view model. Antes esta puerta no se dibujaba aquí mientras la
         // TARJETA del nodo ofrecía la misma capacidad, así que el usuario veía el gestor ofrecido y no alcanzable.
         inspector.Should().Contain("bool wantsPassword = p.IsPasswordList;",
-            "el gestor de claves va donde el escritorio lo pone: la fila de la lista de claves");
+            "el gestor de claves va donde la versión anterior lo pone: la fila de la lista de claves");
 
         // El ancla de la caja del valor sigue existiendo (la sonda escribe por ella): es la mitad de la
         // medición.

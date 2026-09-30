@@ -10,7 +10,7 @@ namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
 /// Guardia del <b>contrato de colecciones</b> del suite: falla cuando una clase de test toca un estado
-/// global de proceso (registros del clúster IA, preferencias reales, sesión headless de Avalonia) sin
+/// global de proceso (registros del clúster IA, preferencias reales, sesión headless del host) sin
 /// declarar la colección exclusiva que lo confina.
 ///
 /// Por qué existe: el estado global es invisible para la prueba que lo usa —el fallo aparece en OTRA
@@ -195,7 +195,7 @@ public class TestCollectionContractGuardTests
     [Fact]
     public void Analyzer_ShouldRequireVisualSnapshots_WhenClassUsesTheHeadlessSession()
     {
-        string source = Snippet(null, "AvaloniaTestHelper.EnsureInitialized();");
+        string source = Snippet(null, "HostUiTestHelper.EnsureInitialized();");
 
         var violations = AnalyzeSnippet(source);
 
@@ -219,7 +219,7 @@ public class TestCollectionContractGuardTests
     [Fact]
     public void Analyzer_ShouldPass_WhenEachStateUsesItsOwnExclusiveCollection()
     {
-        string session = Snippet("[Collection(VisualSnapshotsCollection.Name)]", "AvaloniaTestHelper.EnsureInitialized();");
+        string session = Snippet("[Collection(VisualSnapshotsCollection.Name)]", "HostUiTestHelper.EnsureInitialized();");
         string onnx = Snippet("[Collection(OnnxInferenceCollection.Name)]", "ModelSessionRegistry.ClearAllSessions();");
         string prefs = Snippet("[Collection(\"VisualSnapshots\")]", "UserPreferencesService.Instance.Reload();");
 
@@ -273,7 +273,7 @@ public class TestCollectionContractGuardTests
     [Fact]
     public void Analyzer_ShouldIgnoreTestHelpers_AndNonTestFiles()
     {
-        string source = Snippet(null, "AvaloniaTestHelper.EnsureInitialized();");
+        string source = Snippet(null, "HostUiTestHelper.EnsureInitialized();");
 
         TestCollectionContractAnalyzer.Analyze("FileFlow.Tests/TestHelpers/SomeHelper.cs", source)
             .Should().BeEmpty("la infraestructura usa los estados en nombre de quien declara la colección");

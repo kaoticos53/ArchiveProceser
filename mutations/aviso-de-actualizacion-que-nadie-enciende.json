@@ -1,8 +1,8 @@
 {
   "id": "aviso-de-actualizacion-que-nadie-enciende",
   "hito": 259,
-  "claim": "El AVISO DE ACTUALIZACIÓN del host está alimentado por la misma comprobación de arranque del escritorio: si el usuario la tiene activada, el host consulta en segundo plano (sin forzar), respeta la versión ignorada y entrega la novedad a la ventana, que es quien tiene el ControlBarViewModel y enciende el distintivo de la barra. Los modos de sondeo se saltan la comprobación entera, para que su veredicto sea hermético.",
-  "why": "Servir el diálogo de actualización y no tener quien lo pida es un botón invisible para siempre: el host compila, la ventana se sirve y el usuario no ve nunca un aviso. El mutante borra la llamada que arranca la comprobación —el resto (el servicio de actualizaciones, el distintivo, el comando y el aviso) queda intacto—, así que la firma es exactamente «la ventana está y nadie la abre». La guardia lo mide leyendo el arranque: la comprobación, la entrega a la ventana por el mismo camino del escritorio y el salto en los modos de sondeo.",
+  "claim": "El AVISO DE ACTUALIZACIÓN del host está alimentado por la misma comprobación de arranque de la versión anterior: si el usuario la tiene activada, el host consulta en segundo plano (sin forzar), respeta la versión ignorada y entrega la novedad a la ventana, que es quien tiene el ControlBarViewModel y enciende el distintivo de la barra. Los modos de sondeo se saltan la comprobación entera, para que su veredicto sea hermético.",
+  "why": "Servir el diálogo de actualización y no tener quien lo pida es un botón invisible para siempre: el host compila, la ventana se sirve y el usuario no ve nunca un aviso. El mutante borra la llamada que arranca la comprobación —el resto (el servicio de actualizaciones, el distintivo, el comando y el aviso) queda intacto—, así que la firma es exactamente «la ventana está y nadie la abre». La guardia lo mide leyendo el arranque: la comprobación, la entrega a la ventana por el mismo camino de la versión anterior y el salto en los modos de sondeo.",
   "edits": [
     {
       "file": "FileFlow.App.Uno/App.xaml.cs",
@@ -21,6 +21,6 @@
   },
   "control": {
     "filter": "FullyQualifiedName~EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost",
-    "why": "El caso hermano audita la paridad de entradas del menú contra el escritorio, que el mutante no toca: borra una llamada del arranque, no una entrada ni su declaración. Si cayera, el mutante estaría rompiendo el censo del menú y no sólo la alimentación del aviso."
+    "why": "El caso hermano audita la paridad de entradas del menú contra la versión anterior, que el mutante no toca: borra una llamada del arranque, no una entrada ni su declaración. Si cayera, el mutante estaría rompiendo el censo del menú y no sólo la alimentación del aviso."
   }
 }

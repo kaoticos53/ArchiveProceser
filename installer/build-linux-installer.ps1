@@ -152,7 +152,7 @@ Priority: optional
 Architecture: amd64
 Maintainer: FileFlow Studio Team <info@fileflowstudio.com>
 Description: FileFlow Studio - Advanced DAG-based batch processing, OCR, AI and automation platform.
- FileFlow Studio is a modular workflow automation suite built on .NET 9,
+ FileFlow Studio is a modular workflow automation suite built on .NET 10,
  featuring high-performance DAG pipeline execution, AI integrations,
  resilient archive processing and multimodal vision models.
 "@

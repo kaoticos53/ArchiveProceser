@@ -41,7 +41,7 @@ public sealed partial class MainWindow : Window
 
         bool consumed = Canvas.TryHandleShortcutKey(e.Key, e.OriginalSource);
 
-        // Lo que el lienzo no reclama llega al MENÚ PRINCIPAL (hito 258): las seis teclas que el escritorio
+        // Lo que el lienzo no reclama llega al MENÚ PRINCIPAL (hito 258): las seis teclas que la versión anterior
         // liga a las órdenes del ciclo y del flujo en los KeyBinding de su ventana. Aquí la tabla del
         // ControlBar es la que enruta, y el estado de los modificadores se lee del teclado de verdad.
         if (!consumed && Bar.RouteShortcut(e.Key, IsDown(Windows.System.VirtualKey.Control),
@@ -90,14 +90,14 @@ public sealed partial class MainWindow : Window
     /// El ancho que la FICHA tenía antes de plegarse, para devolvérselo al volver (hito 270).
     ///
     /// <para>Es la mitad que un redimensionado a medias no tiene: el panel se pliega a ancho CERO —la columna
-    /// se queda sin sitio, como en el escritorio—, así que sin recordar lo que medía el usuario, abrirlo otra
+    /// se queda sin sitio, como en la versión anterior—, así que sin recordar lo que medía el usuario, abrirlo otra
     /// vez lo devolvería a un ancho por defecto y el sitio que acababa de darle a la ficha se perdería en cada
     /// visita al botón del inspector.</para>
     /// </summary>
     private double _inspectorWidthBeforeCollapse = 300;
 
     /// <summary>
-    /// Ata las dos asas del marco a sus columnas, con el reparto que el escritorio declara (cajón 180–480,
+    /// Ata las dos asas del marco a sus columnas, con el reparto que la versión anterior declara (cajón 180–480,
     /// ficha 220–750) y el mínimo del LIENZO como segunda cota. Se llama en el arranque, antes de que la
     /// primera orden de layout necesite el ancho.
     /// </summary>
@@ -174,7 +174,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// El aviso de actualización que la comprobación de arranque encontró (hito 259): lo llama la aplicación
-    /// cuando su comprobación devuelve una novedad no ignorada, y <b>es el mismo camino del escritorio</b>
+    /// cuando su comprobación devuelve una novedad no ignorada, y <b>es el mismo camino de la versión anterior</b>
     /// (<c>ControlBar.SetPendingUpdate</c>): el distintivo de la barra aparece con la versión nueva y su
     /// comando abre el aviso. Sin esto, el servicio de ventanas serviría un aviso que nadie pide nunca.
     /// </summary>
@@ -210,7 +210,7 @@ public sealed partial class MainWindow : Window
         // ─── El teclado del editor NO depende del foco (hito 252) ───
         //
         // El lienzo resuelve los atajos en TryHandleShortcutKey, y aquí se le enrutan las teclas que nadie
-        // consumió —el burbujeo que el escritorio ya usaba en su vista de editor—. Hace falta porque el foco
+        // consumió —el burbujeo que la versión anterior ya usaba en su vista de editor—. Hace falta porque el foco
         // de este host no es propiedad estable del lienzo: el rastro con puntero real midió que el clic se lo
         // entrega y ~0,5 s después un panel que reacciona a la selección se lo lleva (un ScrollViewer), y con
         // el foco se iban Ctrl+Z, Ctrl+Y, Supr y F2. Se instala en la RAÍZ y sólo si el evento no viene ya
@@ -230,25 +230,25 @@ public sealed partial class MainWindow : Window
 
             // Las dos ASAS del marco (hito 270): se atan antes de montar nada que mida el lienzo —el ancho de
             // la columna del cajón es el desplazamiento con el que el lienzo calcula su área de clic—, y con
-            // el reparto del escritorio (cajón 180–480, ficha 220–750) más el mínimo del lienzo.
+            // el reparto de la versión anterior (cajón 180–480, ficha 220–750) más el mínimo del lienzo.
             AttachPanelSplitters();
 
             var mainVm = services.GetRequiredService<MainViewModel>();            Canvas.Editor = mainVm.Editor;
             TryLoadSampleFlow(mainVm.Editor);
 
             // Rebanada 4: los dos paneles del editor, consumiendo los VM del núcleo (los mismos que
-            // el escritorio): el cajón añade nodos al MISMO editor que pinta el lienzo, el inspector
+            // la versión anterior): el cajón añade nodos al MISMO editor que pinta el lienzo, el inspector
             // sigue la selección que el lienzo escribe.
             Toolbox.Vm = mainVm.Toolbox;
             Toolbox.Editor = mainVm.Editor;
             Inspector.Vm = mainVm.NodeInspector;
 
             // Hito 255 — la superficie de AJUSTES del host: la vista es del host, el view model es el
-            // MISMO WorkflowSettingsViewModel portable que alimenta la ventana de ajustes del escritorio
+            // MISMO WorkflowSettingsViewModel portable que alimenta la ventana de ajustes de la versión anterior
             // (almacenamiento y rutas, apariencia e idioma, rendimiento y herramientas externas).
             Settings.Vm = SettingsPanel.CreateViewModel(services);
 
-            // Hito 257 — el MENÚ PRINCIPAL del host: la barra de control del escritorio y su cajón, sobre
+            // Hito 257 — el MENÚ PRINCIPAL del host: la barra de control de la versión anterior y su cajón, sobre
             // el MISMO ControlBarViewModel portable que el contenedor del núcleo ya resolvía (el del botón
             // Ejecutar del hito 243). La barra y el cajón comparten la instancia: el botón «Menú» conmuta
             // el estado (IsMenuOpen) y el cajón lo sigue, sin copia de la vista.
@@ -279,7 +279,7 @@ public sealed partial class MainWindow : Window
 
             // El INSPECTOR: el host arranca con el panel abierto —es una columna del marco, como hasta
             // ahora— y su entrada de la barra y del cajón lo conmuta desde ahí. El view model del núcleo
-            // nace cerrado porque en el escritorio el panel es colapsable; el estado inicial es decisión
+            // nace cerrado porque en la versión anterior el panel es colapsable; el estado inicial es decisión
             // del marco del host, y la conmutación sí es la del núcleo (ToggleInspectorCommand).
             mainVm.NodeInspector.IsOpen = true;
             ApplyInspectorVisibility(true);
@@ -323,7 +323,7 @@ public sealed partial class MainWindow : Window
 
             // Localización en caliente (fase 3.5): los textos del marco se rescriben al cambiar el idioma.
             // El lienzo ya reconstruye los suyos al reasignar Editor (el selector de idioma vive en los
-            // ajustes del escritorio; cuando el núcleo cambie la cultura, LanguageChanged notifica).
+            // ajustes de la versión anterior; cuando el núcleo cambie la cultura, LanguageChanged notifica).
             LocalizationManager.Instance.LanguageChanged += (_, _) => RefreshLocalizedTexts(
                 nodes, mainVm.Editor.Nodes.Count,
                 mainVm.Toolbox.CategoryGroups.SelectMany(g => g.Items).Count());
@@ -336,7 +336,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// El botón Ejecutar (hito 243): el comando canónico del ControlBar del núcleo — el MISMO que
-    /// el botón del escritorio. El guion UIA externo lo invoca por su AutomationId para el ciclo
+    /// el botón de la versión anterior. El guion UIA externo lo invoca por su AutomationId para el ciclo
     /// completo (ejecutar → snapshot nuevo → diff recalculado). La barra de estado expone el
     /// estado de ejecución y los contadores de snapshots/diff del nodo fuente: el legible del
     /// ciclo para un observador sin acceso al árbol de VMs.
@@ -431,7 +431,7 @@ public sealed partial class MainWindow : Window
 
     /// <summary>
     /// El punto de entrada a los ajustes: despliega la superficie del host. Es un botón de la cabecera
-    /// (no un ítem de un cajón) porque el cajón del escritorio —con sus órdenes de flujo y de ayuda— depende
+    /// (no un ítem de un cajón) porque el cajón de la versión anterior —con sus órdenes de flujo y de ayuda— depende
     /// de ventanas que este host todavía no tiene: lo que no llega queda declarado en el plan de la rebanada 5.
     /// </summary>
     private void OnOpenSettingsClicked(object sender, RoutedEventArgs e) => Settings.Open();

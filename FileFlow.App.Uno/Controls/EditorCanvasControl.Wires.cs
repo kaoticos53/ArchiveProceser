@@ -31,7 +31,7 @@ namespace FileFlow.App.Uno.Controls;
 public sealed partial class EditorCanvasControl
 {
     // ─────────────────────────────────────────────────────────────────────────────
-    // Los cables: ConnectionGeometry, la misma curva que pinta Nodify en el escritorio
+    // Los cables: ConnectionGeometry, la misma curva de la versión anterior
     // ─────────────────────────────────────────────────────────────────────────────
 
     private void DrawWires()
@@ -88,8 +88,8 @@ public sealed partial class EditorCanvasControl
             AutomationProperties.SetAutomationId(hit, WireHitAnchor);
             AutomationProperties.SetName(hit, WireLabel(connection));
 
-            // El botón derecho sobre el cable NO es un pan: el menú del cable manda (igual que en el
-            // escritorio, donde el clic derecho abre el suyo antes que el desplazamiento del lienzo). El
+            // El botón derecho sobre el cable NO es un pan: el menú del cable manda (igual que en la
+            // versión anterior, donde el clic derecho abre el suyo antes que el desplazamiento del lienzo). El
             // IZQUIERDO marca el cable —y con Ctrl lo AÑADE a los que ya estén marcados—: eso es lo que hace
             // visible, y borrable con Supr, una conexión.
             hit.PointerPressed += (_, e) => OnWirePressed(connection, e);
@@ -138,7 +138,7 @@ public sealed partial class EditorCanvasControl
     /// <para><b>Los defectos que esto cierra</b>, los dos medidos con la sonda <c>ProbeWireTracking</c> y vistos
     /// por el usuario en la app: la primera versión abría la figura en el primer punto de control, así que el
     /// cable quedaba <b>separado del socket</b> y, con las anclas cerca, salía invertido (el rulo con forma de
-    /// «2»); la segunda añadió los dos tramos rectos del trazo del control de Nodify —que existen porque allí la
+    /// «2»); la segunda añadió los dos tramos rectos del trazo de la versión anterior —que existían porque allí la
     /// Bézier <i>sí</i> sale retirada— y el resultado se leía como una <b>Z</b>: dos bajíos rectos y una ese
     /// apretada en medio. Con la curva nacida en el ancla no hace falta ningún tramo recto: el cable sale del
     /// socket ya curvando.</para>
@@ -165,7 +165,7 @@ public sealed partial class EditorCanvasControl
     /// <summary>
     /// La proyección del cable: <see cref="UnoPointProjection.ToUno"/> (núcleo portable), el mismo corazón
     /// que <see cref="UnoPointConverter"/> — la geometría del cable se calcula en espacio de grafo
-    /// (<see cref="Sdk.Point"/>) y sólo se proyecta al dibujar, como en el escritorio.
+    /// (<see cref="Sdk.Point"/>) y sólo se proyecta al dibujar, como en la versión anterior.
     /// </summary>
     private static Windows.Foundation.Point ToWindowsPoint(Sdk.Point point)
     {
@@ -203,8 +203,8 @@ public sealed partial class EditorCanvasControl
     internal const string SelectedWireBrushKey = "CanvasAccentPrimaryBrush";
 
     /// <summary>
-    /// La pulsación del cable. El botón <b>derecho</b> no es el pan del lienzo: el menú del cable manda (el
-    /// escritorio abre el suyo antes que el desplazamiento, por el mismo motivo) y se marca atendido aquí
+    /// La pulsación del cable. El botón <b>derecho</b> no es el pan del lienzo: el menú del cable manda (la
+    /// versión anterior abre el suyo antes que el desplazamiento, por el mismo motivo) y se marca atendido aquí
     /// —el manejador del fondo no recibe lo ya atendido— y el menú se abre al soltar, que es el gesto de
     /// <c>RightTapped</c>. El <b>izquierdo</b> MARCA el cable: es la mitad que hace visible la selección, y
     /// de la que depende el Supr que la borra; para eso el clic tiene que entregarse el FOCO (hito 252) — el
@@ -236,8 +236,8 @@ public sealed partial class EditorCanvasControl
     /// <summary>
     /// Abre el menú del cable DONDE ESTÁ EL PUNTERO. Es la mitad que el usuario reportó como defecto: anclado
     /// a la DIANA —cuyo rectángulo es TODO el cable, de un socket al otro— el menú salía en una **esquina del
-    /// cable** (medido: **855 px** del cursor) en vez de bajo el ratón, que es donde el escritorio lo abre (allí
-    /// es un <c>ContextMenu</c> de Avalonia, y ese sale en el puntero).
+    /// cable** (medido: **855 px** del cursor) en vez de bajo el ratón, que es donde la versión anterior lo abre (allí
+    /// es un <c>ContextMenu</c> de la interfaz original, y ese sale en el puntero).
     ///
     /// <para>El punto va referido a <see cref="RootGrid"/> —el mismo espacio en el que el lienzo lee el puntero
     /// para todo lo demás— y no al elemento pulsado, para que el sitio del menú no dependa de por dónde cayó el
@@ -255,7 +255,7 @@ public sealed partial class EditorCanvasControl
 
     /// <summary>
     /// El menú del cable: UNA entrada, «Eliminar conexión», cuya orden es la del NÚCLEO
-    /// (<see cref="ConnectionViewModel.DeleteCommand" />, la misma que cumple el menú del escritorio, con su
+    /// (<see cref="ConnectionViewModel.DeleteCommand" />, la misma que cumple el menú de la versión anterior, con su
     /// undo). El host no borra nada por su cuenta: pide la orden y el grafo se entera.
     /// </summary>
     private static MenuFlyout BuildWireMenu(ConnectionViewModel connection)

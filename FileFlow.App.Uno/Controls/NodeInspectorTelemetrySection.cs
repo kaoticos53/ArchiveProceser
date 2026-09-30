@@ -17,15 +17,15 @@ namespace FileFlow.App.Uno.Controls;
 /// —<see cref="NodeViewModel.CurrentStats"/>, el agregado que escribe el motor— más su estado, en una fila por
 /// medida, con el ancla de automatización de cada valor para que la observación externa las lea por nombre.
 ///
-/// <para><b>De dónde sale esta pieza (hito 275)</b>. El host de ESCRITORIO tiene esta superficie como su pestaña
+/// <para><b>De dónde sale esta pieza (hito 275)</b>. La versión anterior tiene esta superficie como su pestaña
 /// de Telemetría, alimentada por el MISMO <c>CurrentStats</c>. El host Uno la había construido —cinco filas y un
 /// botón de vaciado— y <b>nunca la montó</b>: el montaje que tenía en el cuerpo de la ficha (antes de las
 /// pestañas) desapareció al entrar éstas, así que las filas se rellenaban para nadie y la ficha no mostraba ni
-/// una medida. Montarla aquí es <b>reponer una capacidad que el escritorio sí tiene</b>: la fuente ya existe
+/// una medida. Montarla aquí es <b>reponer una capacidad que la versión anterior sí tiene</b>: la fuente ya existe
 /// —la escribe el motor— y esta sección SÓLO la lee.</para>
 ///
-/// <para><b>Por qué es de sólo lectura</b>. El «Vaciar métricas» que la ficha construía no tiene gemelo en el
-/// escritorio (su pestaña de telemetría no ofrece borrar nada) y ninguna vista del producto lo monta: dibujarlo
+/// <para><b>Por qué es de sólo lectura</b>. El «Vaciar métricas» que la ficha construía no tiene gemelo en la
+/// versión anterior (su pestaña de telemetría no ofrece borrar nada) y ninguna vista del producto lo monta: dibujarlo
 /// aquí sería una capacidad NUEVA de este host, no paridad. La sección no escribe: no cita
 /// <c>UpdateTelemetryStats</c> ni el comando de reinicio del view model portable, y eso lo vigila su guardia
 /// (<c>UnoInspectorTelemetryGuardTests</c>).</para>
@@ -37,7 +37,7 @@ namespace FileFlow.App.Uno.Controls;
 internal sealed class NodeInspectorTelemetrySection : UserControl
 {
     /// <summary>
-    /// Las cinco medidas que el escritorio enseña en su pestaña de telemetría, en su orden: el rótulo por el
+    /// Las cinco medidas que la versión anterior enseña en su pestaña de telemetría, en su orden: el rótulo por el
     /// diccionario del host (con su texto de reserva) y el ancla del valor, que es lo que lee la observación
     /// externa. Es una sola tabla porque rótulo, reserva y ancla se materializan juntos y no cambian con el nodo.
     /// </summary>
@@ -118,7 +118,7 @@ internal sealed class NodeInspectorTelemetrySection : UserControl
         var loc = LocalizationManager.Instance;
         var culture = CultureInfo.CurrentCulture;
 
-        // El orden del escritorio: primero el estado del nodo (la propiedad localizada del view model) y después
+        // El orden de la versión anterior: primero el estado del nodo (la propiedad localizada del view model) y después
         // las medidas del agregado del motor. Los valores se formatean en la cultura en curso, como el resto de
         // la ficha; ninguno se inventa aquí — todos salen del nodo inspeccionado.
         var values = CurrentValues(culture);

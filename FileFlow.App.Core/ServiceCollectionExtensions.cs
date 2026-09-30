@@ -56,7 +56,7 @@ public static class FileFlowServiceCollectionExtensions
         services.AddSingleton<IProcessLauncherService, ProcessLauncherService>();
         services.AddSingleton<FileFlow.App.Services.UndoRedo.IUndoRedoService, FileFlow.App.Services.UndoRedo.UndoRedoService>();
 
-        // 4. ViewModels (Ciclo de vida Singleton en el ámbito de aplicación de escritorio)
+        // 4. ViewModels (Ciclo de vida Singleton en el ámbito de la aplicación)
         services.AddSingleton<LogViewModel>();
         services.AddSingleton<EditorViewModel>();
         services.AddSingleton<ToolboxViewModel>();

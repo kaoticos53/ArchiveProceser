@@ -798,9 +798,9 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
 
         SyncItemsFromTree();
 
-        // El selector lo pone la COSTURA del plugin (UI/Services/DesktopFilePicker): a este view model lo pintan
-        // los dos hosts y sólo uno de ellos tiene toolkit con el que abrir un diálogo de ficheros.
-        PickedFile? picked = await DesktopFilePicker.PickSaveAsync(
+        // El selector lo pone la COSTURA del plugin (UI/Services/PortableFilePicker): a este view model lo pintan
+        // los hosts y sólo uno de ellos tiene toolkit con el que abrir un diálogo de ficheros.
+        PickedFile? picked = await PortableFilePicker.PickSaveAsync(
             LocalizationManager.Instance.GetString("Title_ExportDataSet", "Exportar Dataset Sintético"),
             DataSetFileFilters,
             $"{SelectedDataSet.Name.Replace(" ", "_")}.json",
@@ -821,7 +821,7 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
         StatusMessage = LocalizationManager.Instance.GetFormattedString("Msg_DataSetExported", "Dataset exportado a '{0}'.", Path.GetFileName(picked.Path));
     }
 
-    /// <summary>El desplegable de tipos del selector: los mismos rótulos que el escritorio ofrecía.</summary>
+    /// <summary>El desplegable de tipos del selector: los mismos rótulos que la versión anterior ofrecía.</summary>
     private static readonly FileTypeFilter[] DataSetFileFilters =
     [
         new("Archivos JSON (*.json)", ["*.json"]),
@@ -831,7 +831,7 @@ public partial class SyntheticDataSetDesignerViewModel : ObservableObject
     [RelayCommand]
     private async Task ImportAsync()
     {
-        PickedFile? picked = await DesktopFilePicker.PickOpenAsync(
+        PickedFile? picked = await PortableFilePicker.PickOpenAsync(
             LocalizationManager.Instance.GetString("Title_ImportDataSet", "Importar Dataset Sintético"),
             DataSetFileFilters,
             _dialogService);

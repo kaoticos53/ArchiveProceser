@@ -172,7 +172,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     ///
     /// Sólo toca la colección si su contenido cambia. Reconstruirla —vaciar y volver a llenar— desde un
     /// manejador que corre dentro de una actualización de selección (por ejemplo al guardar las preferencias
-    /// desde el enlace del propio desplegable) hace que Avalonia lance «Source collection was modified during
+    /// desde el enlace del propio desplegable) hace que el host original lance «Source collection was modified during
     /// selection update» y deje la lista vacía: el campo aparecía en blanco y ya no había nada que elegir.
     /// </summary>
     public void LoadAvailableThemes()
@@ -816,7 +816,7 @@ public partial class ControlBarViewModel : ObservableObject, IDisposable
     ///
     /// <para><b>Por qué el host la necesita aparte del comando.</b> La orden canónica
     /// (<see cref="OpenSyntheticDataSetDesigner"/>) abre la ventana que el PROPIO plugin construye con el
-    /// toolkit del escritorio: en un host que no es ese toolkit, ejecutarla sería un botón mudo. Un host así
+    /// toolkit de UI: en un host que no es ese toolkit, ejecutarla sería un botón mudo. Un host así
     /// pide aquí <b>qué</b> diálogo se quiere y <b>qué contiene</b>, y lo sirve con su propia vista sobre el
     /// mismo view model portable —sin reimplementar ni una regla del diseñador—.</para>
     ///

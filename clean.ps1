@@ -62,11 +62,11 @@ if ($DryRun) {
     Write-Host "[MODO SIMULACION (DryRun)] No se eliminara ningun archivo.`n" -ForegroundColor Yellow
 }
 
-# 1. Cerrar instancias en ejecución de FileFlow.App y FileFlow.App.Uno (host Uno) para liberar bloqueos de DLL/EXE
+# 1. Cerrar instancias en ejecución de FileFlow.App.Uno (host Uno) para liberar bloqueos de DLL/EXE
 if (-not $DryRun) {
-    $runningProcesses = Get-Process -Name "FileFlow.App", "FileFlow.App.Uno" -ErrorAction SilentlyContinue
+    $runningProcesses = Get-Process -Name "FileFlow.App.Uno" -ErrorAction SilentlyContinue
     if ($runningProcesses) {
-        Write-Host "==> Cerrando instancias activas de FileFlow.App y FileFlow.App.Uno..." -ForegroundColor DarkYellow
+        Write-Host "==> Cerrando instancias activas de FileFlow.App.Uno..." -ForegroundColor DarkYellow
         $runningProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 500
     }

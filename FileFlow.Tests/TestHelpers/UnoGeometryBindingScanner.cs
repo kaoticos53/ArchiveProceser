@@ -11,7 +11,7 @@ namespace FileFlow.Tests.TestHelpers;
 /// XAML que mueva puntos entre un ViewModel del núcleo (<see cref="FileFlow.Sdk.Point"/>) y un control de
 /// WinUI/Uno debe llevar el conversor del host (<c>UnoPointConverter.Instance</c>). El motor de enlaces de
 /// WinUI no convierte entre tipos distintos de punto — la misma lección del hito 211, que ya ocurrió en el
-/// host Avalonia— y un enlace sin conversor no falla: <b>no mueve nada</b>, y el síntoma es un lienzo vacío
+/// host original— y un enlace sin conversor no falla: <b>no mueve nada</b>, y el síntoma es un lienzo vacío
 /// en el producto en vez de un rojo en el árbol.
 ///
 /// <para>La lógica vive en TestHelpers (como el contrato de colecciones) para poder auto-testearla con

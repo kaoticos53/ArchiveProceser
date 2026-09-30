@@ -4,6 +4,7 @@ using Uno.UI.Hosting;
 
 namespace FileFlow.App.Uno;
 
+/// <summary>Punto de entrada del host para Skia Desktop (Linux/macOS).</summary>
 public static class Program
 {
     [STAThread]

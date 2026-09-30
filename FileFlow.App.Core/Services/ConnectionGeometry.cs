@@ -9,7 +9,7 @@ namespace FileFlow.App.Services;
 /// <para><b>Qué dibuja</b>: una Bézier cúbica que sale del <b>ancla</b> de un socket y llega al <b>ancla</b> del
 /// otro, con los dos cuellos horizontales (los sockets del lienzo miran a los lados). La forma la fijó el
 /// usuario en el hito 254 después de verla en la app: la primera versión transcribía el algoritmo del control
-/// <c>Connection</c> de Nodify —una curva retirada de las anclas y unida a ellas por dos <b>tramos rectos</b>—
+/// <c>Connection</c> de la versión anterior —una curva retirada de las anclas y unida a ellas por dos <b>tramos rectos</b>—
 /// y el resultado, en la pantalla, se leía como una <b>Z</b>: dos bajíos rectos y una ese apretada en medio,
 /// que no se parece a un cable. Aquí la curva nace en el ancla, así que el trazo no tiene ningún tramo recto y
 /// el cable sale del socket ya curvando.</para>
@@ -21,9 +21,8 @@ namespace FileFlow.App.Services;
 /// cerca).</para>
 ///
 /// <para><b>Por qué vive en el núcleo y no en un host</b>: es matemática pura sin framework — la misma regla del
-/// <see cref="EditorViewportCalculator"/>—, y por eso está aquí: el host Uno la dibuja y el host Avalonia usa
-/// los mismos puntos para el hit-testing del cable, así que un defecto de forma o de medida aquí se pinta (o se
-/// mide) en los dos.</para>
+/// <see cref="EditorViewportCalculator"/>—, y por eso está aquí: el host Uno la dibuja y el hit-testing del cable
+/// consume los mismos puntos, así que un defecto de forma o de medida aquí se ve en el lienzo.</para>
 /// </summary>
 public static class ConnectionGeometry
 {
@@ -78,7 +77,7 @@ public static class ConnectionGeometry
 
     /// <summary>
     /// El punto de la curva en <paramref name="t"/> (0 = origen, 1 = destino): lo que necesita el hit-testing
-    /// para saber si el puntero pasó por encima del cable, y lo que un host sin Nodify necesita para dibujarla
+    /// para saber si el puntero pasó por encima del cable, y lo que el host necesita para dibujarla
     /// por tramos.
     /// </summary>
     public static Point Interpolate(in CubicBezier curve, double t)

@@ -17,10 +17,10 @@ namespace FileFlow.App.Uno.Controls;
 
 /// <summary>
 /// El cajón de herramientas del host Uno, montado sobre el <see cref="ToolboxViewModel"/> del núcleo
-/// portable (el mismo que el escritorio): búsqueda, filtros de categoría, grupos acordeón con
+/// portable (el mismo que la versión anterior): búsqueda, filtros de categoría, grupos acordeón con
 /// expansión exclusiva gestionada por el VM, favoritos y doble clic para añadir el nodo en el centro
 /// del viewport (el mismo <c>EditorViewModel.AddNode</c> que consume el Drop del lienzo). El gesto de
-/// arrastre fino queda pendiente de la sesión con puntero real, igual que el cajón del escritorio en
+/// arrastre fino queda pendiente de la sesión con puntero real, igual que el cajón de la versión anterior en
 /// su día.
 /// </summary>
 public sealed partial class NodeToolboxPanel : UserControl, IDisposable
@@ -107,7 +107,7 @@ public sealed partial class NodeToolboxPanel : UserControl, IDisposable
 
     private void OnLanguageChanged(object? sender, System.Globalization.CultureInfo e) => ApplyLocalization();
 
-    /// <summary>El conmutador del modo por el MISMO comando del VM que el botón del escritorio.</summary>
+    /// <summary>El conmutador del modo por el MISMO comando del VM que el botón de la versión anterior.</summary>
     private void OnViewModeToggleClicked(object sender, RoutedEventArgs e)
     {
         _vm?.ToggleViewModeCommand.Execute(null);
@@ -388,7 +388,7 @@ public sealed partial class NodeToolboxPanel : UserControl, IDisposable
             return false;
         }
 
-        // El centro del viewport es donde el escritorio añade con el spotlight; aquí con doble clic.
+        // El centro del viewport es donde la versión anterior añade con el spotlight; aquí con doble clic.
         return _editor.AddNode(item.TypeName, GraphCenterOfCanvas()) is not null;
     }
 

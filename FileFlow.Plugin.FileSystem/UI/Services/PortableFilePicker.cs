@@ -19,12 +19,12 @@ internal sealed record PickedFile(Stream Stream, string Path);
 
 /// <summary>
 /// El SELECTOR DE ARCHIVOS del plugin: la costura por la que un view model PORTABLE —el del
-/// Diseñador de Datasets, que pintan los hosts— pide un fichero sin conocer el toolkit.
+/// Diseñador de Datasets, que pinta el host— pide un fichero sin conocer el toolkit de UI.
 /// </summary>
-internal static class DesktopFilePicker
+internal static class PortableFilePicker
 {
     /// <summary>
-    /// Sin toolkit de ventana nativa directa, se declara la superficie por los diálogos de quien abrió
+    /// Sin selector nativo disponible, se declara la superficie por los diálogos de quien abrió
     /// y se devuelve <c>null</c>, que el diseñador entiende como «no hay nada que importar ni exportar».
     /// </summary>
     public static Task<PickedFile?> PickOpenAsync(string title, IReadOnlyList<FileTypeFilter> filters, IDialogService? dialogs)
@@ -46,13 +46,13 @@ internal static class DesktopFilePicker
     }
 
     private static void Declare(IDialogService? dialogs) =>
-        DesktopOnlySurface.Declare(
+        UnavailableSurface.Declare(
             dialogs,
             LocalizationManager.Instance.GetString("Plugin_FilePicker_Name", "Selector de archivos"),
-            LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+            LocalizationManager.Instance.GetString("Plugin_SurfaceUnavailable_Title", "Función no disponible"),
             LocalizationManager.Instance.GetFormattedString(
-                "Plugin_DesktopOnly_Message",
-                "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que lo monta. Ábrelo desde la aplicación de escritorio.",
+                "Plugin_SurfaceUnavailable_Message",
+                "«{0}» no está disponible en este host.",
                 LocalizationManager.Instance.GetString("Plugin_FilePicker_Name", "Selector de archivos")));
 }
 

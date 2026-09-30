@@ -18,7 +18,7 @@ namespace FileFlow.Tests.Unit.App;
 /// <c>ScrollViewer</c> de un panel que reacciona a la selección. Ese robo no se reproduce sin puntero (el
 /// vigilante que lo intentó desde el sondeo seleccionaba un nodo por el mismo camino y el foco no se movía),
 /// así que el arreglo no persigue al ladrón: hace que el atajo no necesite el foco. La ventana enruta al
-/// lienzo las teclas que nadie consumió —el burbujeo que el escritorio ya usa en su vista de editor— y el
+/// lienzo las teclas que nadie consumió —el burbujeo que la versión anterior ya usa en su vista de editor— y el
 /// handler del control llama al MISMO resolver.</para>
 ///
 /// <para><b>Por qué se censa la fuente</b>: el puntero no se puede inyectar en este entorno (231, 250) y el
@@ -62,7 +62,7 @@ public class UnoCanvasKeyboardGuardTests
         window.Should().Contain(
             "keyboardRoot.KeyDown += OnRootKeyDown;",
             "el teclado del editor se resuelve por BURBUJEO desde la raíz de la ventana — como la vista de " +
-            "editor del escritorio—: sin ese cableado, un panel que se lleve el foco deja los atajos sin " +
+            "editor de la versión anterior—: sin ese cableado, un panel que se lleve el foco deja los atajos sin " +
             "destinatario, que es el defecto que el 250 midió con puntero real");
 
         window.Should().Contain(
@@ -157,7 +157,7 @@ public class UnoCanvasKeyboardGuardTests
             code.Should().Contain(
                 keptBy,
                 $"el resolver no puede llevarse por delante el teclado de {owner}: es la misma cortesía que " +
-                "el escritorio aplica en su vista de editor");
+                "la versión anterior aplica en su vista de editor");
         }
 
         code.Should().Contain(

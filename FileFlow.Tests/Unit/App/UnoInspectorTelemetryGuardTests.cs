@@ -16,7 +16,7 @@ namespace FileFlow.Tests.Unit.App;
 ///
 /// <para><b>Por qué la sección es de SÓLO LECTURA</b>. La fuente (<c>CurrentStats</c>, el agregado que escribe el
 /// motor, y el estado del nodo) ya existe y la sección no la escribe nadie. El «Vaciar métricas» que la ficha
-/// construía no tiene gemelo en el escritorio —su pestaña de telemetría no ofrece borrar nada— y ninguna vista
+/// construía no tiene gemelo en la versión anterior —su pestaña de telemetría no ofrece borrar nada— y ninguna vista
 /// del producto lo monta: dibujarlo aquí sería una capacidad NUEVA de este host, no paridad. Por eso hay una
 /// aserción <b>negativa</b>: si alguien vuelve a cablear la escritura, el caso cae nombrando la frontera.</para>
 ///
@@ -56,7 +56,7 @@ public class UnoInspectorTelemetryGuardTests
 
         // Las filas se materializan UNA vez: el latido del motor refresca la sección mientras hay ejecución, y
         // volver a construirla en cada fotograma crearía y tiraría quince elementos por latido sin cambiar nada
-        // de lo que se ve (el escritorio, con enlaces, tampoco las reconstruye).
+        // de lo que se ve (la versión anterior, con enlaces, tampoco las reconstruye).
         section.Should().Contain(
             "private void EnsureRows()",
             "la fila se materializa aparte del refresco: refrescar es reescribir su texto");
@@ -100,11 +100,11 @@ public class UnoInspectorTelemetryGuardTests
             "sin nodo inspeccionado no se pinta ni una medida: la sección se queda sin filas en vez de mentir con ceros de nadie");
 
         // La frontera, escrita como aserción: la sección SOLO lee. El vaciado que la ficha construía y nunca
-        // montó no se repone aquí —el escritorio no lo ofrece y ninguna vista del producto lo dibuja—, así que
+        // montó no se repone aquí —la versión anterior no lo ofrece y ninguna vista del producto lo dibuja—, así que
         // la sección no puede citar la escritura de las estadísticas ni el comando de reinicio del núcleo.
         section.Should().NotContain(
             "UpdateTelemetryStats",
-            "la sección no escribe las medidas: el host no inventa un vaciado que el escritorio no ofrece");
+            "la sección no escribe las medidas: el host no inventa un vaciado que la versión anterior no ofrece");
 
         section.Should().NotContain(
             "ResetNodeMetrics",

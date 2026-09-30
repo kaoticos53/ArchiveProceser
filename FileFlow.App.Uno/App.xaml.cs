@@ -20,7 +20,7 @@ namespace FileFlow.App.Uno;
 /// Composition root del host Uno Platform. Registra el núcleo portable completo (motor, plugins,
 /// servicios de infraestructura y ViewModels de <c>FileFlow.App.Core</c>) y añade los tres
 /// adaptadores de plataforma Uno/WinUI (diálogo, portapapeles, despachado). Sin ninguna referencia
-/// a Avalonia: el núcleo y los ViewModels ya viven en FileFlow.App.Core (rebanada 2).
+/// a host original: el núcleo y los ViewModels ya viven en FileFlow.App.Core (rebanada 2).
 /// </summary>
 public partial class App : Application
 {
@@ -177,7 +177,7 @@ public partial class App : Application
                     : DispatcherQueue.GetForCurrentThread());
         }
 
-        // El AVISO DE ACTUALIZACIÓN (hito 259): la MISMA comprobación de arranque del escritorio
+        // El AVISO DE ACTUALIZACIÓN (hito 259): la MISMA comprobación de arranque de la versión anterior
         // (`App.axaml.cs`) —en segundo plano, sin forzar y sólo si el usuario la tiene activada—. Si hay
         // novedad y no la ignoró, el distintivo de la barra aparece con su versión y su comando abre el
         // aviso por el catálogo de diálogos. Sin esta mitad, el aviso que el host ya sabe servir no lo
@@ -242,8 +242,8 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// La comprobación de actualizaciones del arranque, en segundo plano y tolerante a fallos, como la del
-    /// escritorio.
+    /// La comprobación de actualizaciones del arranque, en segundo plano y tolerante a fallos, como la de la
+    /// versión anterior.
     ///
     /// <para><b>Los modos de sondeo no consultan la red</b>: su veredicto tiene que ser hermético y
     /// reproducible, y una novedad real abriría un aviso en mitad de la medición (y en el modo de la barra,
@@ -268,7 +268,7 @@ public partial class App : Application
         {
             try
             {
-                await Task.Delay(3000); // el mismo margen del escritorio: que la UI esté montada
+                await Task.Delay(3000); // el mismo margen de la versión anterior: que la UI esté montada
 
                 var channel = string.Equals(preferences.Preferences.UpdateChannel, "Beta",
                     StringComparison.OrdinalIgnoreCase)
@@ -297,13 +297,13 @@ public partial class App : Application
             }
             catch
             {
-                // Comprobación en segundo plano tolerante a fallos, como la del escritorio.
+                // Comprobación en segundo plano tolerante a fallos, como la de la versión anterior.
             }
         });
     }
 
     /// <summary>
-    /// Aplica las preferencias GUARDADAS del usuario al arrancar: es el mismo arranque del escritorio
+    /// Aplica las preferencias GUARDADAS del usuario al arrancar: es el mismo arranque de la versión anterior
     /// (<c>LoadPreferences</c> + <c>ApplySavedTheme</c>) y lo que hace que el host se vea como el usuario lo
     /// dejó.
     ///
@@ -347,7 +347,7 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Registro de servicios idéntico en intención al del host Avalonia: la base portable
+    /// Registro de servicios idéntico en intención al del host original: la base portable
     /// (<c>AddFileFlowCoreServices</c>) más los adaptadores Uno/WinUI. Los ViewModels llegan del
     /// núcleo; aquí sólo se declara lo acoplado a la UI de este host.
     /// </summary>

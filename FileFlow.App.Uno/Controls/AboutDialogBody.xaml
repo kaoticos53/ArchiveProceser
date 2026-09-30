@@ -4,13 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    La ventana «Acerca de» del host Uno: la misma información que la del escritorio
+    La ventana «Acerca de» del host Uno: la misma información que la de la versión anterior
     (`FileFlow.App/Views/AboutDialogWindow.axaml`), servida por el servicio de ventanas del host dentro
     de su única ventana —WinUI no necesita una segunda ventana para esto y el host no las tiene—.
 
-    Los rótulos salen del diccionario del host (`Uno_About_*`, copiados del escritorio) y la versión de
+    Los rótulos salen del diccionario del host (`Uno_About_*`, copiados de la versión anterior) y la versión de
     la MISMA fuente que el pie del cajón (`AppVersionInfo.DisplayVersion`). Las insignias dicen lo que
-    este host es: .NET 10 y Uno Platform sobre WinUI 3 —no «Avalonia UI»—, porque una insignia que
+    este host es: .NET 10 y Uno Platform sobre WinUI 3 —no «Framework original»—, porque una insignia que
     nombra otro framework es una mentira pequeña y gratuita.
   -->
   <StackPanel x:Name="AboutRoot" Spacing="10" MinWidth="440"

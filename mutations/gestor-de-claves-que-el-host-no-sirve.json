@@ -2,7 +2,7 @@
   "id": "gestor-de-claves-que-el-host-no-sirve",
   "hito": 279,
   "claim": "El GESTOR DE CONTRASEÑAS que ofrecen los nodos de descompresión lo SIRVE este host: la clave de la superficie declarada está en la tabla de diálogos SERVIDOS y su cuerpo pinta el view model portable de quien la declara. La oferta de la tarjeta, la declaración de la fila y la capacidad del host dicen lo mismo.",
-  "why": "Es el defecto que reportó el usuario por su otro síntoma: pulsar «🔑 Claves...» contestaba con el aviso de que la ventana era del escritorio en vez de abrir el gestor, porque la capacidad se OFRECÍA por la tarjeta y no se servía. El mutante quita UNA línea —la clave sale de la tabla de servidos— y deja el mismo desacuerdo que el usuario vio: la acción se ofrece y el host no la cumple.",
+  "why": "Es el defecto que reportó el usuario por su otro síntoma: pulsar «🔑 Claves...» contestaba con el aviso de que la ventana era de la versión anterior en vez de abrir el gestor, porque la capacidad se OFRECÍA por la tarjeta y no se servía. El mutante quita UNA línea —la clave sale de la tabla de servidos— y deja el mismo desacuerdo que el usuario vio: la acción se ofrece y el host no la cumple.",
   "edits": [
     {
       "file": "FileFlow.App.Uno/Platform/UnoWindowService.cs",

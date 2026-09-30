@@ -353,7 +353,7 @@ function Convert-SingleFileToPdf([string]$inputMd, [string]$outPdf, [string]$doc
     <div class="header-cover">
         <h1>⚡ $docTitle</h1>
         <p><strong>$docSubtitle</strong></p>
-        <p style="font-size: 9.5pt; color: #6366F1; margin-top: 4pt;">FileFlow Studio — Motor Visual de Automatización DAG en .NET 9</p>
+        <p style="font-size: 9.5pt; color: #6366F1; margin-top: 4pt;">FileFlow Studio — Motor Visual de Automatización DAG en .NET 10</p>
     </div>
 
     $bodyHtml

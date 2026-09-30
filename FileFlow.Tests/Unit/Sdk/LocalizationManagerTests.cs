@@ -10,7 +10,7 @@ public class LocalizationManagerTests : IDisposable
 {
     public void Dispose()
     {
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -34,7 +34,7 @@ public class LocalizationManagerTests : IDisposable
         manager.LanguageChanged += (sender, args) => eventFired = true;
 
         // Act
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
 
         // Assert
         eventFired.Should().BeTrue();
@@ -47,7 +47,7 @@ public class LocalizationManagerTests : IDisposable
         var manager = LocalizationManager.Instance;
 
         // Act
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
 
         // Assert
         manager.CurrentCulture.Name.Should().Be("es-ES");
@@ -59,7 +59,7 @@ public class LocalizationManagerTests : IDisposable
     {
         // Arrange
         var manager = LocalizationManager.Instance;
-        AvaloniaTestHelper.SetCultureOnUI("fr-FR"); // Asegurar valor previo distinto
+        HostUiTestHelper.SetCultureOnUI("fr-FR"); // Asegurar valor previo distinto
 
         var changedProperties = new List<string?>();
         manager.PropertyChanged += (sender, args) => changedProperties.Add(args.PropertyName);
@@ -67,7 +67,7 @@ public class LocalizationManagerTests : IDisposable
         try
         {
             // Act
-            AvaloniaTestHelper.SetCultureOnUI("es-ES");
+            HostUiTestHelper.SetCultureOnUI("es-ES");
 
             // Assert
             changedProperties.Should().Contain(p => p == "Item[]");
@@ -75,7 +75,7 @@ public class LocalizationManagerTests : IDisposable
         }
         finally
         {
-            AvaloniaTestHelper.SetCultureOnUI("es-ES");
+            HostUiTestHelper.SetCultureOnUI("es-ES");
         }
     }
 
@@ -90,17 +90,17 @@ public class LocalizationManagerTests : IDisposable
         loader.RegisterNodeTypesFromAssembly(fileSystemAssembly);
 
         // Assert - Test Spanish resolution
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         string titleEs = LocalizationManager.Instance["RegexHelper_WindowTitle"];
         titleEs.Should().Contain("Asistente y Probador de Expresiones Regulares");
 
         // Assert - Test English resolution
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         string titleEn = LocalizationManager.Instance["RegexHelper_WindowTitle"];
         titleEn.Should().Contain("Regular Expressions Assistant");
 
         // Reset
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -114,21 +114,21 @@ public class LocalizationManagerTests : IDisposable
         loader.RegisterNodeTypesFromAssembly(scriptingAssembly);
 
         // Assert - Test Spanish resolution
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         string titleEs = LocalizationManager.Instance["ScriptStudio_Title"];
         string nodeNameEs = LocalizationManager.Instance["CustomScriptNode_Name"];
         titleEs.Should().Be("Estudio de Scripts");
         nodeNameEs.Should().Be("Script Personalizado (C# / JavaScript)");
 
         // Assert - Test English resolution
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         string titleEn = LocalizationManager.Instance["ScriptStudio_Title"];
         string nodeNameEn = LocalizationManager.Instance["CustomScriptNode_Name"];
         titleEn.Should().Be("Script Studio");
         nodeNameEn.Should().Be("Custom Script (C# / JavaScript)");
 
         // Reset
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -139,13 +139,13 @@ public class LocalizationManagerTests : IDisposable
 
         loader.RegisterNodeTypesFromAssembly(assembly);
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         LocalizationManager.Instance["ExcelReaderNode_Name"].Should().Be("Lector de Hojas Excel");
 
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         LocalizationManager.Instance["ExcelReaderNode_Name"].Should().Be("Excel Sheet Reader");
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -156,13 +156,13 @@ public class LocalizationManagerTests : IDisposable
 
         loader.RegisterNodeTypesFromAssembly(assembly);
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         LocalizationManager.Instance["PdfTextExtractorNode_Name"].Should().Be("Extraer Texto de PDF");
 
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         LocalizationManager.Instance["PdfTextExtractorNode_Name"].Should().Be("PDF Text Extractor");
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -173,13 +173,13 @@ public class LocalizationManagerTests : IDisposable
 
         loader.RegisterNodeTypesFromAssembly(assembly);
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         LocalizationManager.Instance["ImageOptimizerNode_Name"].Should().Be("Optimizador de Imágenes");
 
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         LocalizationManager.Instance["ImageOptimizerNode_Name"].Should().Be("Image Optimizer");
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]
@@ -190,13 +190,13 @@ public class LocalizationManagerTests : IDisposable
 
         loader.RegisterNodeTypesFromAssembly(assembly);
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
         LocalizationManager.Instance["DeduplicationFilterNode_Name"].Should().Be("Filtro de Deduplicación por Hash");
 
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
         LocalizationManager.Instance["DeduplicationFilterNode_Name"].Should().Be("Hash-Based Deduplication Filter");
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]

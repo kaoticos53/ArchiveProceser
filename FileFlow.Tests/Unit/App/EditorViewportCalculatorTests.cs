@@ -15,7 +15,7 @@ namespace FileFlow.Tests.Unit.App;
 ///
 /// <para><b>Por qué estas pruebas existen</b>: el calculador es portable desde el hito 211 y no tenía una sola
 /// (medido entonces: ningún test del suite lo referenciaba). La fase 3.0 del plan Uno lo necesita como
-/// contrato — el host Uno tendrá que encuadrar exactamente igual que el escritorio, o «centrar» y «ajustar a
+/// contrato — el host Uno tendrá que encuadrar exactamente igual que la versión anterior, o «centrar» y «ajustar a
 /// pantalla» significarán cosas distintas según el host—.</para>
 ///
 /// <para><b>Qué se fija y qué no</b>: el tamaño de vista de referencia (900×500), el alto de respaldo de una

@@ -4,22 +4,22 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    El CAJÓN del menú principal del host Uno: el mismo cajón del escritorio (el Border de 320 px de
+    El CAJÓN del menú principal del host Uno: el mismo cajón de la versión anterior (el Border de 320 px de
     MainWindow.axaml) sobre el mismo estado (ControlBarViewModel.IsMenuOpen, que conmuta el botón «Menú»
     de la barra y este propio cajón).
 
     LO QUE ESTÁ: las secciones cuyas entradas tienen destino real en este host — APARIENCIA E IDIOMA (el
     tema y el idioma del propio ControlBar, que aplican y guardan al elegir, más el punto de entrada a la
     superficie de AJUSTES del host) y PANELES Y HERRAMIENTAS (el Inspector). El pie enseña la versión del
-    producto, como el escritorio.
+    producto, como la versión anterior.
 
     GESTIÓN DE FLUJOS (hito 258) y AYUDA Y RECURSOS, más el ESTUDIO DE TEMAS, las MÉTRICAS y el VFS (hito
     259). Las de flujo se cumplen por el canal ASÍNCRONO del host —sus comandos del núcleo piden un diálogo
     SÍNCRONO que desde el hilo de UI devuelve nulo/falso— y las cuatro de ventana por el catálogo de diálogos
     del host, que es quien las sirve.
 
-    LO QUE NO ESTÁ, Y POR QUÉ: el DISEÑADOR DE DATASETS del escritorio, porque su ventana la monta el propio
-    plugin con el toolkit de Avalonia y este host es WinUI (declarado en DeclaredPendingEntries). Todo lo que
+    LO QUE NO ESTÁ, Y POR QUÉ: el DISEÑADOR DE DATASETS de la versión anterior, porque su ventana la monta el propio
+    plugin con el toolkit nativo y este host es WinUI (declarado en DeclaredPendingEntries). Todo lo que
     falta queda declarado en el plan de la rebanada 5 y en el informe, nunca como un botón mudo.
   -->
   <Grid x:Name="OverlayRoot" Visibility="Collapsed">
@@ -80,7 +80,7 @@
             <TextBlock x:Name="FlowSectionLabel" FontSize="10" FontWeight="Bold"
                        Foreground="{StaticResource CanvasSecondaryBrush}" />
 
-            <!-- GESTIÓN DE FLUJOS (hito 258): las tres órdenes del escritorio que dependen de un diálogo.
+            <!-- GESTIÓN DE FLUJOS (hito 258): las tres órdenes de la versión anterior que dependen de un diálogo.
                  Se cumplen por el canal ASÍNCRONO del host (los pickers de WinRT y la confirmación
                  asíncrona) más los métodos del view model portable que ya no necesitan el diálogo: el
                  comando del núcleo pide el contrato SÍNCRONO, que desde el hilo de UI devuelve nulo/falso. -->
@@ -134,7 +134,7 @@
                         AutomationProperties.AutomationId="ControlBarLanguageCombo" />
             </StackPanel>
 
-            <!-- ESTUDIO DE TEMAS (hito 259): la orden canónica del escritorio, que pide su ventana por el
+            <!-- ESTUDIO DE TEMAS (hito 259): la orden canónica de la versión anterior, que pide su ventana por el
                  catálogo de diálogos. Aquí la sirve el servicio del host como superficie propia. -->
             <Button x:Name="DrawerThemeStudioButton" Click="OnThemeStudioClicked"
                     HorizontalAlignment="Stretch" Padding="10,6" FontSize="12"
@@ -166,7 +166,7 @@
                          Foreground="{StaticResource CanvasTextBrush}" />
             </Button>
 
-            <!-- MÉTRICAS Y VFS (hito 259): las dos órdenes canónicas del escritorio, servidas por el
+            <!-- MÉTRICAS Y VFS (hito 259): las dos órdenes canónicas de la versión anterior, servidas por el
                  catálogo de diálogos del host (superficies propias, no ventanas nuevas). -->
             <Button x:Name="DrawerMetricsButton" Click="OnMetricsClicked"
                     HorizontalAlignment="Stretch" Padding="10,6" FontSize="12"
@@ -187,7 +187,7 @@
             </Button>
 
             <!-- DISEÑADOR DE DATASETS (hito 261): la superficie que declara el NODO de datos sintéticos por el
-                 contrato del SDK. La x que necesita el host no es la ventana del plugin (Avalonia) sino su
+                 contrato del SDK. La x que necesita el host no es la ventana del plugin original sino su
                  view model portable, y el cajón sólo declara QUÉ orden se ha pedido: la ventana la sirve con
                  su propio catálogo de diálogos. -->
             <Button x:Name="DrawerDataSetButton" Click="OnDataSetDesignerClicked"
@@ -202,8 +202,8 @@
             <TextBlock x:Name="HelpSectionLabel" FontSize="10" FontWeight="Bold" Margin="0,10,0,0"
                        Foreground="{StaticResource CanvasSecondaryBrush}" />
 
-            <!-- AYUDA Y RECURSOS (hito 258): las tres órdenes canónicas del escritorio. Manual y Ejemplos
-                 abren con el shell lo que el ViewModel localiza (el mismo camino que el escritorio);
+            <!-- AYUDA Y RECURSOS (hito 258): las tres órdenes canónicas de la versión anterior. Manual y Ejemplos
+                 abren con el shell lo que el ViewModel localiza (el mismo camino que la versión anterior);
                  «Acerca de» pasa por el servicio de ventanas del host. -->
             <Button x:Name="DrawerManualButton" Click="OnUserManualClicked"
                     HorizontalAlignment="Stretch" Padding="10,6" FontSize="12"
@@ -234,7 +234,7 @@
           </StackPanel>
         </ScrollViewer>
 
-        <!-- Pie del cajón: la versión del producto, como el del escritorio -->
+        <!-- Pie del cajón: la versión del producto, como el de la versión anterior -->
         <Border Grid.Row="2" Background="{StaticResource CanvasCardBrush}"
                 BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="0,1,0,0"
                 Padding="14,9">

@@ -42,8 +42,8 @@
         </Grid>
 
         <!-- UpdateSourceTrigger=PropertyChanged: en WinUI el enlace de TextBox.Text escribe al PERDER EL FOCO
-             por defecto, y el recuento de URLs del editor —que el escritorio actualiza al teclear— se quedaba
-             con el valor viejo hasta cerrar la caja. Es la misma semántica que el enlace del escritorio. -->
+             por defecto, y el recuento de URLs del editor —que la versión anterior actualiza al teclear— se quedaba
+             con el valor viejo hasta cerrar la caja. Es la misma semántica que el enlace de la versión anterior. -->
         <TextBox x:Name="UrlsBox" Text="{Binding UrlsText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
                  TextWrapping="NoWrap" Height="150" FontSize="12" Padding="8,6"
                  FontFamily="Cascadia Code, Consolas, Courier New, monospace"
@@ -68,7 +68,7 @@
     </Border>
 
     <!-- El aviso del propio editor cuando no acepta lo escrito. El view model lo pide por IDialogService
-         (igual que el escritorio), pero WinUI sólo admite un ContentDialog a la vez y este ya está abierto,
+         (igual que la versión anterior), pero WinUI sólo admite un ContentDialog a la vez y este ya está abierto,
          así que el host lo dice DENTRO del editor en vez de dejar la ventana abierta sin explicación. -->
     <TextBlock x:Name="RequiredNote" FontSize="11" TextWrapping="Wrap" Visibility="Collapsed"
                AutomationProperties.AutomationId="AiModelUrlsRequiredNote" />

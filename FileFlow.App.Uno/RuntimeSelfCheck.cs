@@ -16,7 +16,7 @@ namespace FileFlow.App.Uno;
 ///
 /// <para>Lo que confirma y lo que no: el sondeo valida que cada pieza enlazada del árbol tiene valor real
 /// (título, categoría, color de acento, icono con geometría, sockets con borde, telemetría con texto) y que
-/// los cables del lienzo están dibujados; no valida el píxel (la comparación visual con el escritorio queda
+/// los cables del lienzo están dibujados; no valida el píxel (la comparación visual con la versión anterior queda
 /// sin demostrar en este entorno) ni la interacción con puntero real (fases 3.2/3.3).</para>
 ///
 /// <para><b>Este archivo es el DESPACHADOR, y nada más</b>: aquí vive el bucle de reintentos —la

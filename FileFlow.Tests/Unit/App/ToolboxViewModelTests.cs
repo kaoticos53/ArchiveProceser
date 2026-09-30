@@ -287,7 +287,7 @@ public class ToolboxViewModelTests
     /// <summary>
     /// OBJETO: El toggle compacto/detallado vive en el VM y su estado PERSISTE en preferencias.
     /// QUÉ:    ToggleViewModeCommand conmuta IsCompactMode y el cambio escribe IsCompactToolbox en
-    ///         el servicio de preferencias — el mismo camino que el botón del escritorio y el toggle
+    ///         el servicio de preferencias — el mismo camino que el botón de la versión anterior y el toggle
     ///         del host Uno (hito 246) consumen. Es el testigo de la mutación
     ///         toggle-que-no-persiste: si OnIsCompactModeChanged deja de escribir, el modo elegido
     ///         se olvida al reiniciar y la preferencia del usuario se burla.

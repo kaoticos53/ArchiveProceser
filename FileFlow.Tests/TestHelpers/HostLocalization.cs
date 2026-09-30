@@ -32,7 +32,7 @@ namespace FileFlow.Tests.TestHelpers;
 /// carga (como en producción), así que una clave de plugin todavía puede cambiar de valor a mitad del suite.
 /// Una prueba que necesite comparar una cadena de plugin en dos momentos tiene que registrar ese plugin
 /// antes, como hace <see cref="ModalVisualFixture"/> con las capturas. El idioma tampoco se fija aquí: lo fija
-/// <see cref="AvaloniaTestHelper"/> en cada preparación de la sesión, y las capturas lo fijan y lo restauran
+/// <see cref="HostUiTestHelper"/> en cada preparación de la sesión, y las capturas lo fijan y lo restauran
 /// alrededor de cada imagen.</para>
 /// </summary>
 public static class HostLocalization

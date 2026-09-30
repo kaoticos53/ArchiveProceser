@@ -14,7 +14,7 @@
 	RID de destino. Por defecto: win-x64.
 
 .PARAMETER SelfContained
-	Si es $true (por defecto), el instalador incluye el runtime de .NET 9.
+	Si es $true (por defecto), el instalador incluye el runtime de .NET 10.
 
 .EXAMPLE
 	./installer/build-installer.ps1

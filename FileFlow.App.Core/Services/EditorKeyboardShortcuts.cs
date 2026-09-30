@@ -7,11 +7,11 @@ namespace FileFlow.App.Services;
 
 /// <summary>
 /// La tabla compartida de atajos de teclado del lienzo (fase 3.2 del plan Uno: «las claves de atajos son
-/// las mismas que las del host Avalonia (tabla compartida si hace falta)»).
+/// las mismas que las del host original (tabla compartida si hace falta)»).
 ///
 /// <para><b>Por qué vive en el núcleo</b>: los atajos son de teclado (del host), pero las CLAVES son del
 /// producto — el usuario aprende Ctrl+Z, no «la tecla que la vista X decida». Con la tabla aquí, cada host
-/// la consume para su bucle de teclado y una guardia compara su uso contra la referencia del escritorio:
+/// la consume para su bucle de teclado y una guardia compara su uso contra la referencia de la versión anterior:
 /// si un host cambia una clave, la guardia se entera.</para>
 ///
 /// <para><b>Qué NO entra en la tabla</b>: la navegación del spotlight (flechas/Enter/Escape) y el
@@ -114,7 +114,7 @@ public static class EditorKeyboardShortcuts
 
     /// <summary>
     /// La tabla canónica. Es la ÚNICA fuente: la guardia de atajos compara contra ella el uso de los dos
-    /// hosts, y un cambio de clave aquí es un cambio de producto (con su guardia en rojo en los dos hosts
+    /// hosts, y un cambio de clave aquí es un cambio de producto (con su guardia en rojo en los hosts
     /// si uno de los dos no la sigue).
     /// </summary>
     public static IReadOnlyList<Binding> Table { get; } =

@@ -14,7 +14,7 @@ namespace FileFlow.Tests.Unit.Plugins;
 /// El GESTOR DE PRESETS del transcodificador: su view model PORTABLE, ejercido contra un almacén de mentira.
 ///
 /// <para>Lo que se mide aquí es la REGLA del producto —qué se escribe al guardar, qué no se puede borrar, qué
-/// se pregunta antes de destruir— y no el pintado: la ventana del escritorio y el cuerpo del host son vistas
+/// se pregunta antes de destruir— y no el pintado: la ventana de la versión anterior y el cuerpo del host son vistas
 /// de este mismo view model, así que una regla que se mueva a una de las dos vistas desaparece de aquí. El
 /// almacén es de mentira a propósito: la prueba no escribe en el fichero de presets de quien la corre, y
 /// «se guardó» se comprueba por lo que el almacén RECIBIÓ, no por la referencia que el view model tiene en la

@@ -11,13 +11,13 @@ namespace FileFlow.Tests.Unit.App;
 /// su tangente y el hit-testing.
 ///
 /// <para><b>Qué fija</b>: los valores esperados están calculados a mano a partir del algoritmo del control
-/// <c>Connection</c> de Nodify (transcrito en <see cref="ConnectionGeometry"/>), no re-transcritos en código de
+/// <c>Connection</c> de la versión anterior (transcrito en <see cref="ConnectionGeometry"/>), no re-transcritos en código de
 /// prueba — un espejo del código sólo probaría que el código es igual a sí mismo. Los casos cubren el
 /// horizontal, el vertical, el invertido (destino a la izquierda del origen), el de nodos pegados (el cuello
 /// se suaviza) y el de nodos lejanos (el cuello crece despacio).</para>
 ///
 /// <para><b>Para qué sirve</b>: es el contrato que permite a un segundo host (Uno) dibujar <b>el mismo
-/// cable</b> que el escritorio, y es la única defensa de que una divergencia entre hosts sería un defecto del
+/// cable</b> que la versión anterior, y es la única defensa de que una divergencia entre hosts sería un defecto del
 /// producto y no una decisión de plataforma.</para>
 /// </summary>
 public class ConnectionGeometryTests
@@ -192,7 +192,7 @@ public class ConnectionGeometryTests
     /// <summary>
     /// El defecto que estas pruebas fijan: un host puede equivocarse dibujando la MISMA Bézier. Abrir la figura
     /// en el primer punto de control la deja separada de los dos sockets; y los dos tramos rectos con los que el
-    /// control de Nodify une las puntas <b>sí</b> existen allí y aquí se leían como una <b>Z</b> en pantalla
+    /// control de la versión anterior unía las puntas <b>sí</b> existían allí y aquí se leían como una <b>Z</b> en pantalla
     /// —dos bajíos rectos y una ese apretada—, que es lo que el usuario pidió quitar. El trazado compartido
     /// empieza y termina en las anclas y no lleva ningún tramo recto: es contrato, no consejo.
     /// </summary>

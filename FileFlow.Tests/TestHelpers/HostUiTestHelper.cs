@@ -6,9 +6,9 @@ namespace FileFlow.Tests.TestHelpers;
 
 /// <summary>
 /// Helper de compatibilidad portable para pruebas de internacionalización y ejecución síncrona,
-/// sin dependencias del runtime o paquetes de Avalonia.
+/// sin dependencias del runtime de UI.
 /// </summary>
-public static class AvaloniaTestHelper
+public static class HostUiTestHelper
 {
     public const string PinnedLanguage = "es-ES";
 

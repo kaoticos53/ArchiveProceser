@@ -5,8 +5,8 @@
     xmlns:controls="using:FileFlow.App.Uno.Controls">
 
   <!--
-    La superficie de AJUSTES del host Uno: las mismas cuatro secciones que la ventana de ajustes del
-    escritorio, sobre el MISMO WorkflowSettingsViewModel portable (almacenamiento y rutas, apariencia e
+    La superficie de AJUSTES del host Uno: las mismas cuatro secciones que la ventana de ajustes de la
+    versión anterior, sobre el MISMO WorkflowSettingsViewModel portable (almacenamiento y rutas, apariencia e
     idioma, rendimiento y ejecución, herramientas externas). Cada control escribe una propiedad del view
     model; el guardado es el comando canónico del VM (UpdatePreferences + SetCulture + SetThemeById), así
     que el host no tiene copia de la lógica de persistencia.
@@ -57,7 +57,7 @@
   </UserControl.Resources>
 
   <Grid x:Name="OverlayRoot" Visibility="Collapsed">
-    <!-- El velo: clic fuera = cancelar, como el backdrop del cajón del escritorio. -->
+    <!-- El velo: clic fuera = cancelar, como el backdrop del cajón de la versión anterior. -->
     <Border x:Name="Scrim" Background="#A6000000" Tapped="OnScrimTapped"
             AutomationProperties.AutomationId="SettingsScrim" />
 
@@ -397,7 +397,7 @@
             </ScrollViewer>
 
             <!-- ═══ 5. Modelos de IA ═══
-                 La misma superficie que la pestaña del escritorio: la lista de modelos con su estado, y por
+                 La misma superficie que la pestaña de la versión anterior: la lista de modelos con su estado, y por
                  fila las órdenes del gestor (descargar, borrar, configurar URLs). El catálogo, el estado y las
                  órdenes son del `AiModelManagerViewModel` portable; aquí sólo se pinta. -->
             <ScrollViewer x:Name="AiModelsPane" Visibility="Collapsed"
@@ -465,7 +465,7 @@
                           <TextBlock Text="⬇" FontSize="11" />
                         </Button>
                         <!-- La acción que abre el editor de URLs por modelo (hito 262): el mismo puesto que
-                             ocupa en la fila del escritorio (entre descargar y borrar) y el MISMO comando
+                             ocupa en la fila de la versión anterior (entre descargar y borrar) y el MISMO comando
                              canónico del gestor del núcleo, que pide el diálogo por el catálogo. -->
                         <Button Grid.Column="3" FontSize="11" Padding="8,3"
                                 Click="OnAiModelRowActionClicked" Tag="urls"
@@ -497,7 +497,7 @@
             </ScrollViewer>
 
             <!-- ═══ 6. Actualizaciones ═══
-                 La pestaña del escritorio: versiones, canal, comprobación automática y la acción de comprobar
+                 La pestaña de la versión anterior: versiones, canal, comprobación automática y la acción de comprobar
                  ahora. Todo vive en el `WorkflowSettingsViewModel` portable (las mismas propiedades y los
                  mismos comandos que su ventana), incluido el servicio de actualización del núcleo. -->
             <ScrollViewer x:Name="UpdatesPane" Visibility="Collapsed"

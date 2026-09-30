@@ -2,7 +2,7 @@
   "id": "superficie-declarada-sin-los-dialogos-del-host",
   "hito": 265,
   "claim": "El contenido de una superficie DECLARADA por un nodo viaja con los diálogos de quien la abre: el nodo vive en un ensamblado de plugin y no puede resolverlos, y una superficie que borra no puede nacer con el doble nulo, que a una confirmación contesta «sí» sin preguntar.",
-  "why": "Cambiar la pregunta a la vía asíncrona no basta si nadie con quien preguntar: el contrato asíncrono del doble nulo delega en su síncrona, que contesta «sí». El diseñador de datasets nació así —su carga útil se construía sin diálogos— y borraba en silencio en los DOS hosts (el escritorio monta su ventana y el host Uno su cuerpo, los dos sobre el mismo view model sin servicio). El gestor de presets ya recibía los del host por el mismo camino: el contexto de la acción. La medición es la CADENA de entrega: nodo, comando del núcleo y puerta del host.",
+  "why": "Cambiar la pregunta a la vía asíncrona no basta si nadie con quien preguntar: el contrato asíncrono del doble nulo delega en su síncrona, que contesta «sí». El diseñador de datasets nació así —su carga útil se construía sin diálogos— y borraba en silencio en los DOS hosts (la versión anterior monta su ventana y el host Uno su cuerpo, los dos sobre el mismo view model sin servicio). El gestor de presets ya recibía los del host por el mismo camino: el contexto de la acción. La medición es la CADENA de entrega: nodo, comando del núcleo y puerta del host.",
   "edits": [
     {
       "file": "FileFlow.Plugin.FileSystem/Nodes/Sources/SyntheticDataSourceNode.cs",

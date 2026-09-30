@@ -8,14 +8,14 @@ namespace FileFlow.App.Uno.Platform;
 
 /// <summary>
 /// Los conversores de presentación de la tarjeta de nodo, con <b>los mismos valores</b> que sus hermanos
-/// del escritorio (<c>FileFlow.App/Converters</c>): el mapa estado de ejecución → color, el LED del
-/// breakpoint, y los formatos de duración y bytes. La semántica se mide en los conversores de Avalonia;
+/// de la versión anterior (<c>FileFlow.App/Converters</c>): el mapa estado de ejecución → color, el LED del
+/// breakpoint, y los formatos de duración y bytes. La semántica se mide en los conversores del host original;
 /// aquí sólo cambia el tipo de pincel del framework. Cuando la fase 3.5 centralice la presentación,
 /// la mitad portable de estas tablas viajará al núcleo como ya hizo la geometría.
 /// </summary>
 public static class NodeCardConverters
 {
-    // Los mismos RGB que NodeExecutionStatusToBrushConverter y BreakpointToBrushConverter del escritorio.
+    // Los mismos RGB que NodeExecutionStatusToBrushConverter y BreakpointToBrushConverter de la versión anterior.
     public static Windows.UI.Color StatusColor(NodeExecutionStatus status) => status switch
     {
         NodeExecutionStatus.Running => FromRgb(0xA8, 0x55, 0xF7),        // Purple

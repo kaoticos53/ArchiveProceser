@@ -7,7 +7,7 @@ namespace FileFlow.App.Uno.Platform;
 
 /// <summary>
 /// El conversor de puntos del host Uno: los enlaces de geometría del lienzo (posiciones de contenedores,
-/// anclas de sockets, viewport, extremos de cables) pasan por aquí, como los del host Avalonia pasan por
+/// anclas de sockets, viewport, extremos de cables) pasan por aquí, como los del host original pasan por
 /// <c>SdkPointConverter</c>. La traducción vive en <see cref="UnoPointProjection"/> (núcleo portable); este
 /// envoltorio es lo que el XAML de WinUI puede citar con <c>{x:Static}</c>-equivalente.
 ///

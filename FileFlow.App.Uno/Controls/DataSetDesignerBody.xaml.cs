@@ -11,8 +11,8 @@ namespace FileFlow.App.Uno.Controls;
 /// <see cref="SyntheticDataSetDesignerViewModel"/> portable del plugin de sistema de archivos.
 ///
 /// <para><b>Qué es y qué no.</b> El view model —con su almacén de datasets, su parser del DSL, su árbol y sus
-/// cuarenta órdenes— vive en el plugin y lo comparten los dos hosts; lo que cambia es quién lo pinta. El
-/// escritorio monta la ventana del plugin (<c>SyntheticDataSetDesignerWindow</c>, Avalonia); este host pinta
+/// cuarenta órdenes— vive en el plugin; lo que cambia es quién lo pinta. La versión anterior montaba la
+/// ventana del plugin (<c>SyntheticDataSetDesignerWindow</c>); este host pinta
 /// esta vista sobre el MISMO view model. No hay una segunda versión del diseñador: hay dos vistas de él. La
 /// frontera que el tramo anterior declaró («la ventana la monta el plugin, y este host es WinUI») se cruza por
 /// el contrato <c>INodeDialogSurfaceProvider</c> del SDK: el nodo declara qué diálogo quiere

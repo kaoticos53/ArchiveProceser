@@ -4,8 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:conv="using:FileFlow.App.Uno.Platform">
 
-  <!-- La tarjeta completa del lienzo Uno: la misma jerarquía que la NodeCardView de Avalonia
-       (559 líneas de referencia), traducida a XAML WinUI. Donde el escritorio usa clases de estilo
+  <!-- La tarjeta completa del lienzo Uno: la misma jerarquía que la NodeCardView del host original
+       (559 líneas de referencia), traducida a XAML WinUI. Donde la versión anterior usa clases de estilo
        (combinaciones de bools del VM), WinUI exige conversores que devuelvan el valor final — la
        matriz de colores es la misma (Platform/SocketConverters.cs). Los puertos se dibujan con su
        forma/tipo/estado pero sin interacción hasta la fase 3.3. -->
@@ -75,7 +75,7 @@
               </Grid.ColumnDefinitions>
 
               <!-- Icono del tipo sobre el fondo del acento: path data del paquete Material.Icons (los
-                   mismos datos que el escritorio), resuelta a geometría ASIGNABLE por el conversor. -->
+                   mismos datos que la versión anterior), resuelta a geometría ASIGNABLE por el conversor. -->
               <Border Grid.Column="0" Width="22" Height="22" CornerRadius="6" Margin="0,0,8,0"
                       Background="{StaticResource CanvasSurfaceBrush}"
                       BorderBrush="{StaticResource CanvasBorderBrush}" BorderThickness="1"
@@ -123,11 +123,11 @@
                 </Border>
               </Button>
 
-              <!-- Conmutador del panel de ACCIONES (el chevron del escritorio). Sin él la tarjeta no
+              <!-- Conmutador del panel de ACCIONES (el chevron de la versión anterior). Sin él la tarjeta no
                    tiene forma de desplegarse, y el panel es el que trae las acciones rápidas del nodo
                    —entre ellas el «🎬 Presets...» del nodo de transcodificación—: la puerta de la
                    tarjeta quedaría dibujada y sin puerta. El estado es del NÚCLEO (la misma IsExpanded
-                   que el escritorio conmuta), así que aquí sólo se pinta y se conmuta.
+                   que la versión anterior conmuta), así que aquí sólo se pinta y se conmuta.
 
                    El conmutador SÓLO se dibuja si el nodo declara acciones: sin ellas el panel no
                    tendría nada que enseñar y el chevron sería un botón que no hace nada al pulsarlo.

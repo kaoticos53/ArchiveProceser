@@ -15,7 +15,7 @@
       <li>Local AI model inference (ONNX, Vision-LLM, image classification, object detection).</li>
       <li>Integrated Script Studio with dual C# (Roslyn JIT) and JavaScript engines.</li>
       <li>Multi-format report generation (Interactive HTML, Markdown, ASCII tree, JSON, CSV).</li>
-      <li>High-throughput concurrent pipeline processing powered by .NET 9 and Avalonia UI.</li>
+      <li>High-throughput concurrent pipeline processing powered by .NET 10 and Uno Platform.</li>
     </ul>
   </description>
   <launchable type="desktop-id">com.fileflowstudio.FileFlow.desktop</launchable>
@@ -28,7 +28,7 @@
   <releases>
     <release version="1.0.0" date="2026-09-19">
       <description>
-        <p>FileFlow Studio 1.0.0 - Multiplatform release with Avalonia UI, undo/redo DAG engine, high-speed startup, and native Linux Flatpak support.</p>
+        <p>FileFlow Studio 1.0.0 - Multiplatform release (Windows, Linux, macOS, web) on Uno Platform, undo/redo DAG engine, high-speed startup, and native Linux Flatpak support.</p>
       </description>
     </release>
   </releases>

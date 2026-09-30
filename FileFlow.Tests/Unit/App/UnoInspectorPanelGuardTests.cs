@@ -9,7 +9,7 @@ namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
 /// Guardia del panel inspector del host Uno (rebanada 4, plan de los paneles): la ficha tiene que
-/// <b>decidir sus editores con los mismos flags del NodeParameterViewModel que el escritorio</b> y
+/// <b>decidir sus editores con los mismos flags del NodeParameterViewModel que la versión anterior</b> y
 /// <b>escribir el valor al NodeInstance</b> por el mismo camino (la edición del usuario es
 /// <c>p.Value = ...</c>, no un API del host).
 ///
@@ -62,27 +62,27 @@ public class UnoInspectorPanelGuardTests
     {
         string code = PanelCode();
 
-        // Los flags del VM (los mismos que el Selector de estilos del escritorio), en el orden del
-        // escritorio: toggle → slider → desplegable → ruta con explorar → multilínea → texto/number.
+        // Los flags del VM (los mismos que el Selector de estilos de la versión anterior), en el orden de la
+        // versión anterior: toggle → slider → desplegable → ruta con explorar → multilínea → texto/number.
         code.Should().Contain("if (p.IsToggle)",
-            "el booleano es un ToggleSwitch, como la fila 1 del escritorio");
+            "el booleano es un ToggleSwitch, como la fila 1 de la versión anterior");
 
         code.Should().Contain("else if (p.IsSlider)",
-            "el slider usa SliderValue/SliderMin/SliderMax del VM, como la fila 2 del escritorio");
+            "el slider usa SliderValue/SliderMin/SliderMax del VM, como la fila 2 de la versión anterior");
 
         code.Should().Contain("else if (p.IsDropdown)",
-            "el desplegable es ComboBox atado a Value con Options del VM, como la fila 4 del escritorio");
+            "el desplegable es ComboBox atado a Value con Options del VM, como la fila 4 de la versión anterior");
 
         code.Should().Contain("else if (p.HasBrowseButton)",
             "la ruta lleva el botón explorar (BrowsePathAsyncCommand: la variante asíncrona, porque este host "
-            + "abre sus pickers desde el clic de UI), como la fila del escritorio");
+            + "abre sus pickers desde el clic de UI), como la fila de la versión anterior");
 
         code.Should().Contain("else if (p.IsMultiLine)",
-            "el multilínea es TextBox con AcceptsReturn, como la fila del escritorio");
+            "el multilínea es TextBox con AcceptsReturn, como la fila de la versión anterior");
 
         // La fila SIEMPRE se construye: la cuenta de editores que el selfcheck compara con los
         // parámetros del nodo exige que ningún parámetro se quede sin fila (ni siquiera el número,
-        // que comparte caja con el texto estándar como en la ficha del escritorio).
+        // que comparte caja con el texto estándar como en la ficha de la versión anterior).
         code.Should().Contain("_paramsHost.Children.Add(row)",
             "toda fila construida entra al panel: el selfcheck compara editores con parámetros y una " +
             "excepción oculta dejaría la cuenta mintiendo");
@@ -220,8 +220,8 @@ public class UnoInspectorPanelGuardTests
 
         code.Should().Contain(
             "foreach (var action in _inspected.CustomActions)",
-            "las acciones salen de la colección del NodeViewModel (las mismas que pinta la tarjeta y el " +
-            "escritorio): una lista propia del host se quedaría corta en cuanto un nodo declarara la suya");
+            "las acciones salen de la colección del NodeViewModel (las mismas que pinta la tarjeta): una lista " +
+            "propia del host se quedaría corta en cuanto un nodo declarara la suya");
 
         code.Should().Contain(
             "action.ExecuteCommand.Execute(null)",

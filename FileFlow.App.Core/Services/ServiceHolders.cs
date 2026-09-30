@@ -5,9 +5,8 @@ namespace FileFlow.App.Services;
 /// <summary>
 /// Ancla mutable de los servicios de ventana del host. Los ViewModels construidos sin contenedor DI
 /// (los que hoy se hacen con <c>new</c> dentro de otros VMs) toman estas instancias por defecto;
-/// <c>App.OnFrameworkInitializationCompleted</c> las fija con las implementaciones Avalonia y las
-/// pruebas pueden poner dobles. Es la única pieza de estado global nueva, y sustituye a los
-/// <c>AvaloniaDialogService.Instance</c> que ya existían con el mismo patrón.
+/// el arranque del host las fija con sus implementaciones y las pruebas pueden poner dobles. Es la única
+/// pieza de estado global nueva, y sustituye a los singletons de diálogos que ya existían con el mismo patrón.
 /// </summary>
 public static class ServiceHolders
 {

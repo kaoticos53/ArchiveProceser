@@ -25,10 +25,10 @@ jobs:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
+      - name: ⚙️ Configurar .NET 10.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: 📦 Restaurar dependencias
         run: dotnet restore FileFlow.slnx
@@ -96,10 +96,10 @@ jobs:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
+      - name: ⚙️ Configurar .NET 10.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: 🛠️ Instalar herramientas de Linux
         run: |
@@ -110,3 +110,40 @@ jobs:
         shell: pwsh
         run: |
           .\installer\build-linux-installer.ps1 -Version "1.0.0-ci" -Configuration "Release"
+
+  # -------------------------------------------------------------------------
+  # 3. Matriz de compilación multiplataforma (Escritorio / Web / iOS)
+  #    El host Uno selecciona la familia con -p:FileFlowTarget=<plataforma>.
+  # -------------------------------------------------------------------------
+  build-platforms:
+    name: 🌐 Compilar host (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: desktop
+          - os: ubuntu-latest
+            target: wasm
+          - os: macos-latest
+            target: ios
+
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar .NET 10.0 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 🧰 Instalar workloads de la plataforma
+        run: |
+          dotnet workload install wasm-tools
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then dotnet workload install ios; fi
+
+      - name: 🏗️ Compilar el host (${{ matrix.target }})
+        run: |
+          dotnet build FileFlow.App.Uno/FileFlow.App.Uno.csproj \
+            -c Release -p:FileFlowTarget=${{ matrix.target }} --nologo

@@ -13,7 +13,7 @@ namespace FileFlow.App.Uno.Controls;
 /// horizontal —las quince categorías del cajón y las seis secciones de Ajustes— y un <c>StackPanel</c> no
 /// parte la línea: lo que sobraba se recortaba contra el borde y quedaba <b>fuera del alcance del
 /// ratón</b> (medido: once chips y la pestaña «Actualizaciones» con rectángulo vacío, sin scroll con el
-/// que alcanzarlos y con la rueda sin efecto). El escritorio resuelve su filtro de categorías con un
+/// que alcanzarlos y con la rueda sin efecto). La versión anterior resuelve su filtro de categorías con un
 /// desplegable, que siempre cabe; el host conserva las chips, pero partidas en filas para que TODAS se
 /// puedan pulsar.</para>
 ///

@@ -1659,21 +1659,39 @@ publicado sube a **101 declaraciones**.
 
 ---
 
-## 28. Cómo verificarlo
+## 28. El tramo del host único y multiplataforma (compilación 7096 → actual)
 
+**Ya no queda nada de Avalonia.** No es una forma de hablar: se han eliminado el «sabor doble» de interfaz que
+arrastraba la migración, la segunda solución (`FileFlow.Uno.slnx`) y la constante que leían los nodos. Un solo
+host de **Uno Platform** es ahora la única interfaz del producto.
+
+- **Multiplataforma de verdad.** El host compila para **Windows** (WinUI 3), **Linux y macOS** (Skia Desktop),
+  **Web** (WebAssembly) e **iPadOS/iPhone** (iOS). `\.\build-matrix.ps1` comprueba las familias de golpe.
+- **La frontera de las superficies cambió de nombre y de sentido**: `DesktopOnlySurface` pasa a
+  `UnavailableSurface` («esta superficie no se puede montar en este host»), porque ya no hay un «host de
+escritorio» al que pertenezca.
+- **Documentación al día**: el README, la guía de instalación, la de contribución y los ficheros auxiliares de
+  los agentes describen el producto actual, no el de hace veinte tramos.
+
+## 29. Cómo verificarlo
+
+```powershell
 # Compilar y ejecutar la aplicación
 .\run.ps1
 
-# La sonda de autorrevisión del escritorio (el script espera y hereda el exit code: 0 = verificado)
+# La sonda de autorrevisión del host (el script espera y hereda el exit code: 0 = verificado)
 .\run.ps1 -SelfCheck                # mide el trazo, el pan y el zoom con puntero inyectado
 .\run-fast.ps1 -SelfCheck           # ídem sin compilar
 ```
 
-El host multiplataforma (Uno Platform) tiene sus propios comandos:
+El host (Uno Platform, la única interfaz del producto) tiene sus propios comandos:
 
 ```powershell
-# Su solución (FileFlow.Uno.slnx), la que se abre en Visual Studio: compila con dotnet build y sin Avalonia
-dotnet build FileFlow.Uno.slnx
+# Compilar toda la solución (host + núcleo portable + plugins + pruebas)
+dotnet build FileFlow.slnx
+
+# Compilar cada familia de plataformas (windows/desktop/wasm; iOS con -IncludeIos en macOS)
+.\build-matrix.ps1
 
 # Compilar y lanzar
 .\run-uno.ps1
@@ -1681,8 +1699,8 @@ dotnet build FileFlow.Uno.slnx
 # Lanzar sin compilar
 .\run-uno-fast.ps1
 
-# Los sondeos del host multiplataforma (el script espera y hereda el exit code: 0 = verificado)
-..\run-uno.ps1 -SelfCheck            # sondeo interno en runtime (lienzo, paneles, atajos)
+# Los sondeos del host (el script espera y hereda el exit code: 0 = verificado)
+.\run-uno.ps1 -SelfCheck            # sondeo interno en runtime (lienzo, paneles, atajos)
 .\run-uno.ps1 -SelfCheckControlBar # sondeo de la BARRA DE CONTROL, su cajón, sus entradas y sus ATAJOS
 .\run-uno.ps1 -SelfCheckDialogs    # sondeo de los PANELES DE NODO (editor de texto y catálogo de variables)
 .\run-uno.ps1 -SelfCheckSettings   # sondeo de la superficie de AJUSTES (tema e idioma; restaura lo tuyo)

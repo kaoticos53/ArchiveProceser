@@ -5,7 +5,7 @@ namespace FileFlow.Sdk.Services;
 
 /// <summary>
 /// Claves canónicas de los diálogos que los ViewModels piden por nombre.
-/// Cada host (Avalonia, Uno, …) mapea cada clave a su ventana concreta.
+/// El host mapea cada clave a su ventana concreta.
 /// </summary>
 public static class DialogKeys
 {
@@ -21,25 +21,23 @@ public static class DialogKeys
 
     /// <summary>
     /// El Diseñador de Datasets Sintéticos: la superficie que declara el nodo de datos sintéticos del plugin
-    /// de sistema de archivos (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). En el
-    /// escritorio la monta el propio plugin con su toolkit; en un host sin el toolkit del escritorio se sirve
-    /// con la vista de ESE host sobre el mismo view model portable que declara el nodo.
+    /// de sistema de archivos (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). El host
+    /// la sirve con su vista sobre el mismo view model portable que declara el nodo.
     /// </summary>
     public const string DataSetDesigner = "DataSetDesigner";
 
     /// <summary>
     /// El Gestor de Presets de Medios: la superficie que declara el nodo de transcodificación del plugin de
-    /// integraciones (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). El escritorio la
-    /// abre desde el botón «🎬» de la fila del parámetro «Preset»; un host sin el toolkit del escritorio la
-    /// sirve con SU vista sobre el mismo view model portable que declara el nodo, que a su vez escribe en el
-    /// mismo almacén de presets (el que lee el motor de transcodificación).
+    /// integraciones (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). Se abre desde el
+    /// botón «🎬» de la fila del parámetro «Preset»; el host la sirve con SU vista sobre el mismo view model
+    /// portable que declara el nodo, que a su vez escribe en el mismo almacén de presets (el que lee el motor
+    /// de transcodificación).
     /// </summary>
     public const string MediaPresetManager = "MediaPresetManager";
 
     /// <summary>
     /// El Gestor de Contraseñas: la superficie que declaran los nodos de descompresión del plugin de archivos
-    /// (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). En el escritorio la monta el
-    /// propio plugin con su toolkit; en un host sin el toolkit del escritorio se sirve con la vista de ESE host
+    /// (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>). El host la sirve con SU vista
     /// sobre el mismo view model portable que declara el nodo, que es quien escribe la lista de claves en el
     /// parámetro del nodo.
     /// </summary>
@@ -48,8 +46,7 @@ public static class DialogKeys
     /// <summary>
     /// El Estudio de Renombrado Avanzado (Pipeline de Métodos): la superficie que declara el nodo de
     /// renombrado avanzado del plugin de sistema de archivos (ver <see cref="FileFlow.Sdk.Descriptors.INodeDialogSurfaceProvider"/>).
-    /// En el escritorio la monta el propio plugin con su toolkit; en un host sin el toolkit del escritorio
-    /// se sirve con la vista de ESE host sobre el mismo view model portable que declara el nodo.
+    /// El host la sirve con SU vista sobre el mismo view model portable que declara el nodo.
     /// </summary>
     public const string AdvancedRenamer = "AdvancedRenamer";
 }
@@ -72,7 +69,7 @@ public sealed record DialogResultPayload
 
 /// <summary>
 /// Contrato para abrir ventanas y diálogos modales desde los ViewModels sin conocer el framework de UI.
-/// El host (Avalonia, Uno, …) registra su implementación y resuelve la ventana anfitriona por sí mismo,
+/// El host registra su implementación y resuelve la ventana anfitriona por sí mismo,
 /// de modo que el ViewModel sólo declara <b>qué</b> diálogo quiere (<paramref name="dialogKey"/>) y
 /// <b>qué contiene</b> (<paramref name="payload"/>). Las claves viven en <see cref="DialogKeys"/>,
 /// iguales para todos los hosts.
@@ -80,8 +77,8 @@ public sealed record DialogResultPayload
 public interface IWindowService
 {
     /// <summary>
-    /// La ventana anfitriona del host en su representación nativa (un <c>Window</c> de Avalonia, uno de
-    /// WinUI…), para las APIs que piden un propietario como <c>object?</c> —p. ej. las acciones
+    /// La ventana anfitriona del host en su representación nativa (por ejemplo un <c>Window</c> de WinUI),
+    /// para las APIs que piden un propietario como <c>object?</c> —p. ej. las acciones
     /// personalizadas de los nodos—. Null cuando aún no hay ventana.
     /// </summary>
     object? MainWindowOwner { get; }

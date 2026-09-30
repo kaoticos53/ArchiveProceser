@@ -15,7 +15,7 @@ namespace FileFlow.Tests.TestHelpers;
 ///
 /// <para><b>Por qué es frágil</b>: una propiedad enlazada a un token no es del código que la escribe.
 /// <c>ThemeManager.ApplyResourceDictionary</c> reemplaza las entradas de <c>Application.Resources</c> al
-/// aplicar un tema (arranque, Theme Studio, cambio de tema), Avalonia vuelve a evaluar el
+/// aplicar un tema (arranque, Theme Studio, cambio de tema), el host original vuelve a evaluar el
 /// <c>DynamicResource</c> y escribe encima el valor del token. Lo que el código había asignado desaparece sin
 /// aviso: el muestrario de color volvía al acento del tema, y el barrido de la splash se encontró con un
 /// <c>SolidColorBrush</c> donde esperaba un <c>LinearGradientBrush</c> y lanzó <c>InvalidCastException</c> en

@@ -12,7 +12,7 @@ namespace FileFlow.Tests.Unit.App;
 /// <summary>
 /// La guardia de la superficie de <b>AJUSTES</b> del host Uno (hito 255): la vista es del host, pero lo que
 /// se edita, se valida y se persiste es del <see cref="FileFlow.App.ViewModels.WorkflowSettingsViewModel"/>
-/// portable — el mismo que alimenta la ventana de ajustes del escritorio.
+/// portable — el mismo que alimenta la ventana de ajustes de la versión anterior.
 ///
 /// <para><b>Qué protege</b>: (1) que la persistencia siga siendo de los comandos canónicos del view model
 /// (<c>SaveSettingsCommand</c> → <c>UpdatePreferences</c> + <c>SetCulture</c> + <c>SetThemeById</c>) y no de
@@ -54,9 +54,9 @@ public class UnoSettingsSurfaceGuardTests
             "la superficie de ajustes tiene que estar montada en la ventana: sin ella no hay dónde ajustar nada");
 
         Code(WindowCode).Should().Contain("Settings.Vm = SettingsPanel.CreateViewModel(services);",
-            "el host monta el view model de ajustes con el reparto de dependencias del escritorio: el que ya " +
+            "el host monta el view model de ajustes con el reparto de dependencias de la versión anterior: el que ya " +
             "viva en el contenedor del núcleo manda y, si no, los mismos singulares que resuelve la ventana " +
-            "del escritorio más los adaptadores de diálogo de ESTE host");
+            "de la versión anterior más los adaptadores de diálogo de ESTE host");
 
         Code(WindowCode).Should().Contain("private void OnOpenSettingsClicked(object sender, RoutedEventArgs e) => Settings.Open();",
             "el punto de entrada del marco despliega la superficie por su método (no duplica el montaje)");
@@ -189,7 +189,7 @@ public class UnoSettingsSurfaceGuardTests
 
     /// <summary>
     /// Las SEIS secciones de la superficie (hitos 255 y 261): almacenamiento, apariencia, rendimiento,
-    /// herramientas externas y las dos que cierran la paridad con la ventana del escritorio —modelos de IA y
+    /// herramientas externas y las dos que cierran la paridad con la ventana de la versión anterior —modelos de IA y
     /// actualizaciones—. Cada una con su cuerpo y su botón, y las seis en la tabla que comparten el conmutador
     /// y el sondeo: quitar una sección de la tabla deja su cuerpo inalcanzable y su botón sin destino.
     /// </summary>
@@ -235,7 +235,7 @@ public class UnoSettingsSurfaceGuardTests
             panel.Should().Contain(command, $"la orden {command} es del view model portable, no de la vista");
         }
 
-        // El gestor lo resuelve el contenedor del núcleo, con el mismo reparto que la ventana del escritorio (y
+        // El gestor lo resuelve el contenedor del núcleo, con el mismo reparto que la ventana de la versión anterior (y
         // el constructor de respaldo del hito 255 cuando el contenedor no lo tiene).
         panel.Should().Contain("services.GetService<AiModelManagerViewModel>()",
             "el gestor de modelos se resuelve del contenedor del núcleo antes de construirlo");
@@ -243,7 +243,7 @@ public class UnoSettingsSurfaceGuardTests
 
     /// <summary>
     /// La acción de <b>URLs por modelo</b> de la pestaña de modelos de IA (hito 262): la fila la dibuja, el
-    /// host la sirve y el editor escribe donde escribe el escritorio. Las tres mitades quedan atadas aquí.
+    /// host la sirve y el editor escribe donde escribe la versión anterior. Las tres mitades quedan atadas aquí.
     ///
     /// <para><b>Por qué esta prueba existe</b>: el tramo anterior dejó esta frontera <i>declarada</i> —la
     /// pestaña de modelos de IA existía, pero no ofrecía la edición de URLs por fila, así que la clave
@@ -254,7 +254,7 @@ public class UnoSettingsSurfaceGuardTests
     /// cuando le pides sus URLs es peor que un botón que no hace nada.</para>
     ///
     /// <para><b>Y la mitad que impide dos verdades</b>: el cuerpo NO escribe la configuración. La escribe el
-    /// view model portable (<c>Save()</c> → <c>SetCustomUrls</c>), que es el mismo camino del escritorio; si la
+    /// view model portable (<c>Save()</c> → <c>SetCustomUrls</c>), que es el mismo camino de la versión anterior; si la
     /// vista llamara al almacén por su cuenta, habría dos sitios escribiendo lo mismo.</para>
     /// </summary>
     [Fact]
@@ -301,14 +301,14 @@ public class UnoSettingsSurfaceGuardTests
             "y ese arm abre el editor del host");
         service.Should().Contain("new AiModelUrlsConfigViewModel(modelId, new UnoDialogService()",
             "el editor se sirve del view model portable de las URLs, con el adaptador de diálogos del host " +
-            "(por donde el view model pide su aviso, igual que en el escritorio)");
+            "(por donde el view model pide su aviso, igual que en la versión anterior)");
 
         // 3) El cuerpo es una vista del view model portable y NO escribe la configuración por su cuenta.
         string body = Code(BodyCode);
         body.Should().Contain("private readonly AiModelUrlsConfigViewModel _vm;",
             "el cuerpo recibe el view model portable construido: no se lo fabrica él");
         body.Should().Contain("_vm.Save()",
-            "el guardado es el del view model portable: el mismo método que usa la ventana del escritorio");
+            "el guardado es el del view model portable: el mismo método que usa la ventana de la versión anterior");
         body.Should().NotContain("SetCustomUrls",
             "la vista NO escribe la configuración: eso es del view model (dos sitios escribiendo lo mismo serían " +
             "dos verdades sobre las URLs de un modelo)");

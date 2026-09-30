@@ -1,8 +1,8 @@
 {
   "id": "boton-del-nodo-que-no-avisa",
   "hito": 270,
-  "claim": "El botón de una acción de nodo que abre una ventana del ESCRITORIO avisa por los diálogos del host: el contexto que el núcleo le entrega lleva el servicio de diálogos, así que la frontera del hito 268 llega al usuario.",
-  "why": "Es la mitad que a la costura del 268 le faltaba y que sólo se ve pulsando el botón en la app: los siete nodos con ventana del toolkit declaran la frontera con «(context as NodeCustomActionContext)?.Dialogs» y el contexto del botón del nodo se construía sin el servicio. Lo que cambiaba con el mutante es únicamente el teléfono —la costura sigue existiendo, el nodo sigue declarando, la traza de consola sigue escribiéndose y la guardia del 268 sigue verde, porque mide la costura con un doble puesto a mano—, así que ningún lint de texto lo ve: el usuario vuelve a pulsar un botón que no hace nada y no avisa.",
+  "claim": "El botón de una acción de nodo que abre una ventana de la versión anterior avisa por los diálogos del host: el contexto que el núcleo le entrega lleva el servicio de diálogos, así que la frontera del hito 268 llega al usuario.",
+  "why": "Es la mitad que a la costura del 268 le faltaba y que sólo se ve pulsando el botón en la app: los siete nodos con ventana de la versión anterior declaran la frontera con «(context as NodeCustomActionContext)?.Dialogs» y el contexto del botón del nodo se construía sin el servicio. Lo que cambiaba con el mutante es únicamente el teléfono —la costura sigue existiendo, el nodo sigue declarando, la traza de consola sigue escribiéndose y la guardia del 268 sigue verde, porque mide la costura con un doble puesto a mano—, así que ningún lint de texto lo ve: el usuario vuelve a pulsar un botón que no hace nada y no avisa.",
   "edits": [
     {
       "file": "FileFlow.App.Core/ViewModels/NodeViewModel.cs",
@@ -16,8 +16,8 @@
     }
   ],
   "witness": {
-    "filter": "FullyQualifiedName~TheNodeActionButton_ShouldShowTheDesktopOnlyWarning_InTheHostDialogs",
-    "why": "El caso ejercita el camino entero —el botón del nodo, el contexto y la costura— con un nodo que declara su ventana como del escritorio y un servicio de diálogos que se acuerda: con el mutante el aviso no llega a nadie y el caso cae nombrando el botón mudo."
+    "filter": "FullyQualifiedName~TheNodeActionButton_ShouldShowTheUnavailableSurfaceWarning_InTheHostDialogs",
+    "why": "El caso ejercita el camino entero —el botón del nodo, el contexto y la costura— con un nodo que declara su ventana como de la versión anterior y un servicio de diálogos que se acuerda: con el mutante el aviso no llega a nadie y el caso cae nombrando el botón mudo."
   },
   "control": {
     "filter": "FullyQualifiedName~DeclaringTheFrontier_ShouldShowItInTheHostDialogs",

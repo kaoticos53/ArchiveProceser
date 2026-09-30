@@ -5,7 +5,7 @@ using System.ComponentModel;
 namespace FileFlow.App.Collections;
 
 /// <summary>
-/// Búfer circular de tamaño fijo optimizado para rendimiento extremo y virtualización en WPF.
+/// Búfer circular de tamaño fijo optimizado para rendimiento extremo y virtualización de listas largas.
 /// Implementa IList&lt;T&gt; e INotifyCollectionChanged con notificaciones en lote y O(1) de acceso indexado.
 /// </summary>
 /// <typeparam name="T">Tipo de elemento.</typeparam>

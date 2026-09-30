@@ -62,6 +62,6 @@
   <data name="PasswordManager_MsgImportError" xml:space="preserve"><value>Error importing file: {0}</value></data>
   <data name="PasswordManager_MsgExportSuccess" xml:space="preserve"><value>Passwords exported successfully to:\n{0}</value></data>
   <data name="PasswordManager_MsgExportError" xml:space="preserve"><value>Error exporting file: {0}</value></data>
-  <data name="Plugin_DesktopOnly_Title" xml:space="preserve"><value>Desktop host window</value></data>
-  <data name="Plugin_DesktopOnly_Message" xml:space="preserve"><value>«{0}» opens in the desktop host: this host does not have the toolkit that mounts it. Open it from the desktop application.</value></data>
+  <data name="Plugin_SurfaceUnavailable_Title" xml:space="preserve"><value>Feature not available</value></data>
+  <data name="Plugin_SurfaceUnavailable_Message" xml:space="preserve"><value>«{0}» is not available in this host.</value></data>
 </root>

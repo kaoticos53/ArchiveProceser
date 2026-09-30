@@ -18,14 +18,14 @@ namespace FileFlow.App.Uno.Controls;
 ///
 /// <para><b>Qué es y qué no</b>: la vista es del host (XAML de WinUI), pero <b>todo</b> lo que se edita,
 /// se valida y se persiste vive en el <see cref="WorkflowSettingsViewModel"/> portable — el MISMO que
-/// alimenta la ventana de ajustes del escritorio. Esta clase no guarda preferencias por su cuenta: cada
+/// alimenta la ventana de ajustes de la versión anterior. Esta clase no guarda preferencias por su cuenta: cada
 /// control escribe una propiedad del view model y el pie ejecuta sus comandos canónicos
 /// (<c>SaveSettingsCommand</c> → <c>UpdatePreferences</c> + <c>SetCulture</c> + <c>SetThemeById</c>;
 /// <c>CancelSettingsCommand</c> → el <c>RequestClose</c> del propio VM).</para>
 ///
 /// <para><b>Las secciones portadas</b>: Almacenamiento y Rutas, Apariencia e Idioma (tema + idioma, la
-/// sección que el cajón del escritorio también ofrece), Rendimiento y Ejecución y Herramientas Externas.
-/// Las dos secciones de la ventana del escritorio que NO se portan —<i>Actualizaciones</i> y <i>Modelos de
+/// sección que el cajón de la versión anterior también ofrece), Rendimiento y Ejecución y Herramientas Externas.
+/// Las dos secciones de la ventana de la versión anterior que NO se portan —<i>Actualizaciones</i> y <i>Modelos de
 /// IA</i>— quedan declaradas en el plan de la rebanada 5: la primera necesita el servicio de actualización
 /// y su diálogo modal; la segunda, el gestor de modelos. «Lo que no llega queda declarado, nunca
 /// fingido».</para>
@@ -74,7 +74,7 @@ public sealed partial class SettingsPanel : UserControl
 
             if (_vm is not null)
             {
-                // El cierre lo pide el VM (el mismo contrato que cierra la ventana del escritorio):
+                // El cierre lo pide el VM (el mismo contrato que cierra la ventana de la versión anterior):
                 // guardar cierra, cancelar cierra. La vista no decide por su cuenta cuándo se acabó.
                 _vm.RequestClose += OnVmRequestClose;
             }
@@ -84,9 +84,9 @@ public sealed partial class SettingsPanel : UserControl
     }
 
     /// <summary>
-    /// Construye el view model de la superficie con el reparto de dependencias del escritorio: el que ya
+    /// Construye el view model de la superficie con el reparto de dependencias de la versión anterior: el que ya
     /// viva en el contenedor del núcleo manda, y si no, los mismos singulares que resuelve la ventana de
-    /// ajustes del escritorio (preferencias, temas, localización y plantillas) más los adaptadores de
+    /// ajustes de la versión anterior (preferencias, temas, localización y plantillas) más los adaptadores de
     /// diálogo de ESTE host — el explorador asíncrono que aquí sí funciona desde el hilo de UI.
     /// </summary>
     public static WorkflowSettingsViewModel CreateViewModel(IServiceProvider services) =>
@@ -191,7 +191,7 @@ public sealed partial class SettingsPanel : UserControl
 
     /// <summary>
     /// Despliega la superficie con las preferencias <b>vigentes</b>: <c>Initialize</c> es el del núcleo, el
-    /// mismo que corre al abrir la ventana del escritorio (lee las preferencias y traduce las guardadas a
+    /// mismo que corre al abrir la ventana de la versión anterior (lee las preferencias y traduce las guardadas a
     /// las opciones que los desplegables sí ofrecen).
     /// </summary>
     public void Open(string? currentGlobalOutputDir = null)
@@ -217,7 +217,7 @@ public sealed partial class SettingsPanel : UserControl
     }
 
     // ───────────────────────────────────────────────────────────────────────────────
-    // Manos de la superficie: los mismos comandos del VM que ejecuta el escritorio
+    // Manos de la superficie: los mismos comandos del VM que ejecuta la versión anterior
     // ───────────────────────────────────────────────────────────────────────────────
 
     private void OnSaveClicked(object sender, RoutedEventArgs e) => _vm?.SaveSettingsCommand.Execute(null);
@@ -236,7 +236,7 @@ public sealed partial class SettingsPanel : UserControl
     /// <summary>
     /// La sección enseña la carpeta del gestor y DEJA PREGUNTADO su estado, sin descargar nada por su cuenta:
     /// los modelos instalados se leen del disco (el gestor ya lo hizo al construirse), que es exactamente lo
-    /// que hace la pestaña del escritorio al abrirse.
+    /// que hace la pestaña de la versión anterior al abrirse.
     /// </summary>
     private void RefreshAiModelsSection()
     {
@@ -287,7 +287,7 @@ public sealed partial class SettingsPanel : UserControl
                 case "urls":
                     // La orden canónica del gestor: pide el diálogo por el catálogo del host, que ahora SÍ lo
                     // sirve (hito 262). La vista no edita URLs por su cuenta; el cambio lo escribe el view
-                    // model del editor en el mismo sitio que el escritorio.
+                    // model del editor en el mismo sitio que la versión anterior.
                     await manager.ConfigureUrlsCommand.ExecuteAsync(model);
                     RefreshAiModelsSection();
                     break;
@@ -512,7 +512,7 @@ public sealed partial class SettingsPanel : UserControl
         PythonLabel.Text = loc.GetString("Uno_Settings_Python", "Python (scripts y automatización de CLI)");
         AutoDetectButton.Content = loc.GetString("Uno_Settings_AutoDetect", "Detectar herramientas");
 
-        // Sección 5: modelos de IA (los textos son los del escritorio: la misma superficie, contada igual).
+        // Sección 5: modelos de IA (los textos son los de la versión anterior: la misma superficie, contada igual).
         AiModelsTitleLabel.Text = loc.GetString("AiModelManager_HeaderTitle", "Gestión de Modelos de IA");
         AiModelsSubtitleLabel.Text = loc.GetString("AiModelManager_HeaderSubtitle", "Descarga y gestiona los modelos de IA locales necesarios para los nodos inteligentes.");
         AiModelsDirLabel.Text = loc.GetString("Settings_AiModels_DirLabel", "Carpeta de modelos");
@@ -678,7 +678,7 @@ public sealed partial class SettingsPanel : UserControl
 
     /// <summary>
     /// La sección <b>Actualizaciones</b> (hito 261): versión, formato del paquete, canales y la comprobación
-    /// automática, todos del view model portable (los mismos datos que enseña la pestaña del escritorio).
+    /// automática, todos del view model portable (los mismos datos que enseña la pestaña de la versión anterior).
     /// No lanza ninguna comprobación de red: mide lo que la sección ENSEÑA.
     /// </summary>
     internal (bool Ok, string Detail) MeasureUpdatesSection()
@@ -757,7 +757,7 @@ public sealed partial class SettingsPanel : UserControl
             //     renglón delata es el arranque y no la propia medición. El identificador guardado se compara
             //     ya traducido: las preferencias viejas escriben el nombre del enumerado ('Dark') y el
             //     catálogo usa el suyo ('dark_fluent'), y esa traducción es del mismo gestor de temas que usa
-            //     el arranque del escritorio.
+            //     el arranque de la versión anterior.
             string canonicalStoredTheme = ThemeManager.ResolveThemeId(storedTheme) ?? ThemeManager.DefaultThemeId;
             string storedLanguageCode = storedLanguage.Length >= 2 ? storedLanguage[..2] : storedLanguage;
             startup = string.Equals(canonicalStoredTheme, appliedThemeId, StringComparison.OrdinalIgnoreCase)

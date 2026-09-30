@@ -11,37 +11,32 @@ using Xunit;
 namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
-/// La guardia del SABOR DE UI y de la solución del host Uno (hito 268): el host que dibuja con WinUI se
-/// compila con <c>dotnet build</c> sobre <c>FileFlow.Uno.slnx</c>, y ese grafo <b>no lleva una sola DLL de
-/// Avalonia</b>.
+/// La guardia del HOST ÚNICO y de la ausencia total de Avalonia.
 ///
-/// <para><b>Qué protege.</b> (1) La solución del host Uno existe, trae su grafo entero y deja fuera al host de
-/// escritorio y a sus pruebas; (2) el sabor lo elige el NOMBRE de la solución (no una bandera que alguien
-/// tenga que recordar) y la constante que leen los nodos sale de ahí; (3) ningún plugin referencia el toolkit
-/// del escritorio fuera de su condición; (4) ningún fichero que el sabor Uno compila menciona Avalonia fuera
-/// de una región condicional —que es la medición que hace verdad «sin nada de Avalonia»—; (5) cada nodo cuya
-/// ventana es del escritorio <b>declara la frontera</b> en vez de construirla a ciegas; (6) los textos de esa
-/// frontera están en los dos diccionarios del plugin, y el nombre de la ventana que citan también (sin él, el
-/// aviso saldría en el idioma equivocado); y (7) el lanzador compila con <c>dotnet</c> sobre esa solución y ya
-/// no invoca MSBuild de Visual Studio.</para>
+/// <para><b>Qué protege.</b> (1) La solución única (<c>FileFlow.slnx</c>) trae el host Uno, su grafo entero y
+/// el suite, y ya no existe ninguna solución de escritorio ni proyecto <c>FileFlow.App</c>; (2) el andamiaje
+/// del «sabor doble» de UI (la constante que leían los nodos y la bandera que la elegía) ha desaparecido de
+/// <c>Directory.Build.props</c>; (3) ningún plugin referencia paquetes de Avalonia; (4) <b>ningún fichero que
+/// el producto compile menciona Avalonia</b> —ni en código, ni en comentarios, ni en XAML—; (5) cada nodo cuya
+/// superficie el host no puede montar <b>declara la frontera</b> en vez de construirla a ciegas; (6) los textos
+/// de esa frontera están en los dos diccionarios del plugin, y el nombre de la superficie que citan también; y
+/// (7) el lanzador compila con <c>dotnet</c> sobre el proyecto del host, sin depender del nombre de una
+/// solución para elegir el producto.</para>
 ///
-/// <para><b>Por qué una guardia y no sólo el build.</b> El build prueba el sabor de HOY en la máquina de quien
-/// lo corre; lo que hay que sostener es que el día que alguien añada un <c>using Avalonia</c> a un fichero que
-/// el host Uno compila —o un plugin nuevo con ventana— el sabor Uno deje de ser hermético <b>en la suite</b>,
-/// sin depender de haber compilado la otra solución.</para>
+/// <para><b>Por qué una guardia y no sólo el build.</b> El build prueba el árbol de HOY en la máquina de quien
+/// lo corre; lo que hay que sostener es que el día que alguien reintroduzca una referencia o un <c>using</c> de
+/// Avalonia, la suite lo cace sin depender de haber compilado la solución.</para>
 /// </summary>
 public class UnoHermeticBuildGuardTests
 {
-    private const string UnoSolution = "FileFlow.Uno.slnx";
-    private const string DesktopSolution = "FileFlow.slnx";
+    private const string Solution = "FileFlow.slnx";
     private const string FlavourProps = "Directory.Build.props";
     private const string UnoHostProject = "FileFlow.App.Uno/FileFlow.App.Uno.csproj";
     private const string Launcher = "run-uno.ps1";
-    private const string FrontierContract = "FileFlow.Sdk/Services/DesktopOnlySurface.cs";
-    private const string FlavourConstant = "FILEFLOW_NO_DESKTOP_TOOLKIT";
+    private const string FrontierContract = "FileFlow.Sdk/Services/UnavailableSurface.cs";
 
-    /// <summary>Los cinco plugins que traen ventanas del toolkit del escritorio (y por eso lo referencian).</summary>
-    private static readonly string[] PluginsWithDesktopWindows =
+    /// <summary>Los cinco plugins que traen superficies nativas propias (y declaran la frontera).</summary>
+    private static readonly string[] PluginsWithNativeSurfaces =
     [
         "FileFlow.Plugin.AI",
         "FileFlow.Plugin.Archives",
@@ -51,12 +46,10 @@ public class UnoHermeticBuildGuardTests
     ];
 
     /// <summary>
-    /// Los nodos cuya ventana es del ESCRITORIO, con la clave del diccionario que da su nombre. Cuatro de
-    /// ellos —el diseñador de datasets, el gestor de presets y los dos del gestor de contraseñas— además
-    /// DECLARAN su superficie, así que en el host Uno se sirven por ahí (hito 278 para el de contraseñas): su
-    /// rama del toolkit es defensa declarada, para el host que ignore las superficies declaradas.
+    /// Los nodos cuya superficie el host no puede montar, con la clave del diccionario que da su nombre. La
+    /// declaran por los diálogos de quien los abre (hito 268) en vez de construir una ventana a ciegas.
     /// </summary>
-    private static readonly (string File, string NameKey, string Window)[] DesktopOnlyNodes =
+    private static readonly (string File, string NameKey, string Window)[] UnavailableSurfaceNodes =
     [
         ("FileFlow.Plugin.Archives/SmartUnpackNode.cs", "PasswordManager_WindowTitle", "PasswordManagerWindow"),
         ("FileFlow.Plugin.Archives/ArchiveFanOutNode.cs", "PasswordManager_WindowTitle", "PasswordManagerWindow"),
@@ -66,6 +59,9 @@ public class UnoHermeticBuildGuardTests
         ("FileFlow.Plugin.Integrations/MediaTranscoderNode.cs", "PresetManager_WindowTitle", "MediaPresetManagerWindow"),
         ("FileFlow.Plugin.Scripting/CustomScriptNode.cs", "ScriptStudio_Title", "ScriptStudioWindow"),
     ];
+
+    /// <summary>Extensiones que el producto compila y que, por tanto, no pueden mencionar Avalonia.</summary>
+    private static readonly string[] CompiledExtensions = [".cs", ".xaml", ".csproj", ".axaml"];
 
     private static string Root() => TestRepositoryLocator.RepositoryRoot();
 
@@ -82,36 +78,32 @@ public class UnoHermeticBuildGuardTests
         item.Parent?.Attribute("Condition")?.Value ?? string.Empty;
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 1. La solución del host Uno
+    // 1. La solución única
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void TheUnoSolution_ShouldCarryTheHostAndItsWholeGraph_WithoutTheDesktopHost()
+    public void TheSingleSolution_ShouldCarryTheHostAndItsWholeGraph()
     {
-        File.Exists(Path.Combine(Root(), UnoSolution))
-            .Should().BeTrue($"{UnoSolution} es la solución con la que se compila (y se depura) el host Uno");
+        File.Exists(Path.Combine(Root(), Solution))
+            .Should().BeTrue($"{Solution} es la solución canónica con la que se compila y se depura el producto");
 
-        var solution = XDocument.Parse(Read(UnoSolution));
+        File.Exists(Path.Combine(Root(), "FileFlow.Uno.slnx"))
+            .Should().BeFalse("la solución del host nació para elegir un sabor de UI que ya no existe: se consolida en una sola");
+
+        var solution = XDocument.Parse(Read(Solution));
         var projects = solution.Descendants("Project")
             .Select(p => (string?)p.Attribute("Path") ?? string.Empty)
             .ToList();
 
-        projects.Should().Contain(UnoHostProject, "la solución es del host Uno: sin su proyecto no compila nada");
+        projects.Should().Contain(UnoHostProject, "la solución es del host: sin su proyecto no compila nada");
 
-        // El host de ESCRITORIO (Avalonia) y sus pruebas quedan fuera: son de la otra solución, y meterlas
-        // aquí devolvería Avalonia al grafo que esta solución existe para dejar limpio.
+        // El host de escritorio (Avalonia) no existe y no puede viajar en el grafo.
         projects.Should().NotContain("FileFlow.App/FileFlow.App.csproj",
-            "el host de escritorio (Avalonia) no viaja en la solución del host Uno");
-        projects.Should().NotContain("FileFlow.Tests/FileFlow.Tests.csproj",
-            "las pruebas montan ventanas de Avalonia: se compilan desde la solución del escritorio");
-        // El censo se mira por DIRECTORIO y no por prefijo del nombre: `FileFlow.App.Core` empieza igual, y es
-        // la capa PORTABLE que los dos hosts comparten —la que dejó de arrastrar Avalonia en el hito 267—. Lo
-        // que no puede entrar es el host de escritorio.
+            "el host de escritorio con Avalonia fue eliminado: no cabe en el grafo");
         projects.Should().NotContain(p => p.Split('/')[0] == "FileFlow.App",
-            "el host de escritorio es una aplicación Avalonia: en el grafo del host Uno no cabe");
+            "no queda ningún proyecto FileFlow.App: la capa portable es FileFlow.App.Core");
 
-        // Y la otra dirección: todo lo que el host Uno referencia tiene que estar en la solución, o Visual
-        // Studio compilaría un grafo distinto del que compila el script.
+        // Y la otra dirección: todo lo que el host referencia tiene que estar en la solución.
         var declared = projects.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var references = XDocument.Parse(Read(UnoHostProject))
             .Descendants("ProjectReference")
@@ -119,47 +111,38 @@ public class UnoHermeticBuildGuardTests
             .Select(p => p.StartsWith("../", StringComparison.Ordinal) ? p[3..] : p)
             .ToList();
 
-        references.Should().NotBeEmpty("el host Uno referencia su grafo: el censo no puede estar vacío");
+        references.Should().NotBeEmpty("el host referencia su grafo: el censo no puede estar vacío");
         var missing = references.Where(r => !declared.Contains(r)).ToList();
         missing.Should().BeEmpty(
-            "todo proyecto que el host Uno referencia tiene que estar en SU solución: un grafo declarado a "
-            + "medias es una solución que compila otra cosa de la que el script compila");
-
+            "todo proyecto que el host referencia tiene que estar en la solución: un grafo declarado a medias "
+            + "compila otra cosa de la que el script compila");
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 2. El sabor: lo elige el nombre de la solución
+    // 2. Sin andamiaje de sabor doble
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void TheUiFlavour_ShouldBeChosenByTheSolutionName_AndDefineTheConstant()
+    public void TheFlavourScaffolding_ShouldBeGone()
     {
         string props = Read(FlavourProps);
 
-        props.Should().Contain("$(SolutionFileName)",
-            "el sabor tiene que salir del nombre de la solución: una bandera que hay que recordar se olvida, y "
-            + "el que la olvida compila un grafo con el toolkit del escritorio sin enterarse");
-        props.Should().Contain("'FileFlow.Uno.slnx'", "y la solución del host Uno es la que lo pide");
-        props.Should().Contain("FileFlowUnoHost");
-        props.Should().Contain(FlavourConstant, "la constante es lo que leen los nodos para no construir a ciegas");
-
-        // El DEFECTO es el escritorio: compilar un proyecto suelto (o la solución del escritorio) no puede
-        // cambiar de producto por sorpresa.
-        Regex.IsMatch(props, @"<FileFlowDesktopToolkit Condition=""'\$\(FileFlowDesktopToolkit\)' == ''"">true</FileFlowDesktopToolkit>")
-            .Should().BeTrue("sin contexto, el sabor por defecto es el de escritorio");
-
-        Regex.IsMatch(props, @"<DefineConstants Condition=""'\$\(FileFlowDesktopToolkit\)' == 'false'"">")
-            .Should().BeTrue("la constante se define SÓLO cuando falta el toolkit: es la condición de las regiones");
+        props.Should().NotContain("FileFlowUnoHost",
+            "la bandera del sabor ya no elige producto: hay un único host");
+        props.Should().NotContain("FileFlowDesktopToolkit",
+            "el inverso del sabor desaparece con él");
+        props.Should().NotContain("FILEFLOW_NO_DESKTOP_TOOLKIT",
+            "la constante que leían los nodos ya no tiene consumidor: se retira del build");
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 3. Los plugins: el toolkit, condicionado
+    // 3. Los plugins: sin paquetes de Avalonia
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
     public void NoPluginThatDrawsAWindow_ShouldReferenceTheToolkit_OutsideItsCondition()
     {
-        foreach (string plugin in PluginsWithDesktopWindows)
+        foreach (string plugin in PluginsWithNativeSurfaces)
         {
             var references = Project(plugin).Descendants("PackageReference")
                 .Where(r => ((string?)r.Attribute("Include")) is { } name
@@ -168,55 +151,14 @@ public class UnoHermeticBuildGuardTests
                 .ToList();
 
             references.Should().BeEmpty(
-                $"{plugin} no debe referenciar el toolkit de escritorio de Avalonia: los plugins son portables");
+                $"{plugin} no debe referenciar el toolkit de escritorio de Avalonia: el producto es portable");
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 4. La medición del hermetismo: ningún fichero que el sabor Uno compila menciona Avalonia
+    // 4. La medición del hermetismo: NINGÚN fichero menciona Avalonia
     // ─────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Las líneas que MENCIONAN Avalonia sin estar dentro de una región condicional. La profundidad de
-    /// preprocesador es lo que distingue «este fichero usa Avalonia» (menciones a nivel 0, que el sabor Uno
-    /// compilaría) de «este fichero usa Avalonia cuando hay toolkit» (dentro de su <c>#if</c>).
-    /// </summary>
-    private static List<string> UnconditionalAvaloniaMentions(string plugin, string relativePath, string code)
-    {
-        var offenders = new List<string>();
-        int depth = 0;
-        int lineNumber = 0;
-
-        // El texto llega SIN comentarios: una prosa que explique «esto lo monta el host Avalonia» no es una
-        // mención de Avalonia en el código, y confundirlas convertiría la guardia en un lint de documentación.
-        foreach (string line in code.Split('\n'))
-        {
-            lineNumber++;
-            string trimmed = line.TrimStart();
-
-            if (trimmed.StartsWith("#if", StringComparison.Ordinal)
-                || trimmed.StartsWith("#elif", StringComparison.Ordinal))
-            {
-                depth++;
-                continue;
-            }
-
-            if (trimmed.StartsWith("#endif", StringComparison.Ordinal))
-            {
-                depth = Math.Max(0, depth - 1);
-                continue;
-            }
-
-            if (depth == 0 && line.Contains("Avalonia", StringComparison.OrdinalIgnoreCase))
-            {
-                offenders.Add($"{plugin}/{relativePath}:{lineNumber}");
-            }
-        }
-
-        return offenders;
-    }
-
-    /// <summary>Un patrón de <c>Compile Remove</c> (<c>UI\Views\**\*.cs</c>) convertido a expresión regular.</summary>
     private static Regex Glob(string pattern)
     {
         string normalized = pattern.Replace('\\', '/');
@@ -229,42 +171,32 @@ public class UnoHermeticBuildGuardTests
     }
 
     [Fact]
-    public void EveryFileTheUnoFlavourCompiles_ShouldNotMentionAvalonia_OutsideAConditionalRegion()
+    public void EveryFileTheProductCompiles_ShouldNotMentionAvalonia()
     {
         var offenders = new List<string>();
         int inspected = 0;
 
-        // Los proyectos que el sabor Uno compila y que NO son del host (el host no menciona Avalonia: es
-        // WinUI). El escritorio no entra: ahí el toolkit es justamente el que se usa.
-        var projects = PluginsWithDesktopWindows.Append("FileFlow.App.Core");
-
-        foreach (string plugin in projects)
+        foreach (string project in PluginsWithNativeSurfaces.Append("FileFlow.App.Core").Append("FileFlow.App.Uno")
+                     .Append("FileFlow.Sdk").Append("FileFlow.Core"))
         {
-            var excluded = Project(plugin).Descendants("Compile")
-                .Where(c => GroupCondition(c).Contains("'$(FileFlowDesktopToolkit)' != 'true'"))
-                .Select(c => Glob(((string?)c.Attribute("Remove") ?? string.Empty)))
-                .ToList();
-
-            string directory = Path.Combine(Root(), plugin);
-            foreach (string file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+            string directory = Path.Combine(Root(), project);
+            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
             {
-                if (file.Contains("/obj/", StringComparison.Ordinal)
-                    || file.Contains("\\obj\\", StringComparison.Ordinal)
-                    || file.Contains("/bin/", StringComparison.Ordinal)
-                    || file.Contains("\\bin\\", StringComparison.Ordinal))
+                if (PluginSourceLocator.IsBuildArtifact(file))
                 {
                     continue;
                 }
 
-                string relative = Path.GetRelativePath(directory, file).Replace('\\', '/');
-                if (excluded.Any(g => g.IsMatch(relative)))
+                if (!CompiledExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
                 {
-                    continue; // este fichero NO lo compila el sabor Uno: puede tocar Avalonia todo lo que quiera
+                    continue;
                 }
 
                 inspected++;
-                offenders.AddRange(UnconditionalAvaloniaMentions(
-                    plugin, relative, SourceText.WithoutComments(File.ReadAllText(file))));
+                if (File.ReadAllText(file).Contains("Avalonia", StringComparison.OrdinalIgnoreCase))
+                {
+                    offenders.Add(Path.GetRelativePath(Root(), file).Replace('\\', '/'));
+                }
             }
         }
 
@@ -273,8 +205,8 @@ public class UnoHermeticBuildGuardTests
             + "sin haber leído nada");
 
         offenders.Should().BeEmpty(
-            "el sabor Uno compila estos ficheros, así que una mención de Avalonia fuera de una región condicional "
-            + "les devuelve el toolkit al host: lo que sólo el escritorio puede montar va dentro de su #if");
+            "Avalonia se eliminó por completo del producto: una mención en código, comentario o XAML mantiene "
+            + "viva una dependencia que ya no existe");
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -282,19 +214,19 @@ public class UnoHermeticBuildGuardTests
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void EveryNodeWhoseWindowIsDesktopOnly_ShouldDeclareTheFrontier()
+    public void EveryNodeWhoseSurfaceTheHostCannotMount_ShouldDeclareTheFrontier()
     {
-        foreach (var (file, nameKey, window) in DesktopOnlyNodes)
+        foreach (var (file, nameKey, window) in UnavailableSurfaceNodes)
         {
             string code = Code(file);
             string name = Path.GetFileName(file);
 
-            code.Should().Contain("DesktopOnlySurface.Declare(",
+            code.Should().Contain("UnavailableSurface.Declare(",
                 $"{name}: la frontera se DECLARA por los diálogos de quien lo abrió");
-            code.Should().Contain("\"Plugin_DesktopOnly_Message\"",
+            code.Should().Contain("\"Plugin_SurfaceUnavailable_Message\"",
                 $"{name}: el aviso sale del diccionario del plugin, no de un literal del código");
             code.Should().Contain("\"" + nameKey + "\"",
-                $"{name}: el aviso nombra LA ventana que falta: sin el nombre, el usuario no sabe qué se perdió");
+                $"{name}: el aviso nombra LA superficie que falta: sin el nombre, el usuario no sabe qué se perdió");
         }
 
         // Y la costura que recibe esa declaración existe, avisa por los diálogos y deja traza.
@@ -321,29 +253,29 @@ public class UnoHermeticBuildGuardTests
     }
 
     [Fact]
-    public void TheFrontierTexts_ShouldBeInBothDictionaries_AndNameTheWindowsTheyCite()
+    public void TheFrontierTexts_ShouldBeInBothDictionaries_AndNameTheSurfacesTheyCite()
     {
-        foreach (string plugin in PluginsWithDesktopWindows)
+        foreach (string plugin in PluginsWithNativeSurfaces)
         {
             var english = Strings($"{plugin}/Resources/Strings.resx");
             var spanish = Strings($"{plugin}/Resources/Strings.es.resx");
 
-            foreach (string key in new[] { "Plugin_DesktopOnly_Title", "Plugin_DesktopOnly_Message" })
+            foreach (string key in new[] { "Plugin_SurfaceUnavailable_Title", "Plugin_SurfaceUnavailable_Message" })
             {
                 english.Should().ContainKey(key, $"{plugin}: la frontera se lee en los dos idiomas");
                 spanish.Should().ContainKey(key, $"{plugin}: la frontera se lee en los dos idiomas");
             }
 
-            english["Plugin_DesktopOnly_Message"].Should().Contain("{0}",
-                $"{plugin}: el mensaje lleva el nombre de la ventana que falta, o el usuario no sabe qué se perdió");
-            spanish["Plugin_DesktopOnly_Message"].Should().Contain("{0}");
+            english["Plugin_SurfaceUnavailable_Message"].Should().Contain("{0}",
+                $"{plugin}: el mensaje lleva el nombre de la superficie que falta, o el usuario no sabe qué se perdió");
+            spanish["Plugin_SurfaceUnavailable_Message"].Should().Contain("{0}");
 
             // El nombre que cita cada uno de SUS nodos también tiene que estar en los dos diccionarios: si
             // falta, el aviso sale con el texto de reserva incrustado —en un solo idioma, siempre—.
-            foreach (var (file, nameKey, _) in DesktopOnlyNodes.Where(n => n.File.StartsWith(plugin + "/", StringComparison.Ordinal)))
+            foreach (var (file, nameKey, _) in UnavailableSurfaceNodes.Where(n => n.File.StartsWith(plugin + "/", StringComparison.Ordinal)))
             {
-                english.Should().ContainKey(nameKey, $"{Path.GetFileName(file)} nombra la ventana por esta clave");
-                spanish.Should().ContainKey(nameKey, $"{Path.GetFileName(file)} nombra la ventana por esta clave");
+                english.Should().ContainKey(nameKey, $"{Path.GetFileName(file)} nombra la superficie por esta clave");
+                spanish.Should().ContainKey(nameKey, $"{Path.GetFileName(file)} nombra la superficie por esta clave");
                 Code(file).Should().Contain("\"" + nameKey + "\"", $"{Path.GetFileName(file)} la cita de verdad");
             }
         }
@@ -354,18 +286,18 @@ public class UnoHermeticBuildGuardTests
     // ─────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void TheLauncher_ShouldBuildWithDotnet_OnTheFlavourSolution()
+    public void TheLauncher_ShouldBuildWithDotnet_OnTheHostProject()
     {
         string launcher = Read(Launcher);
 
-        launcher.Should().Contain("FileFlow.Uno.slnx",
-            "el host Uno se compila con SU solución: es la que elige el sabor sin Avalonia");
+        launcher.Should().Contain("FileFlow.App.Uno.csproj",
+            "el host se compila sobre su propio proyecto: no depende del nombre de una solución");
         launcher.Should().Contain("dotnet build",
             "y con `dotnet build` —sin MSBuild de Visual Studio: los targets de WinAppSDK ya corren sin él");
-        launcher.Should().Contain("-p:FileFlowUnoHost=true",
-            "el script no depende de adivinar el sabor por el nombre: lo dice explícitamente");
 
         launcher.Should().NotContain("MSBuild.exe",
             "si el lanzador volviera a MSBuild, el camino que esta solución abrió dejaría de recorrerse");
+        launcher.Should().NotContain("FileFlow.Uno.slnx",
+            "la solución de sabor ya no existe: el lanzador compila el proyecto directamente");
     }
 }

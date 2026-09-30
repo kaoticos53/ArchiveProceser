@@ -16,7 +16,7 @@ public enum AppTheme
 /// <summary>
 /// Gestor de temas portable: mantiene el estado (tema activo, variante, definición enriquecida),
 /// resuelve identificadores heredados y publica los cambios. La aplicación al runtime de cada host
-/// (variante de FluentTheme en Avalonia, recursos en WinUI…) vive en el puente
+/// (variante de FluentTheme en el host original, recursos en WinUI…) vive en el puente
 /// <see cref="ThemeHostBridge.PublishThemeVariant"/>, que el host instala en el arranque; sin host
 /// (pruebas, headless) el estado sigue funcionando y publicar es un no-op.
 /// </summary>

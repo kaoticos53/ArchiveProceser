@@ -1,26 +1,31 @@
 # Guía de Contribución y Estándares de Ingeniería - FileFlow Studio
 
-¡Gracias por tu interés en contribuir a **FileFlow Studio**! Este documento detalla las directrices de arquitectura, estilo de código en C# 13, flujo de trabajo con Git y cómo validar tus cambios antes de enviar un Pull Request.
+¡Gracias por tu interés en contribuir a **FileFlow Studio**! Este documento detalla las directrices de arquitectura, estilo de código en C# 14, flujo de trabajo con Git y cómo validar tus cambios antes de enviar un Pull Request.
 
 ---
 
 ## 1. Principios de Ingeniería y Versiones
 
 1. **Runtime & Lenguaje**:
-   - **Target Framework**: `net9.0` (y `net9.0-windows` para la capa de UI `FileFlow.App`).
-   - **Versión de Lenguaje**: `C# 13` (`<LangVersion>13</LangVersion>`).
+   - **Target Framework**: `net10.0` en la capa portable, y el SDK de Uno Platform selecciona el TFM del host por plataforma (`net10.0-windows10.0.19041.0`, `net10.0-desktop`, `net10.0-browserwasm`, `net10.0-ios`).
+   - **Versión de Lenguaje**: `C# 14` (`<LangVersion>14</LangVersion>`).
    - **Nullable Reference Types**: Activado estrictamente (`<Nullable>enable</Nullable>`). No se permiten advertencias de posibles desreferencias nulas sin mitigar.
    - **Primitivas de Sincronización**: Uso exclusivo de `System.Threading.Lock` en lugar de `object` para bloqueos de exclusión mutua.
 
 2. **Desacoplamiento Estricto por Capas**:
    - `FileFlow.Sdk` debe ser puro: solo contratos e interfaces base. Cero dependencias de UI o librerías externas pesadas.
-   - Los plugins (`FileFlow.Plugin.*`) solo pueden referenciar `FileFlow.Sdk` y sus respectivas librerías de dominio específicas.
-   - La interfaz (`FileFlow.App`) consume `FileFlow.Core` y `FileFlow.Sdk` aplicando el patrón **MVVM** estricto con `CommunityToolkit.Mvvm`.
+   - Los plugins (`FileFlow.Plugin.*`) solo pueden referenciar `FileFlow.Sdk` y sus respectivas librerías de dominio específicas. **Nunca** `FileFlow.App.Core` ni el host.
+   - `FileFlow.App.Core` es la capa de presentación **portable**: ViewModels y servicios sin framework de UI.
+   - `FileFlow.App.Uno` es el **único** host UI (Uno Platform). Consume `FileFlow.App.Core` y `FileFlow.Core` aplicando MVVM con `CommunityToolkit.Mvvm`.
 
 3. **Rendimiento Asíncrono e I/O**:
    - Todas las operaciones de disco o red deben ser 100% asíncronas (`ValueTask` / `Task`) con propagación obligatoria de `CancellationToken`.
    - Liberación determinista de recursos con `await using` y `using var`.
    - Cero asignaciones innecesarias en *hot paths* (uso de `ReadOnlySpan<T>`, memoización inmutable en `FileItemContext`).
+
+4. **Multiplataforma**:
+   - Nada de código atado a un único sistema operativo fuera de la abstracción `FileFlow.Core.Platform` (`IOsPlatformService`).
+   - Las APIs no soportadas en todas las plataformas (procesos externos, emit dinámico) van tras condiciones de compilación o degradan de forma declarada.
 
 ---
 
@@ -35,8 +40,8 @@
 ### 2.2. Commits Semánticos
 Utilizamos el estándar *Conventional Commits*:
 - `feat: añade nodo SmartUnpack con auto-aplanado de directorios`
-- `fix: corrige desincronización de radio buttons en filtros de telemetría`
-- `perf: optimiza canalización transaccional en SqliteLogStore a >82k logs/s`
+- `fix: corrige desincronización de los filtros de telemetría`
+- `perf: optimiza canalización transaccional en SqliteLogStore`
 - `test: añade tests de integración para deduplicación criptográfica`
 - `docs: actualiza manual de usuario con el catálogo de nodos`
 
@@ -49,11 +54,8 @@ Utilizamos el estándar *Conventional Commits*:
 3. **Manejo de Telemetría**:
    - Mide el tiempo de ejecución con `Stopwatch`.
    - Emite logs estructurados mediante `context.Log(...)` indicando `nodeId`, `nodeName`, `durationMs`, `itemId` y un JSON estructurado con `detailsJson`.
-4. **Estado de diseño**: si el nodo lleva algo que no es configuración del usuario pero tiene que viajar en el archivo (los casos de un switch, los puertos que expone un contenedor), escríbelo en `Parameters` sin descriptor de parámetro. Añadir un campo que el archivo guarde **es subir la versión del formato**: ver [El archivo de flujo](architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación).
-5. **Pruebas Unitarias**: Añade una suite de pruebas xUnit en `FileFlow.Tests/Unit/Nodes/` que valide:
-   - Procesamiento exitoso de archivos válidos.
-   - Manejo de excepciones y errores controlados.
-   - Respeto al token de cancelación `CancellationToken`.
+4. **Estado de diseño**: si el nodo lleva algo que no es configuración del usuario pero tiene que viajar en el archivo, escríbelo en `Parameters` sin descriptor de parámetro. Añadir un campo que el archivo guarde **es subir la versión del formato**: ver [El archivo de flujo](architecture.md#5-el-archivo-de-flujo-formato-versión-y-reparación).
+5. **Pruebas Unitarias**: Añade una suite de pruebas xUnit en `FileFlow.Tests/Unit/Nodes/` que valide el procesamiento, el manejo de errores y el respeto al `CancellationToken`.
 
 ---
 
@@ -68,8 +70,11 @@ dotnet build FileFlow.slnx -c Release
 # 2. Ejecución completa de pruebas
 dotnet test FileFlow.slnx -c Release
 
-# 3. Verificación de formato y linters
+# 3. Matriz de compilación multiplataforma
+.\build-matrix.ps1
+
+# 4. Verificación de formato y linters
 dotnet format --verify-no-changes
 ```
 
-Asegúrate de que todas las pruebas pasen con éxito al 100% (la suite completa supera las 1.400 hoy).
+Asegúrate de que todas las pruebas pasen con éxito al 100%.

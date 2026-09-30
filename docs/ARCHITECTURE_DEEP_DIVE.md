@@ -29,8 +29,8 @@ FileFlow Studio se estructura en 4 capas estrictamente desacopladas:
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│                   FileFlow.App (WPF)                   │
-│      (MVVM, Nodify Canvas, Estilos, Localización)      │
+│                   FileFlow.App.Uno (Uno Platform)                   │
+│      (MVVM, lienzo DAG Canvas, Estilos, Localización)      │
 └──────────────────────────┬─────────────────────────────┘
                            │
 ┌──────────────────────────▼─────────────────────────────┐
@@ -86,15 +86,15 @@ El motor de ejecución procesa los elementos mediante tuberías en paralelo:
 
 ## 🔬 Nivel 4: Subsistema de UI, Renderizado y Extensibilidad (Experto)
 
-### 1. Renderizado Dinámico y Estiramiento de Nodos en WPF
-- **Estiramiento Horizontal 100%:** Las plantillas de estilo `BlenderNodeStyle` aplican `HorizontalAlignment="Stretch"` y `HorizontalContentAlignment="Stretch"` al contenedor `nodify:Node` y a los contenedores internos, garantizando que el borde visual ocupe el 100% del cuadro de selección sin espacios vacíos.
-- **Límite de Crecimiento Máximo (`MaxWidth`):** La propiedad `MaxWidth` de `ItemContainerStyle` se enlaza directamente a `NodeViewModel.MaxWidth` (`600px`), impidiendo que el tirador de redimensionamiento crezca indefinidamente más allá de la tarjeta gráfica.
+### 1. Renderizado Dinámico de Nodos en el host Uno
+- **Lienzo propio:** El host Uno dibuja el lienzo DAG, las tarjetas de nodo y los cables con sus propios controles (`EditorCanvasControl`, `NodeCardView`), proyectando las posiciones del núcleo portable (`FileFlow.Sdk.Geometry.Point`) a `Windows.Foundation.Point`.
+- **Límite de Crecimiento Máximo (`MaxWidth`):** La anchura de la tarjeta se topa al valor de `NodeViewModel.MaxWidth` (`600px`), impidiendo que el tirador de redimensionamiento crezca indefinidamente.
 - **Memorización Dual de Tamaño (`CollapsedWidth` vs `ExpandedWidth`):** Cada nodo recuerda su anchura preferida tanto en estado replegado como desplegado. Al alternar el botón de parámetros (`⚙`), conmuta automáticamente entre ambas dimensiones.
 
-### 2. Diálogo de Color Nativo Win32 (Sin WinForms)
-Para evitar conflictos de espacio de nombres entre `System.Windows.Media.Color` y `System.Drawing.Color`:
-- La selección de colores personalizados invoca directamente a la API nativa de Windows `comdlg32.dll` mediante P/Invoke (`ChooseColor`).
-- El color elegido genera automáticamente un tono oscuro calculado (multiplicación por 0.25 en componentes RGB) para mantener la coherencia estética del encabezado.
+### 2. Multiplataforma sin código duplicado
+- Un único host (`FileFlow.App.Uno`) sobre un núcleo portable (`FileFlow.App.Core`): los ViewModels y servicios no conocen el framework de UI.
+- El SDK selecciona el TFM por familia con `-p:FileFlowTarget=<windows|desktop|wasm|ios>`, de modo que la misma base compila para Windows (WinUI 3), Linux/macOS (Skia), navegador (WASM) e iOS/iPadOS.
+- La detección de sistema operativo y las APIs nativas se encapsulan en `FileFlow.Core.Platform` (`IOsPlatformService`).
 
 ### 3. Localización Dinámica Multilingüe Sin Reinicio (`LocalizationManager`)
 - La clase `LocalizationManager` expone un indexador C# (`this[string key]`) y es `INotifyPropertyChanged`.

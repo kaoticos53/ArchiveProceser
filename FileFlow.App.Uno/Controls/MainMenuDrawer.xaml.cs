@@ -9,13 +9,13 @@ using Microsoft.UI.Xaml.Input;
 namespace FileFlow.App.Uno.Controls;
 
 /// <summary>
-/// El cajón del menú principal del host Uno: el mismo cajón del escritorio, con su estado en el MISMO
+/// El cajón del menú principal del host Uno: el mismo cajón de la versión anterior, con su estado en el MISMO
 /// <see cref="ControlBarViewModel"/> portable (<c>IsMenuOpen</c>, el que conmuta el botón «Menú» de la
 /// barra y el botón de cerrar de aquí).
 ///
 /// <para><b>Sus dos selectores son los del núcleo</b>: el tema y el idioma del <c>ControlBar</c> aplican
 /// y guardan al elegir (a diferencia de la superficie de ajustes, que aplica al guardar: son las dos
-/// semánticas del escritorio, y aquí se conservan tal cual). El punto de entrada a los AJUSTES abre la
+/// semánticas de la versión anterior, y aquí se conservan tal cual). El punto de entrada a los AJUSTES abre la
 /// superficie del host, y el del Inspector conmuta el panel del editor.</para>
 /// </summary>
 public sealed partial class MainMenuDrawer : UserControl
@@ -46,7 +46,7 @@ public sealed partial class MainMenuDrawer : UserControl
     /// La orden de abrir el DISEÑADOR DE DATASETS (hito 261).
     ///
     /// <para>No ejecuta aquí el comando canónico del núcleo —<c>OpenSyntheticDataSetDesignerCommand</c>— porque
-    /// ese camino abre la ventana que construye el PROPIO plugin con el toolkit del escritorio: en este host no
+    /// ese camino abre la ventana que construye el PROPIO plugin con el toolkit de la versión anterior: en este host no
     /// se puede montar. El cajón declara qué se ha pedido y la ventana sirve la superficie del catálogo de
     /// diálogos sobre el view model portable que el nodo declara al SDK.</para>
     /// </summary>
@@ -87,7 +87,7 @@ public sealed partial class MainMenuDrawer : UserControl
         }
     }
 
-    /// <summary>La versión del producto que enseña el pie (la misma cadena que el cajón del escritorio).</summary>
+    /// <summary>La versión del producto que enseña el pie (la misma cadena que el cajón de la versión anterior).</summary>
     public string VersionText
     {
         get => DrawerVersion.Text;

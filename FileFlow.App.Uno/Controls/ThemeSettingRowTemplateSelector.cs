@@ -7,7 +7,7 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// Elige la plantilla de una fila del EDITOR DE TEMAS por el TIPO de su view model.
 ///
-/// <para>Es la pieza que el escritorio resuelve con sus <c>DataTemplates</c> por tipo (Avalonia los
+/// <para>Es la pieza que la versión anterior resuelve con sus <c>DataTemplates</c> por tipo (el host original los
 /// selecciona solo); WinUI no elige plantilla por tipo de dato, así que el host lo declara explícitamente.
 /// <b>No conoce ningún ajuste concreto</b>: mira la clase de la fila, que es lo que el catálogo del núcleo
 /// decide, y devuelve una de las tres plantillas. Añadir un ajuste al catálogo no toca este fichero.</para>

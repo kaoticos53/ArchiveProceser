@@ -1,8 +1,8 @@
 {
   "id": "tarjeta-que-no-habla-por-su-color",
   "hito": 224,
-  "claim": "La matriz de estado del socket de la tarjeta Uno delata el tipo de dato y el estado de arrastre con los colores del escritorio: sin la matriz, la tarjeta pinta todos los sockets con un color de emergencia y el producto multiplataforma deja de comunicar tipos.",
-  "why": "La tarjeta completa de la fase 3.1 pinta los puertos con la semántica del escritorio (la forma comunica el tipo, el borde el color, el relleno el estado). La matriz vive en SocketConverters.cs del host; si alguien la sustituye por un color fijo, el lienzo Uno se queda mudo — todos los puertos idénticos, y el síntoma no es un fallo: es una tarjeta que no se puede leer. Este mutante exige que la suite delate la sustitución.",
+  "claim": "La matriz de estado del socket de la tarjeta Uno delata el tipo de dato y el estado de arrastre con los colores de la versión anterior: sin la matriz, la tarjeta pinta todos los sockets con un color de emergencia y el producto multiplataforma deja de comunicar tipos.",
+  "why": "La tarjeta completa de la fase 3.1 pinta los puertos con la semántica de la versión anterior (la forma comunica el tipo, el borde el color, el relleno el estado). La matriz vive en SocketConverters.cs del host; si alguien la sustituye por un color fijo, el lienzo Uno se queda mudo — todos los puertos idénticos, y el síntoma no es un fallo: es una tarjeta que no se puede leer. Este mutante exige que la suite delate la sustitución.",
   "edits": [
     {
       "file": "FileFlow.App.Core/Services/PortPalette.cs",

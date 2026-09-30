@@ -37,7 +37,7 @@ FileFlow Studio incorpora **dos motores de ejecución independientes**:
 | Característica | ⚡ C# (Roslyn Scripting) | 🌐 JavaScript (Jint Sandbox) |
 | :--- | :--- | :--- |
 | **¿Para quién es?** | Quienes buscan máximo rendimiento o familiaridad con C#/.NET. | Quienes prefieren sintaxis sencilla y flexible tipo web. |
-| **Rendimiento** | **Ultra-rápido** (Compilado JIT en memoria de .NET 9 con cacheo). | **Rápido y seguro** (Sandbox administrado en memoria). |
+| **Rendimiento** | **Ultra-rápido** (Compilado JIT en memoria de .NET 10 con cacheo). | **Rápido y seguro** (Sandbox administrado en memoria). |
 | **Manejo Asíncrono** | `await EmitAsync("Salida");` | `emit("Salida", item);` |
 | **Ideal para...** | Cálculos matemáticos, manipulación de archivos y tipos .NET. | Manipulación de strings, expresiones regulares y JSON. |
 

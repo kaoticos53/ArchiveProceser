@@ -1,7 +1,7 @@
 namespace FileFlow.App.Core;
 
 /// <summary>
-/// Puente de temas del núcleo portable al host. El host Avalonia instala en el arranque sus dos
+/// Puente de temas del núcleo portable al host. El host original instala en el arranque sus dos
 /// bordes —publicar la variante clara/oscurecida en su runtime y generar los tokens del tema— y
 /// el <see cref="FileFlow.App.Services.ThemeManager"/> los invoca sin conocer ventanas, pinceles
 /// ni diccionarios de recursos. Sin host (pruebas), ambos bordes son no-ops: el estado del gestor

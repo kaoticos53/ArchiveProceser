@@ -11,11 +11,11 @@ namespace FileFlow.App.Uno.Platform;
 /// <summary>
 /// La matriz de estado del <b>socket de puerto</b> de la tarjeta Uno: la decisión (qué color habla cada
 /// tipo, cómo se comporta el arrastre) vive en el núcleo — <see cref="PortPalette"/>, los mismos bytes
-/// que pinta el escritorio — y este fichero sólo la traduce a <see cref="Windows.UI.Color"/> y pinceles
+/// que pinta la versión anterior — y este fichero sólo la traduce a <see cref="Windows.UI.Color"/> y pinceles
 /// de WinUI. WinUI no puede seleccionar estilos por combinación de bools del ViewModel, así que cada
 /// conversor calcula el valor final.
 ///
-/// <para>Semántica (la del escritorio): la <b>forma</b> comunica el tipo (círculo=texto, cuadrado=archivo,
+/// <para>Semántica (la de la versión anterior): la <b>forma</b> comunica el tipo (círculo=texto, cuadrado=archivo,
 /// triángulo=booleano, rombo=numérico), el <b>borde</b> el color del tipo, el <b>relleno</b> el estado
 /// (libre=hueco, conectado=color del tipo), y durante un arrastre el origen brilla y el resto se atenúa.</para>
 /// </summary>

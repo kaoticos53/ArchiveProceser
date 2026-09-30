@@ -14,8 +14,8 @@ namespace FileFlow.Tests.Unit.App;
 ///
 /// <para><b>Qué protege</b>: que cada entrada exista en su vista con su ancla de automatización y su estado
 /// colgado del view model (no de una copia local); que ejecute la orden CANÓNICA y no una copia de ella; que
-/// toda orden del escritorio esté dibujada aquí, declarada pendiente o reconocida como cumplida por el host;
-/// que los atajos del menú del escritorio estén enrutados o declarados sin ruta, sin disputarle una tecla a la
+/// toda orden de la versión anterior esté dibujada aquí, declarada pendiente o reconocida como cumplida por el host;
+/// que los atajos del menú de la versión anterior estén enrutados o declarados sin ruta, sin disputarle una tecla a la
 /// tabla del lienzo; y que su medición viva en su propio modo (<c>--selfcheck-controlbar</c>), fuera de los
 /// sondeos del lienzo, que no toleran que les muevan el documento a mitad.</para>
 ///
@@ -61,7 +61,7 @@ public class UnoControlBarEntryGuardTests
     /// <para>La columna <c>State</c> es el estado por CONTEXTO: la propiedad del view model que el propio
     /// control consulta para visibilidad o habilitación.</para>
     ///
-    /// <para>Las dos entradas de AJUSTES son paridad del cajón del escritorio
+    /// <para>Las dos entradas de AJUSTES son paridad del cajón de la versión anterior
     /// (<c>OpenWorkflowSettingsCommand</c>), que en este host tiene una superficie propia —la del hito 255— y
     /// no una ventana: las dos la abren por el mismo evento, y el AutomationId de la barra es el que la sesión
     /// de los ajustes ya usaba.</para>
@@ -91,7 +91,7 @@ public class UnoControlBarEntryGuardTests
         // Hito 258 — las seis entradas nuevas del cajón. Las tres de FLUJO declaran su orden con el
         // EVENTO del host (la cumple la ventana con sus diálogos asíncronos: el comando del núcleo pide
         // el contrato síncrono, que desde el hilo de UI devuelve nulo/falso), y las tres de AYUDA
-        // ejecutan la orden CANÓNICA del núcleo, como sus botones del escritorio.
+        // ejecutan la orden CANÓNICA del núcleo, como sus botones de la versión anterior.
         ("ControlBarDrawerNewButton", DrawerXaml, Home.Code, "NewWorkflowRequested", string.Empty),
         ("ControlBarDrawerLoadButton", DrawerXaml, Home.Code, "LoadWorkflowRequested", string.Empty),
         ("ControlBarDrawerSaveButton", DrawerXaml, Home.Code, "SaveWorkflowRequested", string.Empty),
@@ -110,7 +110,7 @@ public class UnoControlBarEntryGuardTests
         ("ControlBarDrawerVfsButton", DrawerXaml, Home.Code, "OpenVirtualFileSystemExplorerCommand", string.Empty),
 
         // Hito 261 — el DISEÑADOR DE DATASETS: su orden es el EVENTO del cajón, porque el comando canónico del
-        // núcleo construye la ventana que monta el plugin con el toolkit del escritorio. La ventana pide al
+        // núcleo construye la ventana que monta el plugin con el toolkit de la versión anterior. La ventana pide al
         // nodo la superficie que declara al SDK y el catálogo del host la sirve sobre el mismo view model.
         ("ControlBarDrawerDataSetButton", DrawerXaml, Home.Code, "DataSetDesignerRequested", string.Empty),
     ];
@@ -195,7 +195,7 @@ public class UnoControlBarEntryGuardTests
         Read(WindowXaml).Should().Contain("<controls:ControlBar",
             "la barra tiene que estar montada en la ventana: sin ella no hay menú principal");
         Read(WindowXaml).Should().Contain("<controls:MainMenuDrawer",
-            "el cajón tiene que estar montado sobre toda la ventana, como el del escritorio");
+            "el cajón tiene que estar montado sobre toda la ventana, como el de la versión anterior");
 
         // Las dos entradas a los ajustes (barra y cajón) abren la misma superficie del host.
         Code(WindowCode).Should().Contain("Bar.SettingsRequested += OnOpenSettingsClicked;");
@@ -205,14 +205,14 @@ public class UnoControlBarEntryGuardTests
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // 2. La paridad de entradas contra el escritorio (lo que no llega, declarado)
+    // 2. La paridad de entradas contra la versión anterior (lo que no llega, declarado)
     // ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Las órdenes que el escritorio dibuja en su barra o en su cajón, o dispara por atajo (la referencia de
+    /// Las órdenes que la versión anterior dibuja en su barra o en su cajón, o dispara por atajo (la referencia de
     /// paridad).
     ///
-    /// <para>Se leen los DOS modos de enlace del escritorio: el de la barra (<c>{Binding XCommand}</c>, cuyo
+    /// <para>Se leen los DOS modos de enlace de la versión anterior: el de la barra (<c>{Binding XCommand}</c>, cuyo
     /// contexto es el <c>ControlBar</c>) y el de su ventana (<c>{Binding ControlBar.XCommand}</c>, donde el cajón
     /// cuelga del nodo principal). Mirar solo el primero dejaba fuera justamente las órdenes del cajón —la mitad
     /// del menú— y con ellas el <c>OpenWorkflowSettingsCommand</c> que este host cumple por su cuenta: el patrón
@@ -266,7 +266,7 @@ public class UnoControlBarEntryGuardTests
             .ToList();
 
         orphans.Should().BeEmpty(
-            "toda orden del menú principal del escritorio tiene que estar dibujada en el host, declarada "
+            "toda orden del menú principal de la versión anterior tiene que estar dibujada en el host, declarada "
             + "pendiente o reconocida como cumplida por el host: «lo que no llega queda declarado, nunca fingido»");
 
         // Las dos tablas son disjuntas: una orden o la cumple el host por su cuenta o está pendiente, nunca
@@ -350,7 +350,7 @@ public class UnoControlBarEntryGuardTests
                            && !declared.Any(d => d.Gesture == pair.Gesture && d.Order == pair.Order))
             .ToList();
         orphan.Should().BeEmpty(
-            "todo atajo del menú principal del escritorio tiene que estar enrutado en el host o declarado en "
+            "todo atajo del menú principal de la versión anterior tiene que estar enrutado en el host o declarado en "
             + "DeclaredUnroutedShortcuts con su razón: un atajo que no llega y no se declara es un usuario "
             + "apretando una tecla que no hace nada");
 

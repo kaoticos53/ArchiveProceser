@@ -98,13 +98,13 @@ public sealed class AdvancedRenamerNode : FlowNodeBase, INodeCustomActionProvide
     {
         if (actionId.Equals("OpenRenamerPipeline", StringComparison.OrdinalIgnoreCase))
         {
-            DesktopOnlySurface.Declare(
+            UnavailableSurface.Declare(
                 (context as NodeCustomActionContext)?.Dialogs,
                 LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)"),
-                LocalizationManager.Instance.GetString("Plugin_DesktopOnly_Title", "Ventana del host de escritorio"),
+                LocalizationManager.Instance.GetString("Plugin_SurfaceUnavailable_Title", "Función no disponible"),
                 LocalizationManager.Instance.GetFormattedString(
-                    "Plugin_DesktopOnly_Message",
-                    "«{0}» se abre en el host de escritorio: este host no tiene el toolkit que la monta. Ábrela desde la aplicación de escritorio.",
+                    "Plugin_SurfaceUnavailable_Message",
+                    "«{0}» no está disponible en este host.",
                     LocalizationManager.Instance.GetString("AdvancedRenamer_WindowTitle", "Estudio de Renombrado Avanzado (Pipeline de Métodos)")));
         }
     }

@@ -6,7 +6,7 @@ using System.Xml.Linq;
 namespace FileFlow.Tests.TestHelpers;
 
 /// <summary>
-/// Los <b>diccionarios de cadenas</b> del árbol de fuentes (los <c>.resx</c> del host Uno, del escritorio y
+/// Los <b>diccionarios de cadenas</b> del árbol de fuentes (los <c>.resx</c> del host Uno, de la versión anterior y
 /// de los plugins), leídos como clave -> valor.
 ///
 /// <para><b>Por qué es un ayudante</b>: la paridad de TEXTOS es la misma pregunta en las tres guardias que

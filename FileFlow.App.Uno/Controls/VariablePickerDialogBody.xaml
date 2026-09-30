@@ -6,7 +6,7 @@
 
   <!--
     El CUERPO del selector de variables del host Uno: la vista del view model PORTABLE
-    `VariablePickerViewModel` (el mismo que envuelve la ventana del escritorio), servido dentro de un
+    `VariablePickerViewModel` (el mismo que envuelve la ventana de la versión anterior), servido dentro de un
     `ContentDialog` de WinUI por `UnoWindowService`.
 
     El catálogo, el filtro por texto y por categoría, el detalle y el token elegido son del VM: esta

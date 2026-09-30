@@ -1,7 +1,7 @@
 # 📖 Manual de Usuario y Guía de Referencia de Nodos
 ## **FileFlow Studio v2.0**
 *Plataforma Modular de Automatización, Procesamiento Masivo y Transformación de Archivos basada en Grafos DAG*
-*Runtime .NET 9 | C# 13 | Licencia GNU GPLv3 | Copyright © 2026 RGLara*
+*Runtime .NET 10 | C# 14 | Licencia GNU GPLv3 | Copyright © 2026 RGLara*
 
 ---
 
@@ -9,7 +9,7 @@
 
 1. [Introducción y Filosofía de Diseño](#1-introducción-y-filosofía-de-diseño)
 2. [Conceptos Fundamentales del Editor Visual](#2-conceptos-fundamentales-del-editor-visual)
-   - [Lienzo de Nodos Interactivo (Nodify)](#lienzo-de-nodos-interactivo-nodify)
+   - [Lienzo de Nodos Interactivo (DAG)](#lienzo-de-nodos-interactivo-dag)
    - [El Contexto del Archivo (`FileItemContext`)](#el-contexto-del-archivo-fileitemcontext)
    - [Sub-flujos y Macros Multinivel (Breadcrumbs)](#sub-flujos-y-macros-multinivel-breadcrumbs)
    - [Telemetría Reactiva en Conexiones](#telemetría-reactiva-en-conexiones)
@@ -48,7 +48,7 @@
 
 ## 1. Introducción y Filosofía de Diseño
 
-**FileFlow Studio** es un entorno de ingeniería visual y orquestación de procesamiento de archivos por lotes inspirado en herramientas de vanguardia como *n8n*, *ComfyUI* y *Node-RED*, diseñado específicamente para aprovechar la potencia de **.NET 9** y **C# 13**.
+**FileFlow Studio** es un entorno de ingeniería visual y orquestación de procesamiento de archivos por lotes inspirado en herramientas de vanguardia como *n8n*, *ComfyUI* y *Node-RED*, diseñado específicamente para aprovechar la potencia de **.NET 10** y **C# 14**.
 
 ### Pilares Fundamentales:
 - **🛡️ Inmutabilidad y Seguridad por Defecto**: Los flujos son no destructivos. Los archivos originales (`OriginalPath`) jamás se modifican ni se eliminan a menos que se configure explícitamente el nodo `OriginalFileActionNode`.
@@ -60,7 +60,7 @@
 
 ## 2. Conceptos Fundamentales del Editor Visual
 
-### Lienzo de Nodos Interactivo (Nodify)
+### Lienzo de Nodos Interactivo (DAG)
 El lienzo visual permite modelar tuberías de trabajo arrastrando nodos desde la **Caja de Herramientas (Toolbox)**:
 - **Puertos de Entrada (Izquierda)**: Reciben archivos entrantes (`In`, `BranchA`, `Files`).
 - **Puertos de Salida (Derecha)**: Emiten elementos procesados o bifurcaciones condicionales (`Out`, `Done`, `Error`, `Matched`, `Unmatched`).

@@ -4,7 +4,7 @@ using FileFlow.App.ViewModels;
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Calculador de geometría de encuadre (FitToScreen) y zoom para el lienzo de Nodify.
+/// Calculador de geometría de encuadre (FitToScreen) y zoom para el lienzo del editor.
 /// </summary>
 public static class EditorViewportCalculator
 {

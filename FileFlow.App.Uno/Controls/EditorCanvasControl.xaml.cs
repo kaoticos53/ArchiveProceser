@@ -22,8 +22,8 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// El lienzo del editor en el host Uno (fase 3.1 del plan): tarjetas en modo lectura posicionadas por
 /// <see cref="NodeViewModel.Location"/> —proyectada con <see cref="UnoPointConverter"/>, la regla del 217—,
-/// cables estáticos dibujados con <see cref="ConnectionGeometry"/> (la Bézier del núcleo, la misma que pinta
-/// Nodify en el escritorio) y pan/zoom/acotar.
+/// cables estáticos dibujados con <see cref="ConnectionGeometry"/> (la Bézier del núcleo, la misma curva de la
+/// versión anterior) y pan/zoom/acotar.
 ///
 /// <para><b>Por qué la posición va por código y no por Setter con Binding</b>: el motor XAML de WinUI no
 /// evalúa enlaces dentro de <c>Setter.Value</c> (silenciosamente no hacen nada), así que el aplicador
@@ -34,7 +34,7 @@ namespace FileFlow.App.Uno.Controls;
 /// </summary>
 public sealed partial class EditorCanvasControl : UserControl
 {
-    /// <summary>El paso del grid, el doble del lienzo de Avalonia dibujado sutil para no robar contraste.</summary>
+    /// <summary>El paso del grid, el doble del lienzo de referencia dibujado sutil para no robar contraste.</summary>
     private const double GridStep = 50.0;
 
     private const double MinZoom = 0.2;
@@ -1685,7 +1685,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// <summary>
     /// Los dos extremos de la figura del cable: dónde la abre y dónde la cierra el trazo <b>entero</b>. Se
     /// leen del primer y del último segmento en vez de asumir que el primero es la Bézier, porque la figura
-    /// es la de Nodify —ancla, tramo recto, curva, tramo recto, ancla— y el extremo dibujado es la ÚLTIMA
+    /// es la de la versión anterior —ancla, tramo recto, curva, tramo recto, ancla— y el extremo dibujado es la ÚLTIMA
     /// parada, no el último punto de control.
     /// </summary>
     private static bool TryFigureEnds(
@@ -2032,7 +2032,7 @@ public sealed partial class EditorCanvasControl : UserControl
                 // porque es del teclado; el estado lo gobierna el núcleo.
                 _editor?.SelectNode(card.Node, add: IsKeyDown(Windows.System.VirtualKey.Control));
 
-                // Arrastra la selección entera: el undo del escritorio mueve el bloque con
+                // Arrastra la selección entera: el undo de la versión anterior mueve el bloque con
                 // MoveNodesAction, y aquí se registra igual al soltar.
                 _drag = _editor?.Nodes.Where(n => n.IsSelected)
                     .Select(n => new DragItem(_cardsByNode[n], n, n.Location))
@@ -2043,7 +2043,7 @@ public sealed partial class EditorCanvasControl : UserControl
             }
         }
 
-        // 2. Rubber band (botón izquierdo en el fondo): selección por rectángulo, como el escritorio. Marca
+        // 2. Rubber band (botón izquierdo en el fondo): selección por rectángulo, como la versión anterior. Marca
         //    los NODOS y los CABLES que caen dentro con la MISMA regla que el clic —sin Ctrl REEMPLAZA (lo
         //    elegido se suelta al empezar) y con Ctrl AÑADE—: el modificador se lee aquí, al pulsar.
         if (properties.IsLeftButtonPressed && !HitsInteractiveControl(point))
@@ -2202,7 +2202,7 @@ public sealed partial class EditorCanvasControl : UserControl
 
     /// <summary>
     /// SOLTAR: el rectángulo desaparece. Sin arrastre fue un CLIC en el vacío, y eso suelta TODO lo elegido (nodos
-    /// y cables), como el clic en el fondo del escritorio.
+    /// y cables), como el clic en el fondo de la versión anterior.
     /// </summary>
     private void EndRubberBand()
     {
@@ -2314,7 +2314,7 @@ public sealed partial class EditorCanvasControl : UserControl
 
     /// <summary>
     /// Ancla de un puerto en coordenadas del CANVAS PLANE (espacio de grafo), calculada del árbol visual:
-    /// el centro del socket transformado al plano, el write-back que Nodify hacía en el escritorio. Los
+    /// el centro del socket transformado al plano, el write-back de la versión anterior. Los
     /// cruces de puntos pasan por la proyección explícita del 217.
     /// </summary>
     private Sdk.Point? AnchorOf(PortViewModel port)
@@ -2557,7 +2557,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// cancelaba una conexión que el usuario creía hecha. Ahora se mira toda tarjeta cuya caja (o su borde de
     /// tolerancia) contiene el punto, y se elige el puerto más cercano dentro de <see cref="SocketDropTolerance"/>.
     /// Sólo entran los destinos que el producto considera conectables (<see cref="PortViewModel.CanConnect"/>):
-    /// los que el arrastre muestra en aviso de tipo SÍ conectan —es la regla del escritorio— y los atenuados no.
+    /// los que el arrastre muestra en aviso de tipo SÍ conectan —es la regla de la versión anterior— y los atenuados no.
     /// </para>
     /// </summary>
     private PortViewModel? FindHoverPort(Windows.Foundation.Point screenPoint)
@@ -2688,7 +2688,7 @@ public sealed partial class EditorCanvasControl : UserControl
     }
 
     /// <summary>
-    /// Los atajos del editor, con las mismas claves que el escritorio: la tabla compartida resuelve la
+    /// Los atajos del editor, con las mismas claves que la versión anterior: la tabla compartida resuelve la
     /// combinación y ejecuta el comando canónico del núcleo. La caja de renombrado (y cualquier cuadro de
     /// texto) consume sus teclas: no se las secuestra.
     ///
@@ -2698,7 +2698,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// <c>Ctrl+Z</c>, <c>Ctrl+Y</c>, <c>Supr</c> y <c>F2</c> muriendo con él. Aquí el defecto no se puede
     /// provocar sin puntero (el sondeo selecciona un nodo en el mismo camino y el foco no se mueve), así que
     /// el arreglo no persigue al ladrón: hace que los atajos no necesiten ser dueños del foco. La ventana
-    /// enruta a este método las teclas que nadie consumió —el burbujeo que el escritorio ya usaba en su
+    /// enruta a este método las teclas que nadie consumió —el burbujeo que la versión anterior ya usaba en su
     /// vista de editor— y el handler del control llama al MISMO método.</para>
     /// </summary>
     /// <param name="key">La tecla física.</param>
@@ -3217,7 +3217,7 @@ public sealed partial class EditorCanvasControl : UserControl
             return;
         }
 
-        // El mismo calculador del núcleo que usa el escritorio: un solo «ajustar a pantalla» para los dos hosts.
+        // El mismo calculador del núcleo que usa la versión anterior: un solo «ajustar a pantalla» para los dos hosts.
         var (zoom, location) = EditorViewportCalculator.CalculateFitToScreen(_editor.Nodes);
 
         CanvasTransform.ScaleX = zoom;

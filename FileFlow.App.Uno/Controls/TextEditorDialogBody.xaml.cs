@@ -10,14 +10,14 @@ namespace FileFlow.App.Uno.Controls;
 /// <summary>
 /// El cuerpo del diálogo de edición de texto del host Uno: la vista de
 /// <see cref="TextEditorDialogViewModel"/> (el view model PORTABLE, el mismo que envuelve la ventana
-/// del escritorio). Aquí no se decide nada del producto: la caja es el <c>Text</c> del view model en
+/// de la versión anterior). Aquí no se decide nada del producto: la caja es el <c>Text</c> del view model en
 /// dos sentidos, el panel de variables es su <c>IsSidePanelVisible</c> con su catálogo, y la inserción
-/// llama a su <see cref="TextEditorDialogViewModel.InsertTokenAt"/> — el método que el escritorio usa
+/// llama a su <see cref="TextEditorDialogViewModel.InsertTokenAt"/> — el método que la versión anterior usa
 /// para lo mismo, que inserta en el punto del cursor y devuelve dónde queda.
 ///
 /// <para><b>Por qué el panel va DENTRO del mismo diálogo</b> y no en una ventana anidada: WinUI no
 /// admite dos <c>ContentDialog</c> abiertos a la vez sobre la misma raíz (la segunda abre con
-/// excepción), así que el camino del escritorio —abrir el selector encima del editor— se sirve aquí
+/// excepción), así que el camino de la versión anterior —abrir el selector encima del editor— se sirve aquí
 /// con el panel lateral que el propio view model ya trae para esta pantalla.</para>
 /// </summary>
 public sealed partial class TextEditorDialogBody : UserControl
@@ -52,7 +52,7 @@ public sealed partial class TextEditorDialogBody : UserControl
 
     /// <summary>
     /// El idioma vigente en los textos del diálogo. Se resuelven con las claves del diccionario del
-    /// host (con el texto del escritorio como fallback), así que cambiar de idioma y volver a abrir
+    /// host (con el texto de la versión anterior como fallback), así que cambiar de idioma y volver a abrir
     /// el diálogo lo enseña en el idioma nuevo.
     /// </summary>
     public void RefreshLocalization()
@@ -74,7 +74,7 @@ public sealed partial class TextEditorDialogBody : UserControl
 
     /// <summary>
     /// «Insertar Variable»: despliega o recoge el panel de variables del view model — el mismo
-    /// comando (<c>ToggleSidePanelCommand</c>) que el escritorio.
+    /// comando (<c>ToggleSidePanelCommand</c>) que la versión anterior.
     /// </summary>
     private void OnInsertVariableClicked(object sender, RoutedEventArgs e)
     {

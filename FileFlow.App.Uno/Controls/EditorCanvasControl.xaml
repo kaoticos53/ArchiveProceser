@@ -7,7 +7,7 @@
     xmlns:controls="using:FileFlow.App.Uno.Controls"
     xmlns:conv="using:FileFlow.App.Uno.Platform">
 
-  <!-- Tokens medidos del tema oscuro (builtin_themes.json / DarkTheme.axaml del escritorio) -->
+  <!-- Tokens medidos del tema oscuro (builtin_themes.json / DarkTheme.axaml de la versión anterior) -->
   <UserControl.Resources>
     <!-- El icono del ítem del spotlight: el enum portable del núcleo a geometría del paquete Material.Icons.
          Los tokens Canvas* viven en App.xaml (fase 3.5): los resuelve la app y UnoThemeHost los republica. -->
@@ -38,7 +38,7 @@
 
     <!-- Cables: debajo de las tarjetas; los calcula el code-behind con ConnectionGeometry. La capa Sí es
          alcanzable por el puntero: cada cable lleva su DIANA invisible (la misma Bézier, más gruesa) para
-         poder pulsarse y borrarse con la orden del núcleo, como el menú del cable del escritorio. -->
+         poder pulsarse y borrarse con la orden del núcleo, como el menú del cable de la versión anterior. -->
     <Canvas x:Name="WireLayer" IsHitTestVisible="True" />
 
     <!-- Migas de subflujos (fase 3.4): la ruta de graphs abiertos, con navegación por clic -->

@@ -12,7 +12,7 @@ namespace FileFlow.App.Services;
 /// hilos, no un <c>DispatcherTimer</c> ya sobre el hilo de la interfaz. Ahí una excepción sin capturar no la
 /// recoge nadie —no hay bucle que la registre ni tarea a la que culpar— y <b>tumba el proceso</b>: medido, un
 /// despacho contra un despachador ya desmontado (una ventana de apagado, la sesión de pruebas cerrando) dejaba
-/// el host de pruebas muerto con un <c>NullReferenceException</c> dentro de Avalonia y la serie anulada. El
+/// el host de pruebas muerto con un <c>NullReferenceException</c> dentro del host original y la serie anulada. El
 /// <c>DispatcherTimer</c> anterior lo tapaba por construcción: sólo late cuando el bucle lo atiende.</para>
 ///
 /// <para>Un latido no es una tarea de la que dependa nada: si su entrega falla, lo correcto es dejar constancia y

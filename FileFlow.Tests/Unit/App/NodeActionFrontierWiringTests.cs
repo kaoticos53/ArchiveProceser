@@ -16,13 +16,13 @@ using Xunit;
 namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
-/// El BOTÓN DEL NODO que abre una ventana del escritorio (hito 270): la frontera del hito 268 se declara por
+/// El BOTÓN DEL NODO que abre una ventana de la versión anterior (hito 270): la frontera del hito 268 se declara por
 /// los diálogos de quien lo abrió, y quien los abre es <see cref="NodeViewModel.ExecuteCustomAction"/>.
 ///
 /// <para><b>El defecto que guarda</b>: los siete nodos con ventana del toolkit declaran la frontera con
 /// <c>(context as NodeCustomActionContext)?.Dialogs</c> y el contexto del botón del nodo se construía
 /// <b>sin</b> el servicio de diálogos. La costura, el aviso y la traza existían; lo que faltaba era el
-/// teléfono: el nodo llamaba a <c>DesktopOnlySurface.Declare(null, …)</c>, el aviso caía al nulo declarado del
+/// teléfono: el nodo llamaba a <c>UnavailableSurface.Declare(null, …)</c>, el aviso caía al nulo declarado del
 /// Sdk y el usuario pulsaba un botón que <b>no hacía nada y no avisaba</b>. La guardia del 268 no lo veía
 /// porque mide la costura con un doble puesto a mano; y el nodo tampoco, porque quien le pasa el contexto es
 /// este view model.</para>
@@ -34,8 +34,8 @@ namespace FileFlow.Tests.Unit.App;
 /// </summary>
 public class NodeActionFrontierWiringTests
 {
-    /// <summary>El nodo de prueba: declara su ventana como del escritorio, igual que los siete del producto.</summary>
-    private sealed class DesktopOnlyWindowProbeNode : IFlowNode, INodeCustomActionProvider
+    /// <summary>El nodo de prueba: declara su ventana como de la versión anterior, igual que los siete del producto.</summary>
+    private sealed class UnavailableWindowProbeNode : IFlowNode, INodeCustomActionProvider
     {
         /// <summary>La última acción que se le pidió (la prueba comprueba que el botón llegó hasta aquí).</summary>
         public string? LastActionId { get; private set; }
@@ -45,7 +45,7 @@ public class NodeActionFrontierWiringTests
 
         public string Id { get; set; } = Guid.NewGuid().ToString();
 
-        public string Name => "Nodo con ventana del escritorio";
+        public string Name => "Nodo con ventana de la versión anterior";
 
         public string Category => "Test";
 
@@ -68,16 +68,16 @@ public class NodeActionFrontierWiringTests
             // El contrato de los siete nodos con ventana del toolkit: sin toolkit la ventana no se construye y
             // la frontera se DECLARA por los diálogos de quien la abrió. Aquí se reproduce literal —el nodo de
             // prueba no compila la mitad del toolkit— para poder medir el camino entero desde el botón.
-            DesktopOnlySurface.Declare(
+            UnavailableSurface.Declare(
                 LastContext?.Dialogs,
                 "Estudio de Renombrado",
-                "Ventana del host de escritorio",
-                "«Estudio de Renombrado» se abre en el host de escritorio.");
+                "Función no disponible",
+                "«Estudio de Renombrado» no está disponible en este host.");
         }
     }
 
     [Fact]
-    public void TheNodeActionButton_ShouldShowTheDesktopOnlyWarning_InTheHostDialogs()
+    public void TheNodeActionButton_ShouldShowTheUnavailableSurfaceWarning_InTheHostDialogs()
     {
         var dialogs = new RecordingDialogService();
         IServiceProvider? previous = CoreDialogHost.Services;
@@ -90,12 +90,12 @@ public class NodeActionFrontierWiringTests
                 .AddSingleton<IDialogService>(dialogs)
                 .BuildServiceProvider();
 
-            using var node = new NodeViewModel(new DesktopOnlyWindowProbeNode(), new Point(0, 0));
+            using var node = new NodeViewModel(new UnavailableWindowProbeNode(), new Point(0, 0));
 
             node.ExecuteCustomAction("OpenRenameStudio");
 
             dialogs.WarningMessages.Should().ContainSingle(
-                "el botón del nodo tiene que AVISAR de que esa ventana es del escritorio: un aviso que sólo sale "
+                "el botón del nodo tiene que AVISAR de que esa ventana es de la versión anterior: un aviso que sólo sale "
                 + "por la consola es, para el usuario, un botón que no hace nada")
                 .Which.Should().Contain("Estudio de Renombrado",
                     "y el aviso nombra la ventana que falta: sin el nombre el usuario sabe que algo no pasó, "
@@ -118,7 +118,7 @@ public class NodeActionFrontierWiringTests
         try
         {
             CoreDialogHost.Services = null;
-            var probe = new DesktopOnlyWindowProbeNode();
+            var probe = new UnavailableWindowProbeNode();
             using var node = new NodeViewModel(probe, new Point(0, 0));
 
             node.ExecuteCustomAction("OpenRenameStudio");
@@ -128,7 +128,7 @@ public class NodeActionFrontierWiringTests
             probe.LastContext.Should().NotBeNull(
                 "la acción del nodo se ejecuta con su contexto, no con un nulo suelto");
             probe.LastContext!.Dialogs.Should().NotBeNull(
-                "el contexto lleva SIEMPRE un servicio de diálogos: sin él, la frontera del escritorio —y "
+                "el contexto lleva SIEMPRE un servicio de diálogos: sin él, la frontera de la versión anterior —y "
                 + "cualquier aviso de la acción— se pierde en el nulo de la costura");
             probe.LastContext.Dialogs.Should().BeSameAs(NullDialogService.Instance,
                 "sin host instalado, el servicio es el nulo declarado del Sdk, que no abre nada ni finge abrirlo");

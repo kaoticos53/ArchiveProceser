@@ -17,7 +17,7 @@ public enum ExclusiveTestState
     /// <summary>Singleton real de preferencias del usuario (no los dobles en memoria).</summary>
     RealUserPreferences,
 
-    /// <summary>Sesión headless de Avalonia y su Dispatcher (helper, capturas, fixtures, UI).</summary>
+    /// <summary>Sesión headless del host y su Dispatcher (helper, capturas, fixtures, UI).</summary>
     HeadlessUiSession,
 
     /// <summary>Tema activo del proceso y el diccionario de recursos de la aplicación (<c>ThemeManager</c>).</summary>
@@ -115,14 +115,14 @@ public static class TestCollectionContractAnalyzer
         new(
             ExclusiveTestState.HeadlessUiSession,
             CanonicalCollection: "VisualSnapshots",
-            Reason: "La sesión headless de Avalonia es un bucle de mensajes único por proceso con " +
+            Reason: "La sesión headless del host es un bucle de mensajes único por proceso con " +
                     "afinidad de hilo: crear controles, despachar al Dispatcher o capturar fotogramas " +
                     "fuera de una colección exclusiva compite con otras colecciones en paralelo y produce " +
                     "fallos de afinidad en pruebas ajenas (colección VisualSnapshots; ver " +
                     "TestAssemblyParallelism.cs).",
             Patterns:
             [
-                new(@"\bAvaloniaTestHelper\s*\.", RegexOptions.Compiled),
+                new(@"\bHostUiTestHelper\s*\.", RegexOptions.Compiled),
                 new(@"\bVisualSnapshot\s*\.", RegexOptions.Compiled),
                 new(@"\bAppVisualFixture\b", RegexOptions.Compiled),
                 new(@"\bHeadlessUnitTestSession\b", RegexOptions.Compiled),

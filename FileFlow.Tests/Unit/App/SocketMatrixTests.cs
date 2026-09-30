@@ -10,7 +10,7 @@ namespace FileFlow.Tests.Unit.App;
 
 /// <summary>
 /// Los auto-tests de la <b>paleta y matriz de estado de puertos</b> del nucleo
-/// (<see cref="PortPalette"/>): los mismos colores que los selectores del escritorio
+/// (<see cref="PortPalette"/>): los mismos colores que los selectores de la versión anterior
 /// (<c>FileFlow.App/Styles/Ports.axaml</c>), exigidos tipo a tipo y estado a estado.
 ///
 /// <para>Es el testigo de <c>tarjeta-que-no-habla-por-su-color</c>: si la paleta se sustituye
@@ -32,9 +32,9 @@ public class SocketMatrixTests
     {
         var c = PortPalette.TypeColor(kind);
 
-        c.R.Should().Be(r, $"el socket {kind} habla el color del escritorio (R)");
-        c.G.Should().Be(g, $"el socket {kind} habla el color del escritorio (G)");
-        c.B.Should().Be(b, $"el socket {kind} habla el color del escritorio (B)");
+        c.R.Should().Be(r, $"el socket {kind} habla el color de la versión anterior (R)");
+        c.G.Should().Be(g, $"el socket {kind} habla el color de la versión anterior (G)");
+        c.B.Should().Be(b, $"el socket {kind} habla el color de la versión anterior (B)");
     }
 
     [Fact]

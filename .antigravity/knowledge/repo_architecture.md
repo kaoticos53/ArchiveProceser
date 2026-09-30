@@ -1,7 +1,7 @@
 # Arquitectura y Mapa del Repositorio - FileFlow Studio
 
 ## 1. Visión General del Proyecto
-**FileFlow Studio** es un entorno de procesamiento y automatización de flujos de archivos por lotes (Batch Processing & Workflow Automation) de ultra-alta flexibilidad, modular y desacoplado, desarrollado en **C# 14**, **.NET 10 LTS** y **Avalonia UI 12 (Nodify / MVVM)**.
+**FileFlow Studio** es un entorno de procesamiento y automatización de flujos de archivos por lotes (Batch Processing & Workflow Automation) de ultra-alta flexibilidad, modular y desacoplado, desarrollado en **C# 14** y **.NET 10 LTS** sobre un único host de **Uno Platform** que compila para Windows (WinUI 3), Linux/macOS (Skia Desktop), Web (WASM) e iOS/iPadOS.
 
 ---
 
@@ -9,9 +9,9 @@
 
 ```
 ArchiveProceser/
-├── FileFlow.slnx                     # Solución XML de .NET 10 LTS (el host de ESCRITORIO, con Avalonia)
-├── FileFlow.Uno.slnx                 # Solución del host UNO (WinUI 3): su grafo sin Avalonia (hito 268)
-├── Directory.Build.props             # Sabor de UI: FileFlowUnoHost sale del nombre de la SOLUCIÓN
+├── FileFlow.slnx                     # Solución XML de .NET 10 LTS (host Uno + núcleo portable + plugins + pruebas)
+├── build-matrix.ps1                  # Matriz de compilación por plataforma (windows/desktop/wasm/ios)
+├── Directory.Build.props             # Versión, TFM y Build Number comunes
 ├── LICENSE                           # Licencia GNU General Public License v3.0 (GNU GPLv3)
 ├── GEMINI.md                         # Directivas de contexto y persistencia
 ├── AGENTS.md                         # Protocolo de arranque y estándares de agentes
@@ -22,7 +22,8 @@ ArchiveProceser/
 │       └── repo_architecture.md      # Este documento de arquitectura
 ├── FileFlow.Sdk/                     # Capa de contratos puros (C# 14, cero dependencias de UI/IO pesadas)
 ├── FileFlow.Core/                    # Motor DAG asíncrono, canales, telemetría, temp workspace y carga de plugins
-├── FileFlow.App/                     # Aplicación de escritorio UI (Nodify, MVVM, Theme Studio, Inspector)
+├── FileFlow.App.Core/                # Capa de presentación PORTABLE (ViewModels y servicios sin framework de UI)
+├── FileFlow.App.Uno/                 # Host UI ÚNICO (Uno Platform: WinUI 3 / Skia / WASM / iOS)
 ├── FileFlow.Plugin.FileSystem/       # Ingesta de carpetas, renombrado avanzado (9 métodos), reubicación, papelera
 ├── FileFlow.Plugin.Logic/            # Control de flujo (Subflujos, BatchBuffer, Throttle, ForkJoin, SwitchCase, Filter)
 ├── FileFlow.Plugin.Hashing/          # Integridad criptográfica (SHA, MD5) y deduplicación en memoria
@@ -34,7 +35,7 @@ ArchiveProceser/
 ├── FileFlow.Plugin.AI/               # Inferencia local VLM (Qwen2.5-VL/Ollama), CLIP ONNX, UltraFace, OCR Tesseract
 ├── FileFlow.Plugin.Scripting/        # Scripting dinámico en C# (Roslyn) y JavaScript (Jint)
 ├── FileFlow.Plugin.Integrations/     # Integraciones externas (CLI Process Runner, Webhooks HTTP, FFmpeg)
-└── FileFlow.Tests/                   # Suite de pruebas unitarias e integración xUnit (1.064 tests, 100% éxito)
+└── FileFlow.Tests/                   # Suite de pruebas unitarias e integración xUnit (1.755 tests, 100% éxito)
 ```
 
 ---
@@ -45,8 +46,8 @@ ArchiveProceser/
 - **`FileFlow.Sdk`**: Solo tipos base de `net10.0`. *Contratos puros, sin librerías de UI ni dependencias pesadas*.
 - **`FileFlow.Core`**: Depende de `FileFlow.Sdk`. Orquesta canales asíncronos (`System.Threading.Channels`), grafos DAG, `WorkflowWorkspaceManager`, `ExecutionJournalService`, `SqliteLogStore` y `AdaptiveConcurrencyManager`.
 - **`FileFlow.Plugin.*`**: Dependen exclusivamente de `FileFlow.Sdk` y librerías de dominio específicas.
-- **`FileFlow.App`**: Depende de `FileFlow.Core` y `FileFlow.Sdk`. Consume plugins dinámicamente mediante `PluginLoader`, Nodify, `CommunityToolkit.Mvvm` y `Microsoft.Extensions.DependencyInjection`.
-- **`FileFlow.App.Uno`**: El host WinUI 3, hermano de `FileFlow.App` sobre la MISMA capa portable (`FileFlow.App.Core`). Se compila con `dotnet build FileFlow.Uno.slnx`: esa solución deja fuera el host de Avalonia y define el **sabor de UI** (`FileFlowDesktopToolkit=false`, constante `FILEFLOW_NO_DESKTOP_TOOLKIT`), con el que los plugins **no compilan** sus ventanas del toolkit del escritorio —por eso su binario no lleva una sola DLL de Avalonia—.
+- **`FileFlow.App.Core`**: Capa de presentación **portable**. Depende de `FileFlow.Core` y `FileFlow.Sdk`; contiene los ViewModels y los servicios sin framework de UI, con `CommunityToolkit.Mvvm`.
+- **`FileFlow.App.Uno`**: El **único** host UI (Uno Platform). Consume `FileFlow.App.Core` y resuelve los adaptadores de plataforma (diálogos, portapapeles, despachador). Selecciona el TFM con `-p:FileFlowTarget=windows|desktop|wasm|ios`.
 - **`FileFlow.Tests`**: Batería de pruebas que valida el 100% de los componentes con `xUnit`, `FluentAssertions` y `Moq`.
 
 ---
@@ -71,7 +72,7 @@ ArchiveProceser/
 - [`IUiDispatcher`](file:///FileFlow.Sdk/Services/IUiDispatcher.cs) & [`IClipboardService`](file:///FileFlow.Sdk/Services/IClipboardService.cs): Abstracciones de infraestructura de UI desacopladas del framework de presentación.
 - [`IStorageService`](file:///FileFlow.Sdk/Storage/IStorageService.cs): Operaciones de sistema de archivos físico y virtual con resolución de colisiones.
 - [`IOsPlatformService`](file:///FileFlow.Sdk/Platform/IOsPlatformService.cs): Servicios de SO (shells, argumentos, papelera de reciclaje y memoria).
-- [`DesktopOnlySurface`](file:///FileFlow.Sdk/Services/DesktopOnlySurface.cs): La costura de las superficies que sólo el host de ESCRITORIO puede montar (hito 268). Un nodo compilado sin el toolkit del escritorio **declara** ahí que su ventana pertenece al escritorio —aviso por los diálogos de quien lo abrió y traza en el canal de errores— en vez de construir a ciegas una ventana de otro framework. El texto del aviso lo pone cada plugin; aquí vive el mecanismo.
+- [`UnavailableSurface`](file:///FileFlow.Sdk/Services/UnavailableSurface.cs): La costura de las superficies que el host NO puede montar (hito 268). Un nodo **declara** que su superficie no está disponible —aviso por los diálogos de quien la abrió y traza en el canal de errores— en vez de construir a ciegas. El texto del aviso lo pone cada plugin; aquí vive el mecanismo.
 - [`JsonDefaults`](file:///FileFlow.Sdk/Serialization/JsonDefaults.cs): Serialización y deserialización relajada UTF-8 y formateo seguro de logs JSON.
 - [`VariableTemplateResolver`](file:///FileFlow.Sdk/TemplateEngine/VariableTemplateResolver.cs): Motor de resolución de tokens `{Archive:...}`, `{Exif:...}`, `{Hash:...}`, `{Date:...}`, etc.
 
@@ -88,11 +89,11 @@ ArchiveProceser/
 
 ---
 
-### C. Capa de Presentación (`FileFlow.App`)
-- [`MainViewModel`](file:///FileFlow.App/ViewModels/MainViewModel.cs): ViewModel raíz que ensambla barra de control, editor DAG, caja de herramientas, consola y panel de inspección.
-- [`EditorViewModel`](file:///FileFlow.App/ViewModels/EditorViewModel.cs): Gestión del lienzo interactivo de nodos, conexiones y sub-flujos.
-- [`WpfUiDispatcher`](file:///FileFlow.App/Services/WpfUiDispatcher.cs) & [`WpfClipboardService`](file:///FileFlow.App/Services/WpfClipboardService.cs): Adaptadores concretos para WPF.
-- [`CustomThemeService`](file:///FileFlow.App/Services/CustomThemeService.cs): Gestión reactiva de temas visuales (8 temas de fábrica + personalización en vivo).
+### C. Capa de Presentación Portable (`FileFlow.App.Core`)
+- [`MainViewModel`](file:///FileFlow.App.Core/ViewModels/MainViewModel.cs): ViewModel raíz que ensambla barra de control, editor DAG, caja de herramientas, consola y panel de inspección.
+- [`EditorViewModel`](file:///FileFlow.App.Core/ViewModels/EditorViewModel.cs): Gestión del lienzo interactivo de nodos, conexiones y sub-flujos.
+- `IUiDispatcher` & `IClipboardService`: contratos de infraestructura de UI que el host Uno implementa (`UnoUiDispatcher`, `UnoClipboardService`).
+- `ThemeManager` / `ThemeHostBridge`: gestión reactiva de temas visuales (8 temas de fábrica + personalización en vivo) republicada por el host.
 
 ---
 

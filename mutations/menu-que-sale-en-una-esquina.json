@@ -1,7 +1,7 @@
 {
   "id": "menu-que-sale-en-una-esquina",
   "hito": 284,
-  "claim": "El menú del cable del lienzo Uno se abre DONDE ESTÁ EL PUNTERO: su posición va explícita (`ShowWireMenuAt(connection, e.GetPosition(RootGrid))` → `ShowAt(RootGrid, new FlyoutShowOptions { Position = canvasPoint, … })`), que es lo que hace el escritorio con su `ContextMenu` de Avalonia.",
+  "claim": "El menú del cable del lienzo Uno se abre DONDE ESTÁ EL PUNTERO: su posición va explícita (`ShowWireMenuAt(connection, e.GetPosition(RootGrid))` → `ShowAt(RootGrid, new FlyoutShowOptions { Position = canvasPoint, … })`), que es lo que hace la versión anterior con su `ContextMenu` de Avalonia.",
   "why": "Es el defecto que reportó el usuario: «el menú contextual al pulsar el botón derecho no sale alineado con el cursor del ratón sino en una esquina». La causa es el anclaje: `ShowAt(hit)` ancla el menú a la DIANA, y el rectángulo de una curva que va de un socket al otro abarca todo el cable, así que WinUI lo coloca en la esquina de esa caja —medido con el ratón inyectado: clic en (1442,760) y menú en (643,419), **855 px** de distancia—. El mutante vuelve a anclarlo al elemento: el menú deja de seguir al cursor y el usuario tiene que buscarlo.",
   "edits": [
     {

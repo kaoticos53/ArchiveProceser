@@ -11,7 +11,7 @@
     Versión del producto (por defecto: 1.0.0).
 
 .PARAMETER FrameworkDependent
-    Si se especifica, compila en modo dependiente del framework .NET 9 (reduciendo el tamaño y número de ficheros).
+    Si se especifica, compila en modo dependiente del framework .NET 10 (reduciendo el tamaño y número de ficheros).
 
 .EXAMPLE
     ./installer/build-all.ps1 -Version "1.0.0"

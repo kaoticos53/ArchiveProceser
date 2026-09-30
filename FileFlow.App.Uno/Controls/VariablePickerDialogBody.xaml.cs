@@ -10,13 +10,13 @@ namespace FileFlow.App.Uno.Controls;
 
 /// <summary>
 /// El cuerpo del selector de variables del host Uno: la vista de
-/// <see cref="VariablePickerViewModel"/> (el view model PORTABLE, el mismo que envuelve la ventana del
-/// escritorio). El catálogo, el filtro, el detalle y el token elegido son suyos; esta vista sólo los
+/// <see cref="VariablePickerViewModel"/> (el view model PORTABLE, el mismo que envuelve la ventana de la
+/// versión anterior). El catálogo, el filtro, el detalle y el token elegido son suyos; esta vista sólo los
 /// enseña y aplica el idioma del host.
 ///
 /// <para>La elección viaja por el <see cref="VariablePickerViewModel.SelectedToken"/> del view model,
-/// que el <c>UnoWindowService</c> devuelve como valor del diálogo: el mismo camino por el que el
-/// escritorio lee <c>picker.SelectedToken</c> al cerrar.</para>
+/// que el <c>UnoWindowService</c> devuelve como valor del diálogo: el mismo camino por el que la
+/// versión anterior lee <c>picker.SelectedToken</c> al cerrar.</para>
 /// </summary>
 public sealed partial class VariablePickerDialogBody : UserControl
 {

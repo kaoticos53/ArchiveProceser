@@ -4,7 +4,7 @@ namespace FileFlow.Sdk;
 
 /// <summary>
 /// Punto 2D en coordenadas de lienzo, neutro de framework. Los ViewModels del editor hablan en
-/// <see cref="Point"/> y cada host proyecta hacia su tipo visual (Avalonia.Point, Windows.Foundation.Point)
+/// <see cref="Point"/> y cada host proyecta hacia su tipo visual (Windows.Foundation.Point, Windows.Foundation.Point)
 /// en el borde, de modo que la lógica del lienzo pueda vivir en un ensamblado sin UI.
 /// </summary>
 public readonly record struct Point(double X, double Y)

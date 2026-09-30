@@ -15,15 +15,15 @@ namespace FileFlow.Plugin.Integrations.UI.ViewModels;
 /// órdenes que los tocan (nuevo, guardar, eliminar, restablecer), todo contra el almacén que ya existía
 /// (<see cref="MediaPresetManagerService"/>, el que lee el motor de transcodificación).
 ///
-/// <para><b>Por qué existe.</b> El escritorio tenía esta lógica dentro del code-behind de su ventana: leer la
+/// <para><b>Por qué existe.</b> La versión anterior tenía esta lógica dentro del code-behind de su ventana: leer la
 /// lista, volcar el preset elegido en los cuadros, normalizar la extensión al guardar, impedir borrar los
 /// presets del sistema, confirmar el borrado y el restablecimiento. Una lógica así sólo la puede usar la
 /// ventana que la tiene escrita —y sólo el host que sepa montar esa ventana—, así que ningún otro host podía
 /// ofrecer el gestor sin reescribirlo (y una segunda copia de la regla de negocio es una segunda verdad).</para>
 ///
 /// <para><b>Qué decide y qué NO decide la vista.</b> Aquí queda el QUÉ del producto: qué presets hay, qué
-/// campos se editan, qué se normaliza y qué se prohíbe. Lo que la vista decide es de cada host: el escritorio
-/// la monta en su ventana de Avalonia y un host WinUI en un panel suyo, y los avisos salen por el
+/// campos se editan, qué se normaliza y qué se prohíbe. Lo que la vista decide es de cada host: la versión anterior
+/// la monta en su ventana nativa del host y un host WinUI en un panel suyo, y los avisos salen por el
 /// <see cref="IDialogService"/> que le pasa quien la abre —el del host que la sirve—, no por uno inventado
 /// aquí.</para>
 /// </summary>
@@ -101,7 +101,7 @@ public partial class MediaPresetManagerViewModel : ObservableObject
 
     /// <summary>
     /// Un preset nuevo con los valores de fábrica del gestor: se guarda en el almacén y queda elegido, para
-    /// que el usuario lo edite en el formulario (que es lo que el escritorio hacía).
+    /// que el usuario lo edite en el formulario (que es lo que la versión anterior hacía).
     /// </summary>
     [RelayCommand]
     public void NewPreset()

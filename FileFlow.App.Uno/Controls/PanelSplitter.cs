@@ -14,7 +14,7 @@ namespace FileFlow.App.Uno.Controls;
 /// <para><b>Por qué una pieza y no un <c>GridSplitter</c></b>: el <c>GridSplitter</c> de WPF/UWP no existe en
 /// WinUI 3 —vive en el paquete de la comunidad, que este host no referencia—, así que el asa se escribe aquí:
 /// cinco píxeles de ancho, el puntero capturado durante el arrastre y el ancho aplicado a la
-/// <see cref="ColumnDefinition"/> con el mismo reparto que el escritorio declara en su
+/// <see cref="ColumnDefinition"/> con el mismo reparto que la versión anterior declara en su
 /// <c>MainWindow.axaml</c> (cajón <b>180–480</b>, ficha <b>220–750</b>, y el lienzo con su mínimo). Sobre
 /// <see cref="Grid"/> y no sobre <see cref="Border"/> —que en WinUI 3 está <b>sellado</b>, medido al compilar
 /// este tramo—: lo que el asa necesita del árbol es un <c>Background</c> que la haga opaca al puntero, y un
@@ -54,7 +54,7 @@ public sealed class PanelSplitter : Grid
     /// Ata el asa a su columna: el ancho que gobierna, sus dos cotas y hacia dónde CRECE.
     /// </summary>
     /// <param name="column">La columna que el arrastre redimensiona.</param>
-    /// <param name="min">El ancho mínimo de esa columna (el del escritorio).</param>
+    /// <param name="min">El ancho mínimo de esa columna (el de la versión anterior).</param>
     /// <param name="max">El ancho máximo que puede pedir el usuario.</param>
     /// <param name="widensToTheRight">
     /// ¿Su columna está a la IZQUIERDA del asa? El del cajón crece al arrastrar hacia la derecha; el de la

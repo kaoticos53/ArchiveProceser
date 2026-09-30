@@ -7,7 +7,7 @@
 
   <!--
     El GESTOR DE PRESETS DE MEDIOS del host Uno: la vista del MediaPresetManagerViewModel portable del plugin
-    de integraciones (el MISMO con el que el escritorio monta su ventana). Aquí no hay ni una regla del
+    de integraciones (el MISMO con el que la versión anterior monta su ventana). Aquí no hay ni una regla del
     producto: qué presets hay, qué se normaliza al guardar, qué no se puede borrar y qué se confirma lo
     decide el view model; esta vista sólo lo enseña y le pasa lo que el usuario escribe.
   -->

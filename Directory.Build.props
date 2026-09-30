@@ -12,21 +12,6 @@
   </PropertyGroup>
 
   <!-- =================================================================== -->
-  <!-- HOST DE UI CANÓNICO: Uno Platform (WinUI 3 / Multiplataforma)        -->
-  <!-- =================================================================== -->
-  <PropertyGroup>
-    <FileFlowUnoHost Condition="'$(FileFlowUnoHost)' == '' and '$(SolutionFileName)' == 'FileFlow.Uno.slnx'">true</FileFlowUnoHost>
-    <FileFlowUnoHost Condition="'$(FileFlowUnoHost)' == ''">false</FileFlowUnoHost>
-
-    <FileFlowDesktopToolkit Condition="'$(FileFlowUnoHost)' == 'true'">false</FileFlowDesktopToolkit>
-    <FileFlowDesktopToolkit Condition="'$(FileFlowDesktopToolkit)' == ''">true</FileFlowDesktopToolkit>
-
-    <!-- La constante que lee el nodo: sin el toolkit del escritorio no hay ventana que montar. -->
-    <DefineConstants Condition="'$(FileFlowDesktopToolkit)' == 'false'">$(DefineConstants);FILEFLOW_NO_DESKTOP_TOOLKIT</DefineConstants>
-  </PropertyGroup>
-
-
-  <!-- =================================================================== -->
   <!-- Tarea MSBuild para lectura e incremento automático del Build Number -->
   <!-- =================================================================== -->
   <UsingTask TaskName="AutoIncrementBuildNumber" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">

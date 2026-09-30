@@ -175,7 +175,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfuse2 file curl wget tar flatpak flatpak-builder
           sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 org.freedesktop.Sdk.Extension.dotnet9//24.08
+          sudo flatpak install -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 org.freedesktop.Sdk.Extension.dotnet10//24.08
 
       - name: 🚀 Compilar y empaquetar Ejecutable AppImage (.AppImage)
         shell: bash
@@ -183,9 +183,10 @@ jobs:
           VER="${{ needs.resolve-version.outputs.clean_version }}"
           mkdir -p installer/output /tmp/fileflow-payload /tmp/FileFlow.AppDir
           
-          # Publicar la aplicación FileFlow.App para linux-x64
-          dotnet publish FileFlow.App/FileFlow.App.csproj \
+          # Publicar el host Uno (Skia Desktop) para linux-x64
+          dotnet publish FileFlow.App.Uno/FileFlow.App.Uno.csproj \
             -c Release \
+            -p:FileFlowTarget=desktop \
             -r linux-x64 \
             --self-contained true \
             -p:DebugType=none \
@@ -197,9 +198,9 @@ jobs:
           mkdir -p "${APPDIR}/usr/bin" "${APPDIR}/usr/lib/fileflow" "${APPDIR}/usr/share/applications" "${APPDIR}/usr/share/icons/hicolor/256x256/apps"
           
           cp -r /tmp/fileflow-payload/* "${APPDIR}/usr/lib/fileflow/"
-          ln -sf /usr/lib/fileflow/FileFlow.App "${APPDIR}/usr/bin/FileFlow.App"
-          ln -sf /usr/lib/fileflow/FileFlow.App "${APPDIR}/usr/bin/fileflow"
-          chmod +x "${APPDIR}/usr/lib/fileflow/FileFlow.App"
+          ln -sf /usr/lib/fileflow/FileFlow.App.Uno "${APPDIR}/usr/bin/FileFlow.App.Uno"
+          ln -sf /usr/lib/fileflow/FileFlow.App.Uno "${APPDIR}/usr/bin/fileflow"
+          chmod +x "${APPDIR}/usr/lib/fileflow/FileFlow.App.Uno"
           
           cp installer/linux/AppRun "${APPDIR}/AppRun"
           chmod +x "${APPDIR}/AppRun"

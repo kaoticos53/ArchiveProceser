@@ -54,7 +54,7 @@ public partial class ThemeCustomizerViewModel : ObservableObject
     /// <summary>
     /// El host se suscribe a este evento para re-resolver los tokens que ya copió a su runtime: los
     /// valores del diccionario portable cambian en el sitio, pero un <c>ResourceDictionary</c> del
-    /// host no es observable desde aquí, así que cada host decide cómo re-publicar (Avalonia:
+    /// host no es observable desde aquí, así que cada host decide cómo re-publicar (host original:
     /// reenganchar su copia; el contrato de instancia estable se mantiene igualmente).
     /// </summary>
     public event Action? LivePreviewUpdated;

@@ -21,6 +21,6 @@
   },
   "control": {
     "filter": "FullyQualifiedName~EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost",
-    "why": "El caso hermano audita la PARIDAD de entradas y órdenes contra el escritorio (qué está dibujado, qué declarado pendiente y qué cumplido por el host), no el estado por contexto: el mutante cambia de dónde sale un habilitado y deja intactas las tablas de declaración. Si cayera, el mutante estaría alcanzando entradas que su tesis no menciona."
+    "why": "El caso hermano audita la PARIDAD de entradas y órdenes contra la versión anterior (qué está dibujado, qué declarado pendiente y qué cumplido por el host), no el estado por contexto: el mutante cambia de dónde sale un habilitado y deja intactas las tablas de declaración. Si cayera, el mutante estaría alcanzando entradas que su tesis no menciona."
   }
 }

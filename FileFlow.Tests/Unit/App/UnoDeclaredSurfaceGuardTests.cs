@@ -48,7 +48,7 @@ public class UnoDeclaredSurfaceGuardTests
     /// diseñador de datasets): el botón «🎬» de la fila del preset y el de la tarjeta del nodo llaman a la MISMA
     /// acción, y esta guardia ata la cadena entera — el contrato del SDK que une los dos botones con la
     /// superficie, el nodo que la declara con su clave y su view model PORTABLE, el servicio del host que la
-    /// sirve, y las DOS vistas (la ventana del escritorio y el cuerpo del host) como vistas de ese view model y
+    /// sirve, y las DOS vistas (la ventana de la versión anterior y el cuerpo del host) como vistas de ese view model y
     /// no como copias de la lógica del gestor.
     ///
     /// <para>Sin esto, el camino fácil —reescribir el gestor en el host— se ve igual desde dentro que el
@@ -60,9 +60,6 @@ public class UnoDeclaredSurfaceGuardTests
         const string Contract = "FileFlow.Sdk/Descriptors/INodeDialogSurfaceProvider.cs";
         const string Node = "FileFlow.Plugin.Integrations/MediaTranscoderNode.cs";
         const string ViewModel = "FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs";
-        const string DesktopWindow = "FileFlow.Plugin.Integrations/UI/Views/MediaPresetManagerWindow.axaml.cs";
-        const string DesktopWindowXaml = "FileFlow.Plugin.Integrations/UI/Views/MediaPresetManagerWindow.axaml";
-
         // 1. El contrato: la superficie dice qué acción personalizada sustituye, que es el hilo que une el
         //    botón de la fila y el de la tarjeta con la MISMA puerta.
         string contract = Code(Contract);
@@ -110,26 +107,13 @@ public class UnoDeclaredSurfaceGuardTests
                 $"la orden {command} del gestor la ejecuta su view model, no la vista");
         }
 
-        // 5. Si la ventana del ESCRITORIO existe, también es una vista del mismo view model.
-        if (File.Exists(Path.Combine(TestRepositoryLocator.RepositoryRoot(), DesktopWindow)))
-        {
-            string desktop = Code(DesktopWindow);
-            desktop.Should().Contain("MediaPresetManagerViewModel");
-            desktop.Should().NotContain("MediaPresetManagerService.Instance.SavePreset",
-                "la ventana del escritorio no guarda: guarda el view model");
-            desktop.Should().NotContain("ShowConfirmation",
-                "ni confirma el borrado por su cuenta: esa decisión es del view model, con los diálogos del host");
-            Read(DesktopWindowXaml).Should().NotContain("Click=\"SaveCurrent_Click\"",
-                "las órdenes van por el view model, no por manejadores de la ventana");
-        }
-
-        // 6. El núcleo abre la superficie declarada por el servicio de ventanas del host —las dos puertas: la
+        // 5. El núcleo abre la superficie declarada por el servicio de ventanas del host —las dos puertas: la
         //    fila del parámetro y la tarjeta del nodo— en vez de exigir la ventana del toolkit.
         Code("FileFlow.App.Core/ViewModels/NodeParameterViewModel.cs")
             .Should().Contain("surface.ReplacesCustomActionId is { } replaced");
         Code("FileFlow.App.Core/ViewModels/NodeViewModel.cs")
             .Should().Contain("declared.ReplacesCustomActionId is { } replaced");
-        // 7. Y la medición: la sonda la ejerce por el mismo canal que el usuario y lee el valor ESCRITO.
+        // 6. Y la medición: la sonda la ejerce por el mismo canal que el usuario y lee el valor ESCRITO.
         Code(SelfCheckCode).Should().Contain("ParamPreset_");
         Code(SelfCheckCode).Should().Contain("ActivePresetManager");
         Code(SelfCheckCode).Should().Contain("presetStore.GetPresets()");
@@ -138,7 +122,7 @@ public class UnoDeclaredSurfaceGuardTests
     /// <summary>
     /// La PUERTA DE LA TARJETA, que es una de las dos mitades de la superficie. El «🎬 Presets...» del nodo vive
     /// entre sus acciones rápidas, y ese bloque sólo se pinta con la tarjeta desplegada (<c>Node.IsExpanded</c>).
-    /// El escritorio lo conmuta con su <c>ToggleButton</c>; este host no tenía ninguno, así que el panel era
+    /// La versión anterior lo conmuta con su <c>ToggleButton</c>; este host no tenía ninguno, así que el panel era
     /// <b>inalcanzable</b>: la acción estaba dibujada y sin puerta.
     ///
     /// <para>La guardia ata las tres piezas —el conmutador de la cabecera, el estado del NÚCLEO que conmuta y el
@@ -164,9 +148,9 @@ public class UnoDeclaredSurfaceGuardTests
             "el listado de parámetros de la tarjeta era una lista muerta (sólo nombres, sin editor): los "
             + "parámetros se editan en la ficha del inspector, no en el lienzo");
 
-        // La puerta: sin conmutador, ese estado no se puede cambiar desde el ratón (el escritorio sí lo tiene).
+        // La puerta: sin conmutador, ese estado no se puede cambiar desde el ratón (la versión anterior sí lo tiene).
         xaml.Should().Contain("AutomationProperties.AutomationId=\"NodeCardExpandToggle\"",
-            "la cabecera de la tarjeta necesita su conmutador de acciones, como la del escritorio");
+            "la cabecera de la tarjeta necesita su conmutador de acciones, como la de la versión anterior");
         xaml.Should().Contain("IsChecked=\"{Binding Node.IsExpanded, Mode=TwoWay}\"",
             "y tiene que conmutar el estado del NÚCLEO, no uno propio de la vista");
         xaml.Should().Contain("Visibility=\"{Binding HasCustomActions, Converter={StaticResource BoolToVis}}\"",
@@ -209,7 +193,7 @@ public class UnoDeclaredSurfaceGuardTests
         contract.Should().Contain("Task<bool> ConfirmAsync(",
             "un host cuyo modal sólo existe en asíncrono necesita pedir la respuesta sin bloquear el hilo de UI");
         contract.Should().Contain("Task.Run(() => ShowConfirmation(message, title))",
-            "y la implementación por defecto tiene que seguir sirviendo al escritorio y a los dobles de prueba");
+            "y la implementación por defecto tiene que seguir sirviendo a la versión anterior y a los dobles de prueba");
 
         // 2. El view model portable: pregunta por la vía asíncrona, espera la respuesta y NO usa la síncrona.
         string viewModel = Code("FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs");
@@ -364,7 +348,7 @@ public class UnoDeclaredSurfaceGuardTests
             + "hilo de UI (la orden no hace nada y no avisa) y en un servicio sin diálogos devuelve «sí» sin "
             + "preguntar (destruye en silencio). Las órdenes destructivas preguntan por ConfirmAsync");
 
-        // El contrato sigue teniendo la síncrona: los hosts que SÍ saben confirmar en síncrono (el escritorio,
+        // El contrato sigue teniendo la síncrona: los hosts que SÍ saben confirmar en síncrono (la versión anterior,
         // con su bomba anidada de mensajes) y la implementación por defecto de la asíncrona la usan.
         Code("FileFlow.Sdk/Services/IDialogService.cs").Should().Contain("bool ShowConfirmation(string message, string title = \"FileFlow Studio\");");
     }
@@ -392,8 +376,8 @@ public class UnoDeclaredSurfaceGuardTests
                 + "el nodo no puede resolverlos y el doble nulo contesta «sí» sin preguntar");
         }
 
-        // El camino del ESCRITORIO del diseñador de datasets —la ventana que monta el propio plugin— también
-        // construye su contenido con esos diálogos, y la orden del núcleo que lo abre los entrega.
+        // El camino del diseñador de datasets —el que monta el propio plugin— también construye su contenido
+        // con esos diálogos, y la orden del núcleo que lo abre los entrega.
         Code(DataSetNode).Should().Contain("new UI.ViewModels.SyntheticDataSetDesignerViewModel(null, dialogs)");
         Code("FileFlow.App.Core/ViewModels/ControlBarViewModel.cs")
             .Should().Contain("new NodeCustomActionContext(_windows.MainWindowOwner, null, _dialogService)",
@@ -415,7 +399,7 @@ public class UnoDeclaredSurfaceGuardTests
     /// El GESTOR DE CONTRASEÑAS (hito 278) es la tercera superficie que declara un nodo, y la que estaba a medio
     /// portar de la peor manera: la TARJETA del nodo ofrecía «🔑 Claves...» y la fila del parámetro lo declaraba
     /// pendiente en la tabla de puertas; pulsarla en este host no abría el gestor sino que AVISABA de que la
-    /// ventana era del escritorio. La oferta y la capacidad se contradecían.
+    /// ventana era de la versión anterior. La oferta y la capacidad se contradecían.
     ///
     /// <para><b>Qué ata esta guardia</b>: que la capacidad la declare el NODO (los dos nodos de descompresión del
     /// plugin de archivos, porque los dos ofrecen la misma acción) con su clave del catálogo y su view model
@@ -467,7 +451,7 @@ public class UnoDeclaredSurfaceGuardTests
             code.Should().Contain("INodeDialogSurfaceProvider",
                 $"{Path.GetFileName(node)} ofrece «🔑 Claves...» en su tarjeta: o declara la superficie —para que "
                 + "cualquier host la sirva sobre el view model portable— o su única salida en un host sin el toolkit "
-                + "del escritorio es avisar de que no puede (la contradicción entre la oferta y la capacidad)");
+                + "de la versión anterior es avisar de que no puede (la contradicción entre la oferta y la capacidad)");
             code.Should().Contain("DialogKeys.PasswordManager");
             code.Should().Contain("ReplacesCustomActionId => \"ManagePasswords\"",
                 "y tiene que decir qué acción sustituye: es el hilo que une el botón de la tarjeta y el de la fila "

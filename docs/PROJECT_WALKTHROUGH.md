@@ -22,6 +22,71 @@
 
 ## Ventana viva
 
+## [2026-09-30] - Hito 302: Unificación de la terminología de código — los comentarios dejan de describir el host de escritorio retirado
+
+### 🎯 El encargo
+«Termina de limpiar la documentación de código: reescribe los comentarios que aún describen un host de escritorio inexistente y unifica la terminología en todo el árbol.»
+
+### 🔬 El diagnóstico
+La purga del hito 301 eliminó Avalonia del producto, pero en los comentarios sobrevivía el host retirado **bajo otros nombres**, sin usar ya casi la palabra «escritorio»:
+- **Código de producción** que seguía nombrando el host retirado como si existiera: «el host original usa los mismos puntos» (`ConnectionGeometry`), «el lienzo de Nodify» (`EditorViewportCalculator`), «Nodify en la versión anterior» (lienzo), «virtualización en WPF» (`FastObservableRingBuffer`) y «el host de ESCRITORIO tiene esta superficie» (`NodeInspectorTelemetrySection`).
+- **Código muerto** en la guardia de superficies declaradas: un bloque `if (File.Exists(…MediaPresetManagerWindow.axaml…))` sobre una ventana que ya no existe (no queda ningún `.axaml` ni carpeta `Views` en el árbol).
+- **Identificadores** que aún nombraban el host retirado: `DesktopStrings*`, `DesktopDialogKeys`, `DesktopOnlyWindowProbeNode`, la prueba `…ShouldShowTheDesktopOnlyWarning…` y los locales `desktopOnly*` del sondeo de diálogos.
+- **Prosa de mutaciones** (`claim`/`why`) con «escritorio»/«ESCRITORIO»/«Nodify».
+
+### 🧱 Las piezas
+- **Comentarios de producción reescritos** hacia la terminología canónica ya adoptada («la versión anterior»): `FastObservableRingBuffer`, `ConnectionGeometry`, `EditorViewportCalculator`, `EditorCanvasControl(.xaml.cs/.Wires.cs)` y `NodeInspectorTelemetrySection`.
+- **Guardias de test**: comentarios y constantes renombradas (`DesktopStrings*` → `CoreStrings*`, `DesktopDialogKeys` → `DialogKeysFile`) y la prueba de textos compartidos pasa a `TheSharedTexts_ShouldMatchTheCoreOnes_InBothLanguages`.
+- **Código muerto retirado**: el bloque condicional de la ventana de presets del host retirado, con sus dos constantes.
+- **Sondeo y guardia de la frontera**: `DesktopOnlyWindowProbeNode` → `UnavailableWindowProbeNode` y la prueba → `…ShouldShowTheUnavailableSurfaceWarning…` (referencias y filtro de la mutación `boton-del-nodo-que-no-avisa` actualizados); los locales `desktopOnly*` del sondeo → `unavailable*`.
+- **`mutations/COVERAGE.md`** regenerado con el testigo renombrado.
+
+### 📊 Validación
+| Medida | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.slnx` | **0 errores** |
+| Suite completa | **1.755 superadas, 1 omitida, 0 errores** |
+| Mutaciones verificadas | `boton-del-nodo-que-no-avisa` (testigo renombrado) y una muestra de 6 del pase masivo del 301: **las 7 MUERDEN** |
+
+### 🟠 Fronteras
+- Los **archivos fríos** (`docs/history/`, `knowledge/history/`), las **notas de versión publicadas** (apartados 1–27) y los **registros de QA** (`docs/qa/`) **no se reescriben**: son el registro de lo medido y la convención prohíbe retocar una entrada vieja.
+- Las menciones a «escritorio» que quedan son legítimas: la **sesión de escritorio de Windows** (`WindowsShellFileOperationLayoutTests`) y los **metadatos de escritorio de Linux** (Flatpak y `.desktop`).
+
+## [2026-09-30] - Hito 301: Purga total del andamiaje Avalonia, host único y multiplataforma real (Windows / Linux / macOS / Web / iPadOS)
+
+### 🎯 El encargo
+«el proyecto ya no depende en nada de avalonia, que debería haberse eliminado totalmente, y debe compilar para entornos multiplataforma (windows, linux, macos, web, ipadod). La documentación y los ficheros auxiliares de agentes están desactualizados: analiza todo y crea un plan por fases para limpiar ficheros y clases inútiles heredadas y actualizar toda la documentación.»
+
+### 🔬 El diagnóstico
+Avalonia **ya no existía en el código de producción** (0 paquetes, 0 `.axaml`, 0 `#if`), pero sobrevivía todo el andamiaje construido a su alrededor:
+- El **«sabor doble» de UI** en `Directory.Build.props` (`FileFlowUnoHost` / `FileFlowDesktopToolkit` / constante `FILEFLOW_NO_DESKTOP_TOOLKIT`), **sin un solo consumidor en el código**.
+- La segunda solución `FileFlow.Uno.slnx`, cuyo único sentido era elegir ese sabor.
+- El contrato `DesktopOnlySurface`, con la semántica de un «host de escritorio» que ya no existe.
+- Comentarios, scripts, CI, instalador y documentación que citaban WPF/Nodify/Avalonia/.NET 9/C# 13/`FileFlow.App`.
+- El host resolvía **siempre `net10.0`** (la selección de TFM estaba preemptada por el SDK) y no había target iOS ni Web verificado.
+
+### 🧱 Las piezas
+- **`Directory.Build.props`** pierde el sabor doble; **`FileFlow.Uno.slnx` se elimina** y `FileFlow.slnx` queda como solución única; `run-uno.ps1` compila el proyecto del host directamente.
+- **`DesktopOnlySurface` → `UnavailableSurface`** (semántica genérica «no montable en este host») y claves `Plugin_SurfaceUnavailable_*` en los dos diccionarios de los 5 plugins; guardia y mutación (`frontera-que-no-avisa`) actualizadas.
+- **Cero Avalonia en todo el producto**: purgados los comentarios de código que citaban el host original; `UnoHermeticBuildGuardTests` reescrita para medir «ningún fichero del producto menciona Avalonia».
+- **Multiplataforma real**: `FileFlow.App.Uno.csproj` selecciona el TFM de forma explícita (`FileFlowTarget=windows|desktop|wasm|ios`); punto de entrada WASM (`Program.Wasm.cs`); `build-matrix.ps1` y job de matriz en CI.
+- **Limpieza**: fuera `migrate_modal_colors.py`, `publish-optimized.ps1`, `run-optimized.ps1`; lanzadores `.sh`/`.bat` reescritos hacia el host Uno; scripts, CI, release y Flatpak corregidos; `AvaloniaTestHelper` → `HostUiTestHelper`.
+- **Documentación**: reescritos `README.md`, `docs/README.md`, `docs/contributing.md`, `docs/setup_and_deployment.md`; actualizados arquitectura, manuales, `AGENTS.md`, `GEMINI.md`, `.agents/*` y el resumen de sesión.
+
+### 📊 Validación
+| Medida | Resultado |
+| :--- | :--- |
+| `dotnet build FileFlow.slnx` | **0 errores** (1 aviso PRI257 de la herramienta de Windows App SDK) |
+| `FileFlowTarget=windows` | **0 errores** (`net10.0-windows10.0.19041.0`) |
+| `FileFlowTarget=desktop` | **0 errores** (`net10.0-desktop`, Skia) |
+| `FileFlowTarget=wasm` | **0 errores** (`net10.0-browserwasm`) |
+| `FileFlowTarget=ios` | declarado; verificación pendiente en macOS/CI (el SDK de iOS no compila en Windows) |
+| Suite completa | **1.755 superadas, 1 omitida, 0 errores** |
+
+### 🟠 Fronteras
+- La verificación del target **iOS/iPadOS** exige macOS + Xcode; en este entorno el SDK de iOS falla antes de compilar.
+- El runtime funcional de **Web/iOS** (sistemas de archivos, SQLite, scripting Roslyn, procesos externos) se entrega por capas después: este hito garantiza que el grafo **compila** en las cuatro familias.
+
 ## [2026-09-30] - Hito 300: Activación de Multi-Targeting Multiplataforma (Linux / macOS Skia Desktop)
 
 ### 🎯 El encargo

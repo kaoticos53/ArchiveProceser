@@ -2,17 +2,16 @@
 
 <div align="center">
 
-![Platform](https://img.shields.io/badge/.NET-9.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
-![Language](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)
-![UI](https://img.shields.io/badge/WPF-Nodify%20MVVM-0078D4?style=for-the-badge&logo=windows&logoColor=white)
-![Nodes](https://img.shields.io/badge/Nodes-57%20DAG%20Nodes-38BDF8?style=for-the-badge&logo=diagram-next)
-![Tests](https://img.shields.io/badge/Tests-714%2F714%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=xunit)
-![Telemetry](https://img.shields.io/badge/Telemetry->82.000%20logs%2Fsec-blueviolet?style=for-the-badge)
+![Platform](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Language](https://img.shields.io/badge/C%23-14.0-239120?style=for-the-badge&logo=csharp&logoColor=white)
+![UI](https://img.shields.io/badge/Uno%20Platform-WinUI%203%20%7C%20Skia%20%7C%20WASM-512BD4?style=for-the-badge&logo=windows&logoColor=white)
+![Platforms](https://img.shields.io/badge/Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Web%20%7C%20iPadOS-38BDF8?style=for-the-badge&logo=diagram-next)
+![Tests](https://img.shields.io/badge/Tests-1755%2F1756%20Passing-brightgreen?style=for-the-badge&logo=xunit)
 ![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge&logo=gnu)
 
-**File automation, large-scale processing, and transformation engine powered by interactive Directed Acyclic Graphs (DAG) for Windows.**
+**File automation, large-scale processing, and transformation engine powered by interactive Directed Acyclic Graphs (DAG).**
 
-**Motor de automatización, procesamiento masivo y transformación de archivos basado en Grafos Dirigidos Acíclicos (DAG) interactivos para Windows.**
+**Motor de automatización, procesamiento masivo y transformación de archivos basado en Grafos Dirigidos Acíclicos (DAG) interactivos.**
 
 [🇬🇧 English](#-english) • [🇪🇸 Español](#-español)
 
@@ -24,7 +23,8 @@
 
 ### 🌟 Key Features
 
-- **Visual DAG Workflow Designer** with Nodify + MVVM.
+- **Visual DAG Workflow Designer** on Uno Platform (WinUI 3 on Windows, Skia Desktop on Linux/macOS, WebAssembly in the browser, iOS/iPadOS).
+- **Cross-platform by construction**: one host, one portable core, no UI-framework lock-in.
 - **High-performance async engine** using Channels and TPL Dataflow.
 - **Safe-by-default pipelines** with non-destructive behavior and Dry Run simulation.
 - **Local AI inference (ONNX Runtime)** for classification, OCR, detection, and semantic search.
@@ -36,11 +36,12 @@
 
 FileFlow Studio is organized in three main layers:
 
-- **FileFlow.App**: WPF UI (Nodify canvas + MVVM).
+- **FileFlow.App.Uno**: the single UI host (Uno Platform over WinUI 3 / Skia / WASM / iOS).
+- **FileFlow.App.Core**: the portable presentation core (ViewModels and UI-agnostic services) shared by the host.
 - **FileFlow.Core**: DAG orchestration engine, validation, telemetry, plugin loading.
 - **FileFlow.Sdk**: core contracts (`IFlowNode`, `FileItemContext`, `IFlowExecutionContext`).
 
-Official plugins include: **FileSystem, Archives, Images, Network, AI, Documents, Data, Logic, Scripting, Integrations, Hashing**.
+Official plugins include: **FileSystem, Archives, Images, Network, AI, Documents, Data, Logic, Scripting, Integrations, Hashing, Subflows**.
 
 ### 🚀 Quick Start
 
@@ -55,10 +56,8 @@ dotnet test FileFlow.slnx
 ### 📚 Documentation
 
 - [System Architecture](docs/architecture.md)
-- [System Specifications (SRS v2.0 Archive)](docs/history/2026-08_srs_especificaciones.md)
 - [User Manual](docs/manual_de_usuario.md)
 - [Testing Guide](docs/guia_de_pruebas.md)
-- [Architecture](docs/architecture.md)
 - [Project Walkthrough](docs/PROJECT_WALKTHROUGH.md)
 
 ### 📄 License
@@ -72,24 +71,25 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
 ### 🌟 Características Principales
 
 - **🎨 Lienzo Visual de Diseño de Flujos (DAG)**:
-  - Diseñe flujos de trabajo arrastrando y conectando nodos con **Nodify** y **CommunityToolkit.Mvvm**.
+  - Diseñe flujos de trabajo arrastrando y conectando nodos con el **lienzo propio del host Uno Platform** y `CommunityToolkit.Mvvm`.
   - Validación topológica en tiempo real con detección de ciclos, puertos huérfanos y compatibilidad de tipos.
+- **🧭 Multiplataforma de verdad**: un solo host que compila para **Windows, Linux, macOS, Web (WASM) e iOS/iPadOS**, sobre un núcleo portable sin dependencias de framework de UI.
 - **⚡ Motor Asíncrono de Alto Rendimiento**:
   - Procesamiento concurrente basado en `System.Threading.Channels` y `TPL Dataflow`.
   - Cancelación cooperativa instantánea (`CancellationToken`) y despacho paralelo multihilo sin bloqueos de interfaz.
 - **🛡️ Pipelines No Destructivos por Defecto y Simulación Dry Run**:
   - Inmutabilidad del archivo de origen garantizada por defecto.
-  - Pruebe flujos complejos sin tocar el disco mediante el diario de acciones planificadas (`PlannedAction` / `IExecutionJournal`) para previsualizar movimientos, renombrados o transformaciones antes de ejecutarlos.
+  - Pruebe flujos complejos sin tocar el disco mediante el diario de acciones planificadas (`PlannedAction` / `IExecutionJournal`).
 - **🤖 Inferencia de Inteligencia Artificial Local (ONNX Runtime)**:
   - Clasificación de imágenes sin conexión, detección de rostros, segmentación y OCR local rápido.
 - **🌐 Conectividad Universal Multi-Protocolo (Network & Cloud Hub)**:
-  - Nodos unificados con soporte simétrico para **HTTP/HTTPS**, **FTP/FTPS**, **SFTP/SSH**, **WebDAV/Nextcloud** y **SMB/Red Local** con visibilidad condicional reactiva de parámetros.
+  - Nodos unificados con soporte para **HTTP/HTTPS**, **FTP/FTPS**, **SFTP/SSH**, **WebDAV/Nextcloud** y **SMB/Red Local**.
 - **📊 Reportes Interactivos y Trazabilidad Completa (`OperationReportNode`)**:
-  - Generación de informes en **HTML Interactivo** (con acordeón colapsable por directorios, KPIs, timeline con badges y búsqueda reactiva en Vanilla JS), **Markdown**, **Texto Plano en Árbol ASCII**, **JSON** y **CSV**.
+  - Generación de informes en **HTML Interactivo**, **Markdown**, **Texto Plano en Árbol ASCII**, **JSON** y **CSV**.
 - **📈 Telemetría y Registro SQLite Ultrarrápido**:
-  - Almacén de logs en memoria capaz de registrar más de **82.000 trazas/segundo** en 28 núcleos con paginación virtualizada en la UI.
+  - Almacén de logs en memoria con paginación virtualizada en la UI.
 - **🧩 Arquitectura Microkernel Extensible (ADR-006)**:
-  - Sistema de plugins desacoplado basado en `AssemblyLoadContext` donde cada dominio (`FileSystem`, `Archives`, `Images`, `Documents`, `Network`, `AI`, `Data`, `Logic`, `Scripting`, `Integrations`, `Hashing`) contiene de forma autónoma su código, recursos y localización multilingüe.
+  - Sistema de plugins desacoplado basado en `AssemblyLoadContext` donde cada dominio contiene de forma autónoma su código, recursos y localización multilingüe.
 
 ---
 
@@ -97,9 +97,15 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
 
 ```
                       ┌─────────────────────────────────┐
-                      │    FileFlow.App (WPF UI)        │
-                      │  • Nodify Canvas • MVVM Toolkit │
-                      │  • Virtualized Telemetry View   │
+                      │ FileFlow.App.Uno (host único)   │
+                      │  WinUI 3 · Skia · WASM · iOS    │
+                      │  Lienzo DAG · MVVM Toolkit      │
+                      └────────────────┬────────────────┘
+                                       │ Referencia
+                                       ▼
+                      ┌─────────────────────────────────┐
+                      │  FileFlow.App.Core (portable)   │
+                      │  ViewModels y servicios UI-free │
                       └────────────────┬────────────────┘
                                        │ Referencia
                                        ▼
@@ -112,7 +118,7 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
                                        │ Consume Contratos
                                        ▼
                       ┌─────────────────────────────────┐
-                      │    FileFlow.Sdk (Puro .NET 9)   │
+                      │    FileFlow.Sdk (Puro .NET 10)  │
                       │  • IFlowNode • FileItemContext  │
                       │  • IFlowExecutionContext        │
                       │  • VariableTemplateResolver     │
@@ -122,53 +128,22 @@ This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See 
     │                │                 │                 │                │
 ┌───┴──────────┐ ┌───┴───────────┐ ┌───┴───────────┐ ┌───┴──────────┐ ┌───┴─────────────┐
 │  FileSystem  │ │   Archives    │ │    Images     │ │   Network    │ │       AI        │
-│  (14 Nodos)  │ │   (3 Nodos)   │ │   (4 Nodos)   │ │  (2 Nodos)   │ │   (8 Nodos)     │
 └───┬──────────┘ └───┬───────────┘ └───┬───────────┘ └───┬──────────┘ └───┬─────────────┘
     │                │                 │                 │                │
 ┌───┴──────────┐ ┌───┴───────────┐ ┌───┴───────────┐ ┌───┴──────────┐ ┌───┴─────────────┐
 │  Documents   │ │     Data      │ │     Logic     │ │  Scripting   │ │  Integrations   │
-│  (4 Nodos)   │ │   (3 Nodos)   │ │   (6 Nodos)   │ │  (3 Nodos)   │ │   (5 Nodos)     │
 └──────────────┘ └───────────────┘ └───────────────┘ └──────────────┘ └─────────────────┘
 ```
-
----
-
-## 🧩 Módulos y Plugins Oficiales (57 Nodos)
-
-FileFlow Studio organiza sus capacidades en 11 macro-categorías de plugins:
-
-1. **📁 FileSystem (14 Nodos)**: Ingesta recursiva (`FolderSourceNode`), sumideros con resolución de colisiones (`DestinationSinkNode`), renombrado dinámico por plantillas (`AdvancedRenamerNode`), reubicación con hash (`FileRelocatorNode`), papelera segura (`SafeRecycleDeleteNode`), ciclo de vida de origen (`OriginalFileActionNode`), informe visual de operaciones (`OperationReportNode`), limpiador de carpetas vacías (`EmptyDirectoryCleanerNode`), entre otros.
-2. **🗜️ Archives (3 Nodos)**: Descompresión inteligente con aplanado (`SmartUnpackNode`), empaquetado multicompresor ZIP/7z/TAR (`ArchiveCompressorNode`), filtrado de volúmenes divididos (`ArchiveFilterNode`).
-3. **🖼️ Images (4 Nodos)**: Optimización y conversión WebP/JPEG/PNG (`ImageOptimizerNode`), extracción de metadatos EXIF (`ExifMetadataNode`), redimensionamiento inteligente y transformaciones.
-4. **🌐 Network & Cloud (2 Nodos Unificados)**:
-   - **`NetworkDownloadNode`**: Hub universal de descarga (`HTTP/HTTPS`, `FTP/FTPS`, `SFTP/SSH`, `WebDAV/Nextcloud`, `SMB/Red Local`).
-   - **`NetworkUploadNode`**: Hub universal de subida y transferencia (`HTTP POST/PUT`, `FTP/FTPS`, `SFTP/SSH`, `WebDAV/Nextcloud`, `SMB/Red Local`).
-5. **🤖 AI & Machine Learning (8 Nodos)**: Clasificación inteligente de imágenes (`SmartImageClassifierNode`), detección de objetos (`PromptObjectDetectorNode`), OCR local (`LocalOcrNode`), transcripción de audio Whisper (`WhisperAudioTranscriberNode`), detección facial (`FaceDetectorNode`), búsqueda semántica (`ZeroShotSemanticSearchNode`), anonimizador de PII (`PiiAnonymizerNode`), superresolución (`SuperResolutionUpscalerNode`).
-6. **📄 Documents & PDF (4 Nodos)**: Fusión de PDFs (`PdfMergeNode`), división y extracción de páginas (`PdfSplitNode`), extracción de texto (`PdfTextExtractorNode`), conversión a imágenes (`PdfToImageNode`).
-7. **📊 Data & Structured Files (3 Nodos)**: Lectura de Excel (`ExcelReaderNode`), conversión y filtrado de CSV (`CsvProcessorNode`), cruce de tablas de datos (`DataLookupNode`).
-8. **⚙️ Logic & Control Flow (6 Nodos)**: Enrutador condicional múltiple (`SwitchCaseNode`), filtro de expresiones lógicas (`ExpressionFilterNode`), control de caudal (`ThrottleDelayNode`), acumulador de lotes (`BatchBufferNode`), barrera paralela (`ForkJoinBarrierNode`), inyector de variables (`VariableInjectorNode`).
-9. **🔐 Hashing & Security (3 Nodos)**: Cálculo criptográfico multialgoritmo (`HashCalculatorNode`), desduplicación inteligente (`DeduplicationFilterNode`), verificación de firmas.
-10. **📜 Scripting & Custom Logic (3 Nodos)**: Scripts C# Roslyn dinámicos (`CustomScriptNode`), ejecución de Python integrado, automatización PowerShell.
-11. **🔌 Integrations & CLI (5 Nodos)**: Ejecución de utilidades CLI (`CliExecutionNode`), notificaciones Webhook (`WebhookNotificationNode`), transcodificación multimedia con FFmpeg (`MediaTranscoderNode`), exportación SQLite (`SqliteDatabaseSinkNode`), cola de mensajes.
-
----
-
-## 📊 Reporte Visual de Operaciones
-
-El nodo **`OperationReportNode`** permite obtener una visión ejecutiva y técnica de todas las transformaciones realizadas en un lote:
-
-- **Agrupación Jerárquica (`GroupBy = Directory`)**: Visualice sus archivos organizados por su carpeta de origen en un acordeón interactivo colapsable con un solo clic.
-- **Búsqueda Reactiva**: Filtre instantáneamente por nombre de archivo, directorio o metadato; las carpetas coincidentes se desplegarán de forma automática.
-- **Historial Completo (Timeline)**: Cada tarjeta de archivo incluye el paso a paso detallado desde que fue descubierto hasta su destino final.
-- **Multi-Formato**: Exportación nativa a `HTML`, `Markdown`, `Text` (Árbol ASCII), `JSON` y `CSV`.
 
 ---
 
 ## 🚀 Inicio Rápido
 
 ### Requisitos Previos
-- **Sistema Operativo**: Windows 10 / Windows 11 (x64)
-- **SDK**: [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- **SDK**: [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- **Windows**: Windows 10 (1809+) / Windows 11 con el SDK de Windows App.
+- **Linux/macOS**: dependencias de Skia Desktop (X11/Wayland o macOS 12+).
+- **Web/iOS**: workloads `wasm-tools` (y `ios` + Xcode para iPadOS).
 
 ### Compilación y Ejecución
 
@@ -181,22 +156,24 @@ cd ArchiveProceser
 dotnet build FileFlow.slnx
 
 # 3. Ejecutar la suite de pruebas automatizadas
-
 dotnet test FileFlow.slnx
 
-# 4. Lanzar la aplicación FileFlow Studio
+# 4. Lanzar la aplicación
 .\run.ps1
+
+# 5. Compilar la matriz multiplataforma (desktop + web; iOS con -IncludeIos en macOS)
+.\build-matrix.ps1
 ```
 
 ---
 
 ## 🧪 Pruebas Automatizadas y Calidad
 
-FileFlow Studio cuenta con una rigurosa suite de pruebas automatizadas con **100% de cobertura de éxito**:
+FileFlow Studio cuenta con una suite de pruebas automatizadas con **100% de éxito**:
 
-- **700+ pruebas unitarias, de integración y estrés** ejecutadas bajo xUnit y FluentAssertions.
-- **Aislamiento Total**: Entornos temporales con GUID para operaciones de disco y pruebas deterministas.
-- **Benchmarking Multihilo**: Pruebas de estrés que validan >82.000 logs/segundo en telemetría concurrente.
+- **1.755 pruebas unitarias, de integración y estrés** ejecutadas bajo xUnit y FluentAssertions.
+- **Aislamiento Total**: entornos temporales con GUID para operaciones de disco y pruebas deterministas.
+- **Guardias de arquitectura**: ven el árbol real y fallan si un nodo, un diálogo o un tema se sale del contrato.
 
 ```powershell
 # Ejecutar pruebas y generar informe de cobertura
@@ -212,7 +189,6 @@ FileFlow Studio cuenta con una rigurosa suite de pruebas automatizadas con **100
 - 📄 [**Especificaciones Formales del Sistema (SRS v2.0 - Histórico)**](docs/history/2026-08_srs_especificaciones.md)
 - 📖 [**Manual de Usuario Completo**](docs/manual_de_usuario.md)
 - 🧪 [**Guía y Catálogo Exhaustivo de Pruebas**](docs/guia_de_pruebas.md)
-- 🏛️ [**Arquitectura y Diseño Técnico**](docs/architecture.md)
 - 📋 [**Historial Cronológico de Cambios (Walkthrough)**](docs/PROJECT_WALKTHROUGH.md)
 
 ---

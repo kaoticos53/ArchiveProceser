@@ -30,7 +30,7 @@ public sealed class StartupFailureReporter
     /// (<see cref="Views.StartupErrorWindow.ShowFailure"/>).
     /// </param>
     /// <summary>
-    /// Ventana de error que muestra el host cuando nadie instaló un sumidero. El host Avalonia la
+    /// Ventana de error que muestra el host cuando nadie instaló un sumidero. El host original la
     /// fija en el arranque (<c>Views.StartupErrorWindow.ShowFailure</c>); sin host el informe ya
     /// quedó en el log de incidentes y no hay superficie donde pintarlo.
     /// </summary>

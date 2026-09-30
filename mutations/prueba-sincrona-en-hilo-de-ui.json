@@ -2,7 +2,7 @@
   "id": "prueba-sincrona-en-hilo-de-ui",
   "hito": 240,
   "claim": "El «Probar» del inspector funciona desde el click de UI porque TestNodeWithCustomFileAsync consume la variante asíncrona del IFileDialogService: si el comando vuelve al diálogo síncrono, el host Uno aborta con null (el guard anti-interbloqueo de UnoFileDialogService) y el botón queda mudo — sin crash y sin prueba.",
-  "why": "El pendiente de la rebanada 4 que este hito cierra: el contrato síncrono del núcleo exige bloquear FUERA del hilo de UI; una llamada desde el click devolvería null antes que interbloquear (el guard declarado de UnoFileDialogService) — el botón abriría el picker en el escritorio y NUNCA en el host Uno. El mutante hace exactamente esa regresión: la llamada asíncrona se sustituye por la síncrona. El testigo vigila el camino del usuario en el VM (la variante async llamada UNA vez, la síncrona JAMÁS); el control vigila que el resto del comando (los estados y la ejecución de prueba del nodo) quede intacto.",
+  "why": "El pendiente de la rebanada 4 que este hito cierra: el contrato síncrono del núcleo exige bloquear FUERA del hilo de UI; una llamada desde el click devolvería null antes que interbloquear (el guard declarado de UnoFileDialogService) — el botón abriría el picker en la versión anterior y NUNCA en el host Uno. El mutante hace exactamente esa regresión: la llamada asíncrona se sustituye por la síncrona. El testigo vigila el camino del usuario en el VM (la variante async llamada UNA vez, la síncrona JAMÁS); el control vigila que el resto del comando (los estados y la ejecución de prueba del nodo) quede intacto.",
   "edits": [
     {
       "file": "FileFlow.App.Core/ViewModels/NodeInspectorViewModel.cs",

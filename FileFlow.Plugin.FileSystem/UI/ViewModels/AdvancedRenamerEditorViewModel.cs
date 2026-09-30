@@ -279,7 +279,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [RelayCommand]
     public async Task SaveCurrentAsPresetAsync()
     {
-        var picked = await DesktopFilePicker.PickSaveAsync(
+        var picked = await PortableFilePicker.PickSaveAsync(
             "Guardar Preset de Renombrado Avanzado",
             [
                 new FileTypeFilter("Ajustes de Renombrado (*.ffren)", ["*.ffren"]),
@@ -315,7 +315,7 @@ public partial class AdvancedRenamerEditorViewModel : ObservableObject
     [RelayCommand]
     public async Task LoadPresetFromFileAsync()
     {
-        var picked = await DesktopFilePicker.PickOpenAsync(
+        var picked = await PortableFilePicker.PickOpenAsync(
             "Importar Preset de Renombrado",
             [
                 new FileTypeFilter("Ajustes de Renombrado (*.ffren;*.json)", ["*.ffren", "*.json"])

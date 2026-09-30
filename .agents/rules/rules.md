@@ -9,12 +9,12 @@ trigger: always_on
    - **Target Framework:** `net10.0` (o `net10.0-windows` para la capa de UI).
    - **Versión de Lenguaje:** `C# 14` (`<LangVersion>14</LangVersion>`).
    - Nullable Reference Types activado de forma estricta (`<Nullable>enable</Nullable>`).
-   - Uso de las nuevas primitivas de sincronización de .NET 9/.NET 10 (`System.Threading.Lock` en lugar de `object` para locks).
+   - Uso de las nuevas primitivas de sincronización de .NET 10/.NET 10 (`System.Threading.Lock` en lugar de `object` para locks).
 
 2. **Desacoplamiento Estricto:**
    - `FileFlow.Sdk` debe ser puro: solo tipos base de C# 14 y contratos de interfaces. Cero dependencias de UI o librerías externas pesadas.
    - Los plugins (`FileFlow.Plugin.*`) solo pueden referenciar `FileFlow.Sdk` y sus respectivas librerías de dominio.
-   - La UI (`FileFlow.App`) consume `FileFlow.Core` y `FileFlow.Sdk` mediante MVVM limpio con `CommunityToolkit.Mvvm`.
+   - La UI (`FileFlow.App.Uno`) consume `FileFlow.Core` y `FileFlow.Sdk` mediante MVVM limpio con `CommunityToolkit.Mvvm`.
 
 3. **Rendimiento Asíncrono e I/O en .NET 10:**
    - Métodos I/O de disco 100% asíncronos (`ValueTask` / `Task`) con propagación obligatoria de `CancellationToken`.
@@ -27,14 +27,14 @@ trigger: always_on
    - Cualquier acción sobre el archivo de origen (conservar, mover a cuarentena, enviar a papelera o eliminar) debe ser **explícita y centralizada en el nodo de ciclo de vida `OriginalFileActionNode`**.
 
 5. **Localización e Internacionalización Obligatoria de la UI (i18n):**
-   - Todos los textos visibles para el usuario en la interfaz gráfica (`FileFlow.App`), incluyendo títulos de ventanas, menús, botones, cabeceras de columnas, tooltips, nombres de categorías, nombres de nodos y etiquetas de parámetros de configuración (`DisplayName`), **deben soportar localización dinámica** para diferentes idiomas (actualmente **Español (`es-ES`)** e **Inglés (`en-US`)**).
+   - Todos los textos visibles para el usuario en la interfaz gráfica (`FileFlow.App.Uno`), incluyendo títulos de ventanas, menús, botones, cabeceras de columnas, tooltips, nombres de categorías, nombres de nodos y etiquetas de parámetros de configuración (`DisplayName`), **deben soportar localización dinámica** para diferentes idiomas (actualmente **Español (`es-ES`)** e **Inglés (`en-US`)**).
    - Las variables técnicas en el código fuente (`Key`, nombres de propiedades, identificadores JSON) deben permanecer en inglés puro, pero su representación en UI debe traducirse mediante `LocalizationManager.Instance` y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
    - El cambio de idioma en tiempo de ejecución debe reflejarse de forma reactiva e instantánea en todas las pantallas y tarjetas de nodos del lienzo visual sin necesidad de reiniciar la aplicación.
 
-6. **Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins / Zero-Touch en FileFlow.App):**
+6. **Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins / Zero-Touch en FileFlow.App.Uno):**
    - **Todo el código, modelos de nodo, lógica de inferencia, herramientas y vistas modales (`UI/`), configuraciones (`Config/`) y recursos de cadenas de texto multilingües (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** pertenecientes a cada plugin/nodo **DEBEN situarse exclusivamente dentro del directorio del propio plugin (`FileFlow.Plugin.*`)**.
-   - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en `FileFlow.App`.
-   - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar `FileFlow.App`**.
+   - `FileFlow.App.Uno/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en `FileFlow.App.Uno`.
+   - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar `FileFlow.App.Uno`**.
 
 7. **Arquitectura de Adaptadores para Modelos de IA Intercambiables (Model Adapter Architecture):**
    - Los nodos y motores de inferencia en `FileFlow.Plugin.AI` no deben asumir preprocesado ni decodificado genérico para modelos intercambiables.

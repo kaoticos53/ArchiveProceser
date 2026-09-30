@@ -23,7 +23,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 17 de 35
 | `aviso-de-actualizacion-que-nadie-enciende` | `FileFlow.App.Uno/App.xaml.cs` | `TheUpdateCheck_ShouldFeedTheBadge_AndStayOutOfTheProbes` | `EveryDesktopOrder_ShouldBeDrawnHere_OrDeclaredByTheHost` |
 | `borrado-que-deja-los-nodos` | `FileFlow.App.Core/ViewModels/EditorViewModel.cs` | `SuprConSeleccionMixta_ShouldTakeNodesAndWires_WithOneUndo` | `SuprSobreLosCablesMarcados_ShouldDeleteThemAll_AndOneUndoShouldBringThemBack` |
 | `borrado-virtual-solo-ve-archivos` | `FileFlow.Sdk/Storage/VirtualStorageService.cs` | `VirtualStorageService_EnumerationAndDirectoryDeletion_ShouldOperateInTheStore` | `PhysicalStorageService_Enumeration_ShouldListImmediateContentOnly` |
-| `boton-del-nodo-que-no-avisa` | `FileFlow.App.Core/ViewModels/NodeViewModel.cs` | `TheNodeActionButton_ShouldShowTheDesktopOnlyWarning_InTheHostDialogs` | `DeclaringTheFrontier_ShouldShowItInTheHostDialogs` |
+| `boton-del-nodo-que-no-avisa` | `FileFlow.App.Core/ViewModels/NodeViewModel.cs` | `TheNodeActionButton_ShouldShowTheUnavailableSurfaceWarning_InTheHostDialogs` | `DeclaringTheFrontier_ShouldShowItInTheHostDialogs` |
 | `boton-probar-que-se-ofrece-sin-nodo` | `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | `InspectorPanel_ShouldOfferTheTestButton_OnlyWithAnInspectedNode` | `InspectorPanel_ShouldWireTheTestButtonThroughTheCanonicalCoreCommand` |
 | `bufer-de-lotes-heredado` | `FileFlow.Plugin.Logic/BatchBufferNode.cs` | `ExecuteAsync_WhenTheSameInstanceSeesAnotherExecution_ShouldNotMixThePendingItemsOfThePreviousOne` | `TheSamePrompt_ShouldOnlyBeComputedOnce` |
 | `cable-con-anclas-estimadas` | `FileFlow.App.Uno/Controls/EditorCanvasControl.Wires.cs` | `DrawWires_ShouldConsumeTheWrittenBackAnchors` | `Canvas_ShouldSubscribeToConnectionsCollectionChanged` |
@@ -59,7 +59,7 @@ Guardias que auditan el repositorio con mutación que las muerda: 17 de 35
 | `fila-de-presets-sin-su-boton` | `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | `EveryDesktopRowDialog_ShouldBeServedHere_OrDeclaredPending` | `TheWindowService_ShouldCoverEveryDialogKey_ServedOrDeclared` |
 | `fila-de-variables-que-abre-el-menu-que-no-esta-portado` | `FileFlow.App.Uno/Controls/NodeInspectorPanel.xaml.cs` | `EveryDesktopRowDialog_ShouldBeServedHere_OrDeclaredPending` | `EveryRowAction_ShouldBeDrawnOnTheSameRowsAsTheDesktop` |
 | `flujo-que-se-cumple-por-el-picker-sincrono` | `FileFlow.App.Uno/MainWindow.xaml.cs` | `TheFlowOrders_ShouldBeFulfilledByTheHostsOwnAsyncChannel_NotByTheSilentSyncOne` | `EveryEntry_ShouldRunACanonicalOrder_NotACopyOfIt` |
-| `frontera-de-escritorio-que-no-avisa` | `FileFlow.Sdk/Services/DesktopOnlySurface.cs` | `DeclaringTheFrontier_ShouldShowItInTheHostDialogs` | `NoPluginThatDrawsAWindow_ShouldReferenceTheToolkit_OutsideItsCondition` |
+| `frontera-que-no-avisa` | `FileFlow.Sdk/Services/UnavailableSurface.cs` | `DeclaringTheFrontier_ShouldShowItInTheHostDialogs` | `NoPluginThatDrawsAWindow_ShouldReferenceTheToolkit_OutsideItsCondition` |
 | `gesto-de-puerto-que-no-conecta` | `FileFlow.App.Uno/Controls/EditorCanvasControl.xaml.cs` | `TheSocketGesture_ShouldStartFollowAndDropTheCable_AndCancelWhatDoesNotLand` | `TheWireFigure_ShouldBeOneBezier_FromAnchorToAnchor` |
 | `gestor-de-claves-que-el-host-no-sirve` | `FileFlow.App.Uno/Platform/UnoWindowService.cs` | `ThePasswordManager_ShouldBeDeclaredByItsNodes_AndServedByTheHostThatOffersIt` | `TheMediaPresetManager_ShouldBeDeclaredByTheNode_AndPaintedByBothHosts` |
 | `gestor-de-presets-que-guarda-solo-en-su-copia` | `FileFlow.Plugin.Integrations/UI/ViewModels/MediaPresetManagerViewModel.cs` | `Saving_ShouldWriteThroughTheStore_NotOnlyInTheList` | `TheManager_ShouldOpenWithTheStoreCatalog_AndTheFirstOneChosen` |
@@ -170,7 +170,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 - **FileFlow.Plugin.Integrations**: `extension-de-preset-sin-punto-al-guardar`, `gestor-de-presets-que-guarda-solo-en-su-copia`, `gestor-que-borra-los-presets-del-sistema`, `gestor-que-borra-sin-preguntar`, `pregunta-de-borrado-por-la-via-sincrona`, `stderr-del-cli-que-se-desvanece`, `superficie-de-presets-sin-la-accion-que-sustituye`
 - **FileFlow.Plugin.Logic**: `bufer-de-lotes-heredado`, `lote-incompleto-perdido-al-terminar`
 - **FileFlow.Plugin.Network**: `dry-run-que-entrega-el-disparador`
-- **FileFlow.Sdk**: `borrado-virtual-solo-ve-archivos`, `frontera-de-escritorio-que-no-avisa`, `pasos-de-renombrado-ilegibles`, `salida-global-sin-expandir`
+- **FileFlow.Sdk**: `borrado-virtual-solo-ve-archivos`, `frontera-que-no-avisa`, `pasos-de-renombrado-ilegibles`, `salida-global-sin-expandir`
 - **FileFlow.Tests (infraestructura de pruebas)**: `catalogo-sin-carpeta-de-destino`, `censo-de-puertos-sin-su-asiento`, `contrato-de-colecciones-sin-su-regla`, `indice-de-pruebas-ciego-al-cr`, `portapapeles-sin-vigilante`, `proyeccion-uno-sin-guardia`
 
 Las que mutan la **declaración** de una guardia (el censo, el analizador) cuentan como infraestructura de pruebas, no como subsistema del producto: son 6.

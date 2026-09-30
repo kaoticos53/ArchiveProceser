@@ -11,10 +11,10 @@ namespace FileFlow.App.Uno.Controls;
 /// El explorador del SISTEMA DE ARCHIVOS VIRTUAL del host Uno: la vista del
 /// <see cref="VirtualFileSystemExplorerViewModel"/> portable, servida por <see cref="Platform.UnoWindowService"/>
 /// cuando una orden pide <c>DialogKeys.VirtualFileSystemExplorer</c> con el almacén de la última ejecución
-/// como carga útil — el mismo contrato del escritorio.
+/// como carga útil — el mismo contrato de la versión anterior.
 ///
-/// <para><b>El view model lo construye el host, no la vista</b> (igual que el <c>AvaloniaWindowService</c>
-/// del escritorio): recibe el almacén y arma él solo sus catálogos, sus filtros, su árbol y sus metadatos.
+/// <para><b>El view model lo construye el host, no la vista</b> (igual que el <c>el servicio de ventanas del host original</c>
+/// de la versión anterior): recibe el almacén y arma él solo sus catálogos, sus filtros, su árbol y sus metadatos.
 /// La vista sólo enlaza: el buscador escribe <c>SearchText</c>, la lista enlaza <c>FilteredFiles</c> y su
 /// selección enlaza <c>SelectedFile</c>, que es lo que dispara la carga de metadatos del propio view model.</para>
 /// </summary>

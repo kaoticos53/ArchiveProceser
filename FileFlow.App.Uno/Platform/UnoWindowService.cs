@@ -24,7 +24,7 @@ namespace FileFlow.App.Uno.Platform;
 /// <summary>
 /// El catálogo de VENTANAS Y DIÁLOGOS del host Uno: la implementación de <see cref="IWindowService"/>
 /// que los ViewModels del núcleo consultan pidiendo un diálogo por su clave (<see cref="DialogKeys"/>).
-/// Es el hermano Uno de <c>AvaloniaWindowService</c> y la pieza que faltaba para que el botón «{x}» de
+/// Es el hermano Uno de <c>el servicio de ventanas del host original</c> y la pieza que faltaba para que el botón «{x}» de
 /// un parámetro y el editor enriquecido de un texto dejasen de caer en el Nulo declarado.
 ///
 /// <para><b>Qué implementa y con qué.</b> Los tres diálogos que un usuario puede alcanzar en este host
@@ -213,11 +213,11 @@ public sealed class UnoWindowService : IWindowService
     /// todavía no tiene.
     ///
     /// <para><b>Por qué «Acerca de» es una ventana servida y no una declarada</b>: la orden canónica del
-    /// menú del escritorio (<c>OpenAboutDialogCommand</c>) la pide por aquí, y no lleva payload —el
+    /// menú de la versión anterior (<c>OpenAboutDialogCommand</c>) la pide por aquí, y no lleva payload —el
     /// contenido lo pone el host—, así que portar la entrada <i>es</i> servir esta clave. El host no abre
     /// una segunda ventana de Windows: la sirve como superficie modal dentro de la suya, que es la misma
-    /// información en el mismo sitio donde el usuario ya está mirando. <b>Diferencia declarada</b>: el
-    /// escritorio la abre como ventana NO modal y aquí es modal.</para>
+    /// información en el mismo sitio donde el usuario ya está mirando. <b>Diferencia declarada</b>: la
+    /// versión anterior la abre como ventana NO modal y aquí es modal.</para>
     ///
     /// <para>Las demás (Estudio de temas, Métricas, Explorador VFS, aviso de actualización —hito 260— y
     /// Diseñador de Datasets —hito 261—) tienen ya su vista sobre el view model portable, así que se sirven
@@ -360,17 +360,17 @@ public sealed class UnoWindowService : IWindowService
     /// <summary>
     /// El editor de URLs de descarga de un modelo (hito 262): la vista del
     /// <see cref="AiModelUrlsConfigViewModel"/> portable —la MISMA que envuelve el
-    /// <c>AiModelUrlsConfigDialog</c> del escritorio—, pedida por la MISMA orden canónica del gestor
+    /// <c>AiModelUrlsConfigDialog</c> de la versión anterior—, pedida por la MISMA orden canónica del gestor
     /// (<c>AiModelManagerViewModel.ConfigureUrlsCommand</c>, la del botón de la fila) y con la MISMA carga
     /// útil (el id del modelo).
     ///
-    /// <para><b>Dónde queda escrito el cambio</b>: en el mismo almacén que en el escritorio, porque lo
+    /// <para><b>Dónde queda escrito el cambio</b>: en el mismo almacén que en la versión anterior, porque lo
     /// escribe el view model portable —su <c>Save()</c> llama a <c>AiModelManager.SetCustomUrls(modelId, urls)</c>,
     /// que es lo que lee el motor de descargas—. El botón primario es ese <c>Save()</c>: si el view model
     /// <b>rechaza</b> lo escrito (ninguna URL válida), el diálogo NO se cierra y el cuerpo dice por qué (la
     /// petición de aviso del view model cae en la frontera ya medida de WinUI —un solo <c>ContentDialog</c>—
     /// así que el host la repite dentro del editor); si lo acepta, se cierra confirmado y el gestor refresca
-    /// el estado de la fila con esa respuesta, como el escritorio.</para>
+    /// el estado de la fila con esa respuesta, como la versión anterior.</para>
     /// </summary>
     private static async Task<DialogResultPayload?> ShowAiModelUrlsAsync(string modelId, XamlRoot root)
     {
@@ -406,10 +406,10 @@ public sealed class UnoWindowService : IWindowService
 
     /// <summary>
     /// El GESTOR DE PRESETS DE MEDIOS (hito 263): la vista del <see cref="MediaPresetManagerViewModel"/> portable
-    /// —el MISMO view model con el que el escritorio monta su ventana—, pedida por la MISMA acción que el
+    /// —el MISMO view model con el que la versión anterior monta su ventana—, pedida por la MISMA acción que el
     /// botón «🎬» de la fila del preset y el de la tarjeta del nodo (<c>ManageMediaPresets</c>).
     ///
-    /// <para><b>Dónde queda escrito el cambio</b>: en el mismo almacén que en el escritorio, porque lo escribe
+    /// <para><b>Dónde queda escrito el cambio</b>: en el mismo almacén que en la versión anterior, porque lo escribe
     /// el view model portable —sus órdenes llaman a <c>MediaPresetManagerService</c>, el que lee el motor de
     /// transcodificación—. Esta vista no toca el almacén: sólo enseña lo que el view model publica.</para>
     ///
@@ -439,7 +439,7 @@ public sealed class UnoWindowService : IWindowService
 
     /// <summary>
     /// El GESTOR DE CONTRASEÑAS: la vista del <see cref="PasswordManagerViewModel"/> portable —el MISMO view model
-    /// con el que el escritorio monta su ventana—, pedida por la MISMA acción que el botón de la fila del
+    /// con el que la versión anterior monta su ventana—, pedida por la MISMA acción que el botón de la fila del
     /// parámetro y el de la tarjeta del nodo (<c>ManagePasswords</c>).
     ///
     /// <para><b>Dónde queda escrito el cambio</b>: en el parámetro <c>PasswordList</c> del nodo, porque lo escribe
@@ -447,7 +447,7 @@ public sealed class UnoWindowService : IWindowService
     /// que el view model publica.</para>
     ///
     /// <para><b>Qué cierra el modal</b>: su botón primario guarda la lista y el de cerrar (o Escape) descarta, que
-    /// son las dos salidas del escritorio; el guardado es del view model y no de esta vista.</para>
+    /// son las dos salidas de la versión anterior; el guardado es del view model y no de esta vista.</para>
     /// </summary>
     private static async Task<DialogResultPayload?> ShowPasswordManagerAsync(PasswordManagerViewModel manager, XamlRoot root)
     {
@@ -478,7 +478,7 @@ public sealed class UnoWindowService : IWindowService
 
     /// <summary>
     /// El ESTUDIO DE RENOMBRADO AVANZADO: la vista del <see cref="AdvancedRenamerEditorViewModel"/> portable —el
-    /// MISMO view model con el que el escritorio monta su ventana—, pedida por la acción «🏷️ Pipeline de Métodos...»
+    /// MISMO view model con el que la versión anterior monta su ventana—, pedida por la acción «🏷️ Pipeline de Métodos...»
     /// de la tarjeta del nodo y por la fila del parámetro de renombrado.
     /// </summary>
     private static async Task<DialogResultPayload?> ShowAdvancedRenamerAsync(AdvancedRenamerEditorViewModel renamer, XamlRoot root)
@@ -528,7 +528,7 @@ public sealed class UnoWindowService : IWindowService
     }
 
     /// <summary>
-    /// La superficie «Acerca de»: el mismo contenido que la ventana del escritorio, con la versión de la
+    /// La superficie «Acerca de»: el mismo contenido que la ventana de la versión anterior, con la versión de la
     /// misma fuente que el pie del cajón. Si no hay raíz visual, o si ya hay un diálogo abierto (WinUI no
     /// admite dos a la vez), se declina con su motivo en vez de caer.
     /// </summary>
@@ -573,7 +573,7 @@ public sealed class UnoWindowService : IWindowService
         }
 
         // El texto confirmado es el del view model, por su propio método (`SaveResult`): así lo lee
-        // también el escritorio (`TextEditorDialogWindow.ResultText`).
+        // también la versión anterior (`TextEditorDialogWindow.ResultText`).
         vm.SaveResult();
         return new DialogResultPayload { Confirmed = true, Value = vm.ResultText };
     }
@@ -603,7 +603,7 @@ public sealed class UnoWindowService : IWindowService
         dialog.Resources["ContentDialogMaxWidth"] = 2400.0;
         dialog.Resources["ContentDialogMaxHeight"] = 1600.0;
 
-        // El botón sólo está vivo cuando hay algo que insertar (el mismo criterio que el escritorio,
+        // El botón sólo está vivo cuando hay algo que insertar (el mismo criterio que la versión anterior,
         // que deshabilita el suyo con el aviso «selecciona una variable»).
         void OnVmPropertyChanged(object? _, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -661,8 +661,8 @@ public sealed class UnoWindowService : IWindowService
     }
 
     /// <summary>
-    /// Muestra y PUBLICA un aviso del host que no es una ventana del catálogo (el aviso de la frontera del
-    /// escritorio, hito 270): deja el mismo estado de «hay un modal abierto» que <see cref="RunAsync"/>, y sin
+    /// Muestra y PUBLICA un aviso del host que no es una ventana del catálogo (el aviso de la frontera de la
+    /// versión anterior, hito 270): deja el mismo estado de «hay un modal abierto» que <see cref="RunAsync"/>, y sin
     /// él el host no veía el aviso. Dos consecuencias medidas, las dos mudas: un segundo
     /// <see cref="ContentDialog"/> (WinUI admite uno) quedaba detectado contra un estado que nadie escribía
     /// —<c>UnoDialogService.ShowCoreAsync</c> consulta <see cref="ActiveDialog"/> antes de abrir— y una sonda

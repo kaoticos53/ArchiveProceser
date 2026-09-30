@@ -4,7 +4,7 @@ using FileFlow.Core.Plugins;
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Política única de descubrimiento de plugins para todos los hosts (Avalonia, Uno, pruebas):
+/// Política única de descubrimiento de plugins para todos los hosts (interfaz y pruebas):
 /// registra los ensamblados oficiales incorporados, carga el directorio /Plugins junto a la
 /// aplicación y el de plugins del usuario, y hace un único barrido del AppDomain al final.
 /// Vivía copiado en cada host (este fichero en FileFlow.App y UnoPluginRegistry en

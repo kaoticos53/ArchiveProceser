@@ -4,8 +4,8 @@ using FileFlow.App.ViewModels;
 namespace FileFlow.App.Services;
 
 /// <summary>
-/// Paleta semantica de puertos: tipo de dato, color RGB. Los mismos bytes que pinta el
-/// escritorio en Styles/Ports.axaml (archivos=exito, texto=cian, booleano=ambar,
+/// Paleta semantica de puertos: tipo de dato, color RGB. Los mismos bytes que pinta la
+/// versión anterior en Styles/Ports.axaml (archivos=exito, texto=cian, booleano=ambar,
 /// numerico=primario, binario=purpura, coleccion=error, any=glow).
 ///
 /// <para>Decision de producto (que color habla cada tipo y como se comporta durante el
@@ -15,7 +15,7 @@ namespace FileFlow.App.Services;
 /// </summary>
 public static class PortPalette
 {
-    /// <summary>RGB por tipo de dato, los mismos bytes que el escritorio.</summary>
+    /// <summary>RGB por tipo de dato, los mismos bytes que la versión anterior.</summary>
     public static (byte R, byte G, byte B) TypeColor(PortTypeKind kind) => kind switch
     {
         PortTypeKind.Files => (0x10, 0xB9, 0x81),

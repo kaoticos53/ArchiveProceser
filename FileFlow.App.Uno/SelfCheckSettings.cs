@@ -169,7 +169,7 @@ internal static class SelfCheckSettings
                 // Se pulsa la ACCIÓN DIBUJADA de la fila (su peer de automatización, el mismo canal que un
                 // lector de pantalla), se escribe en la CAJA REAL del editor que se abre, se pulsa su botón
                 // primario y se comprueba DÓNDE acaba lo escrito: en el almacén del gestor del núcleo, que es
-                // el mismo sitio donde lo escribe el escritorio. Después se deja la configuración del usuario
+                // el mismo sitio donde lo escribe la versión anterior. Después se deja la configuración del usuario
                 // como estaba (instantánea previa, restaurada por las APIs del propio gestor).
                 const string probeUrl = "https://probe.invalid/fileflow.model.onnx";
                 string urlModelId = string.Empty;

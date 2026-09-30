@@ -27,7 +27,7 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 | [`docs/PROJECT_WALKTHROUGH.md`](file:///docs/PROJECT_WALKTHROUGH.md) | Bitácora cronológica de avances, refactorizaciones y métricas de tests: la **ventana viva** (el tramo en curso) más el índice del archivo frío. | **Lectura:** Contexto histórico.<br>**Escritura:** Registro obligatorio con fecha tras cada modificación. |
 | [`docs/history/`](file:///docs/history/) y [`.antigravity/knowledge/history/`](file:///.antigravity/knowledge/history/) | El **archivo frío**: las entradas de la bitácora y del resumen de sesión que dejaron de ser el día a día —**enteras, sin resumir**—, más los planes cerrados y los manuales superados. | **Lectura:** Cuando haga falta un dato de un hito viejo (el índice de la bitácora dice qué hay en cada archivo).<br>**Escritura:** Al hacer un corte de la ventana viva (protocolo de cierre, paso 4). |
 | [`.antigravity/knowledge/repo_architecture.md`](file:///.antigravity/knowledge/repo_architecture.md) | Documento vivo de la arquitectura de la solución, puertos y modelos. | **Lectura:** Antes de modificar contratos o estructuras de módulos.<br>**Escritura:** Al alterar contratos o añadir componentes estructurales. |
-| [`.agents/rules/rules.md`](file:///.agents/rules/rules.md) | Reglas técnicas de .NET 9, C# 13, threading, asincronía y desacoplamiento. | **Lectura:** Antes de escribir código en cualquier módulo. |
+| [`.agents/rules/rules.md`](file:///.agents/rules/rules.md) | Reglas técnicas de .NET 10, C# 14, multiplataforma, threading, asincronía y desacoplamiento. | **Lectura:** Antes de escribir código en cualquier módulo. |
 | [`.agents/architecture.md`](file:///.agents/architecture.md) | Síntesis arquitectónica rápida (Microkernel, DAG Engine, FileItemContext). | **Lectura:** Consulta rápida de patrones del motor. |
 | [`.antigravity/mcp.json`](file:///.antigravity/mcp.json) | Configuración de servidores MCP (memoria, filesystem, ripgrep) para búsqueda rápida sin lectura completa de archivos. | **Lectura:** Antes de explorar el repositorio o localizar símbolos. |
 
@@ -42,7 +42,7 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 | [`.agents/prompts/agent_prompts.md`](file:///.agents/prompts/agent_prompts.md) | Guías y secuencias de prompts especializadas para auditoría, refactorización y extensión. | **Lectura:** Para guiar auditorías por fases o tareas complejas. |
 | [`docs/architecture.md`](file:///docs/architecture.md) y [`docs/ARCHITECTURE_DEEP_DIVE.md`](file:///docs/ARCHITECTURE_DEEP_DIVE.md) | Documentación técnica profunda del diseño del sistema y flujo de datos. | **Lectura:** En tareas que involucren rediseño o extensiones mayores. |
 | [`docs/api_reference.md`](file:///docs/api_reference.md) | Referencia de interfaces públicas del SDK y Core. | **Lectura:** Al consultar contratos de interfaces (`IFlowNode`, `IFlowExecutionContext`, etc.). |
-| [`FileFlow.Uno.slnx`](file:///FileFlow.Uno.slnx) | Solución del **host Uno** (WinUI 3): su grafo sin la app de escritorio ni las pruebas, y el sabor de UI sin Avalonia. Compila con Visual Studio y con `dotnet build`. | **Lectura:** al compilar o depurar el host Uno.<br>**Escritura:** al añadir o quitar proyectos del host Uno. |
+| [`build-matrix.ps1`](file:///build-matrix.ps1) | Compila el host Uno para cada familia soportada (`-p:FileFlowTarget=windows|desktop|wasm|ios`). | **Lectura:** al preparar una entrega multiplataforma.<br>**Escritura:** al añadir o quitar una plataforma soportada. |
 | [`docs/notas_de_version.md`](file:///docs/notas_de_version.md) | Notas de versión para quien **usa** el producto: lo que ve, separado de lo que sostiene que eso no se rompa, más lo que sigue viéndose así. | **Lectura:** Al cerrar un tramo visible o al preparar una entrega.<br>**Escritura:** Al cerrar el tramo siguiente (apartado nuevo o notas nuevas si cambia la versión). Las cifras salen del walkthrough, no de la memoria. |
 
 ---
@@ -50,16 +50,17 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
 ## ⚙️ Principios Técnicos y Estándares de Código
 
 1. **Plataforma y Lenguaje:**
-   - **Target Framework:** `net10.0` (o `net10.0-windows` exclusivamente en la capa de UI `FileFlow.App`).
+   - **Target Framework:** `net10.0` en la capa portable; el host Uno (`FileFlow.App.Uno`) elige por plataforma con `FileFlowTarget`: `net10.0-windows10.0.19041.0`, `net10.0-desktop`, `net10.0-browserwasm` o `net10.0-ios`.
    - **Lenguaje:** `C# 14` (`<LangVersion>14</LangVersion>`).
    - **Tipos de referencia nulos activados:** `<Nullable>enable</Nullable>` de forma estricta.
-   - **Sincronización moderna:** Usar `System.Threading.Lock` de .NET 9/.NET 10 en lugar de `object` para bloqueos.
+   - **Sincronización moderna:** Usar `System.Threading.Lock` de .NET 10 en lugar de `object` para bloqueos.
 
 2. **Desacoplamiento Estricto por Capas:**
    - **`FileFlow.Sdk`**: Debe permanecer puro. Solo tipos base de C# 14 y contratos de interfaces. Sin dependencias de UI ni librerías pesadas.
-   - **`FileFlow.Plugin.*`**: Solo pueden referenciar `FileFlow.Sdk` y sus respectivas librerías de dominio (ej. `SharpCompress`, `ImageSharp`, `MetadataExtractor`). Nunca referenciar `FileFlow.Core` ni `FileFlow.App`.
+   - **`FileFlow.Plugin.*`**: Solo pueden referenciar `FileFlow.Sdk` y sus respectivas librerías de dominio (ej. `SharpCompress`, `ImageSharp`, `MetadataExtractor`). Nunca referenciar `FileFlow.Core`, `FileFlow.App.Core` ni `FileFlow.App.Uno`.
    - **`FileFlow.Core`**: Orquestador del motor DAG, carga dinámica de plugins (`AssemblyLoadContext`), ejecución en canales (`System.Threading.Channels` / `TPL Dataflow`) y serialización polimórfica.
-   - **`FileFlow.App`**: Capa de presentación WPF con Nodify y `CommunityToolkit.Mvvm`.
+   - **`FileFlow.App.Core`**: Capa de presentación **portable** (ViewModels y servicios sin framework de UI).
+   - **`FileFlow.App.Uno`**: El **único** host UI (Uno Platform sobre WinUI 3 / Skia / WASM / iOS) con `CommunityToolkit.Mvvm`.
 
 3. **I/O Asíncrono y Rendimiento en .NET 10:**
    - Métodos I/O de disco 100% asíncronos (`ValueTask` / `Task`) con propagación obligatoria de `CancellationToken`.
@@ -72,14 +73,14 @@ Antes de escanear archivos de código fuente o proponer cambios, **TODO AGENTE D
    - La manipulación del archivo de origen (conservar, mover a cuarentena, enviar a papelera o borrar) está centralizada exclusivamente en `OriginalFileActionNode`.
 
 5. **Localización e Internacionalización Obligatoria de la UI (i18n):**
-   - Todos los textos visibles en la interfaz de usuario (`FileFlow.App`), incluyendo menús, botones, telemetría, tooltips, nombres de categorías, nombres de nodos y etiquetas de parámetros de configuración (`DisplayName`), **deben soportar localización dinámica** (actualmente **Español (`es-ES`)** e **Inglés (`en-US`)**).
+   - Todos los textos visibles en la interfaz de usuario (`FileFlow.App.Uno`), incluyendo menús, botones, telemetría, tooltips, nombres de categorías, nombres de nodos y etiquetas de parámetros de configuración (`DisplayName`), **deben soportar localización dinámica** (actualmente **Español (`es-ES`)** e **Inglés (`en-US`)**).
    - Las claves y variables en el código se mantienen en inglés, mientras que la UI consume `LocalizationManager.Instance` y diccionarios de recursos (`Strings.resx` y `Strings.es.resx`).
    - El cambio de idioma debe reflejarse en caliente e instantáneamente en todas las vistas sin reiniciar la aplicación.
 
-6. **Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins / Zero-Touch en FileFlow.App):**
+6. **Co-ubicación y Autonomía Total de Código y Recursos por Plugin (Self-Contained Plugins / Zero-Touch en el host):**
    - **Todo el código, modelos de nodo, lógica de inferencia, herramientas y vistas modales (`UI/`), configuraciones (`Config/`) y recursos de cadenas de texto multilingües (`Resources/Strings.resx` y `Resources/Strings.es.resx`)** pertenecientes a cada plugin/nodo **DEBEN situarse exclusivamente dentro del directorio del propio plugin (`FileFlow.Plugin.*`)**.
-   - `FileFlow.App/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en `FileFlow.App`.
-   - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar `FileFlow.App`**.
+   - `FileFlow.App.Uno/Resources/` queda reservado estricta y exclusivamente para cadenas de la interfaz anfitriona (menús globales, drawer, barra de control, barra de estado, consola de logs y ajustes generales de la app). Ninguna clave de nodo o plugin debe colocarse en el host.
+   - La carga e integración de recursos se realiza de forma autónoma mediante auto-descubrimiento en `PluginLoader` y/o `IPluginInitializer`. Para añadir o modificar un plugin, **nunca se debe tocar el host**.
 
 7. **Arquitectura de Adaptadores de Modelo para Nodos con IA Intercambiable (Model Adapter Pattern / Zero-Assumption Ingestion):**
    - Los nodos y motores de inferencia (`FileFlow.Plugin.AI`) que admitan múltiples modelos intercambiables (ej. YOLO-World, TinyYOLO, YOLOv8, MobileNet, RMBG, UltraFace) **NUNCA deben asumir un preprocesado o decodificado monolítico/genérico** compartido para todos los modelos.
@@ -107,24 +108,18 @@ Para validar cualquier cambio, el agente debe ejecutar las suites de prueba corr
 # Ejecutar pruebas y generar reporte de cobertura de código
 .\coverage.ps1
 
-# Compilar y ejecutar la aplicación WPF (escritorio Avalonia)
-.\run.ps1
+# ─── Host único: Uno Platform ───
+# El host Uno es la ÚNICA interfaz del producto y compila con `dotnet build` sobre su proyecto.
+# `run.ps1` y `run-fast.ps1` son alias de `run-uno.ps1` / `run-uno-fast.ps1`.
+.\run.ps1                              # compila y lanza el host Uno
+.\run-fast.ps1                         # lanza sin compilar (.\run.ps1 -NoBuild)
 
-# Ejecutar la aplicación WPF directamente sin compilar
-.\run-fast.ps1   # o .\run.ps1 -NoBuild
+# Matriz de compilación multiplataforma (desktop + web; iOS con -IncludeIos en macOS)
+.\build-matrix.ps1
 
-# Sonda de autorrevisión del host de ESCRITORIO (arranca la app real sobre la plataforma headless con Skia
-# real, mide el lienzo con puntero inyectado por el pipeline de entrada y espera el veredicto: 0 = verificado;
-# el informe queda en FileFlow.App\bin\<config>\net10.0\selfcheck-report.txt)
+# Sonda de autorrevisión del host Uno (mide el lienzo con puntero inyectado y espera el veredicto:
+# 0 = verificado; el informe queda en FileFlow.App.Uno\bin\<config>\net10.0-windows10.0.19041.0\selfcheck-report.txt)
 .\run.ps1 -SelfCheck
-.\run-fast.ps1 -SelfCheck
-
-# ─── Host Uno Platform (WinUI 3) ───
-# El host Uno tiene SU solución (FileFlow.Uno.slnx) —la que se abre en Visual Studio— y compila con
-# `dotnet build`: esa solución deja fuera la app de escritorio, así que su binario no lleva una sola
-# DLL de Avalonia (hito 268). El sabor de UI lo elige el NOMBRE de la solución (ver Directory.Build.props).
-dotnet build FileFlow.Uno.slnx        # sabor Uno: el grafo sin el toolkit del escritorio
-.\run-uno.ps1                          # compila (dotnet build sobre esa solución) y lanza el host Uno
 
 # Lanzar el host Uno directamente sin compilar
 .\run-uno-fast.ps1

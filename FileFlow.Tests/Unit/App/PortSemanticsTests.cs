@@ -23,7 +23,7 @@ namespace FileFlow.Tests.Unit.App;
 [Collection("VisualSnapshots")]
 public class PortSemanticsTests : IDisposable
 {
-    public void Dispose() => AvaloniaTestHelper.SetCultureOnUI("es-ES");
+    public void Dispose() => HostUiTestHelper.SetCultureOnUI("es-ES");
 
     // ─────────────────────────────────────────────────────────────────────────────
     // Clasificación de tipos
@@ -252,12 +252,12 @@ public class PortSemanticsTests : IDisposable
         var refreshed = new List<string?>();
         port.PropertyChanged += (_, e) => refreshed.Add(e.PropertyName);
 
-        AvaloniaTestHelper.SetCultureOnUI("en-US");
+        HostUiTestHelper.SetCultureOnUI("en-US");
 
         refreshed.Should().Contain(nameof(PortViewModel.SocketToolTip));
         refreshed.Should().Contain(nameof(PortViewModel.ConnectionStatusText));
 
-        AvaloniaTestHelper.SetCultureOnUI("es-ES");
+        HostUiTestHelper.SetCultureOnUI("es-ES");
     }
 
     [Fact]

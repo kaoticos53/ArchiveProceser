@@ -1,37 +1,24 @@
 @echo off
-title FileFlow Studio - Launcher
+REM FileFlow Studio - Host Uno (WinUI 3) Launcher para Windows. Hermano .bat de run.ps1.
+setlocal
+set CONFIG=Debug
+set PROJECT=FileFlow.App.Uno\FileFlow.App.Uno.csproj
+set EXE=FileFlow.App.Uno\bin\%CONFIG%\net10.0-windows10.0.19041.0\FileFlow.App.Uno.exe
+
 echo =========================================
-echo   FileFlow Studio - Launcher Script
+echo   FileFlow Studio - Host Uno (WinUI 3)
 echo =========================================
-echo.
 
-if /i "%1"=="nobuild" goto launch
-if /i "%1"=="fast" goto launch
-if /i "%1"=="-nobuild" goto launch
-if /i "%1"=="--nobuild" goto launch
-
-echo Compilando la solucion FileFlow.slnx...
-dotnet build FileFlow.slnx -c Debug
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo [ERROR] La compilacion fallo. Revisa los errores.
-    pause
-    exit /b %ERRORLEVEL%
-)
-echo.
-echo Compilacion exitosa.
-
-:launch
-set EXE=FileFlow.App\bin\Debug\net10.0\FileFlow.App.exe
-if not exist "%EXE%" set EXE=FileFlow.App\bin\Release\net10.0\FileFlow.App.exe
-
-if not exist "%EXE%" (
-    echo [ERROR] No se encontro el ejecutable compilado.
-    echo Ejecuta run.bat sin parametros para compilar primero.
-    pause
+dotnet build "%PROJECT%" -c %CONFIG% --nologo -v:m
+if errorlevel 1 (
+    echo [ERROR] La compilacion del host Uno fallo.
     exit /b 1
 )
 
-echo Iniciando FileFlow Studio...
-start "" "%EXE%" %*
+if not exist "%EXE%" (
+    echo [ERROR] No se encontro el ejecutable en '%EXE%'.
+    exit /b 1
+)
 
+start "" "%EXE%" %*
+endlocal

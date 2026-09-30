@@ -15,7 +15,7 @@
 	RID de destino. Por defecto: win-x64.
 
 .PARAMETER SelfContained
-	Si es $true (por defecto), incluye el runtime de .NET 9.
+	Si es $true (por defecto), incluye el runtime de .NET 10.
 
 .EXAMPLE
 	./installer/build-portable.ps1
