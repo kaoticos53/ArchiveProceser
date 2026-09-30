@@ -33,7 +33,8 @@ public class EmptyWorkflowExecutionTests
         var result = await coordinator.RunAsync(Options(), _ => { }, CancellationToken.None);
 
         result.Succeeded.Should().BeFalse("no hay nada que ejecutar, así que no puede ser un éxito");
-        (result.ErrorMessage.Contains("ningún nodo") || result.ErrorMessage.Contains("no nodes")).Should().BeTrue();
+        result.ErrorMessage.Should().NotBeNull();
+        (result.ErrorMessage!.Contains("ningún nodo") || result.ErrorMessage!.Contains("no nodes")).Should().BeTrue();
         result.Cancelled.Should().BeFalse();
         coordinator.ActiveExecutor.Should().BeNull("ni siquiera llega a crearse el motor: no hay nada que ejecutar");
     }

@@ -33,7 +33,7 @@ public class WorkflowDiagnosisTests
 
         diagnosis.CanRun.Should().BeFalse("un flujo sin nodos no tiene nada que hacer");
         diagnosis.Errors.Should().ContainSingle().Which.Kind.Should().Be(DiagnosisKind.NoNodes);
-        diagnosis.ErrorSummary.Should().Contain("ningún nodo",
+        (diagnosis.ErrorSummary.Contains("ningún nodo") || diagnosis.ErrorSummary.Contains("no nodes")).Should().BeTrue(
             "es la frase que los dos puntos de entrada ya le decían al usuario por su cuenta");
         diagnosis.NodeCount.Should().Be(0);
     }

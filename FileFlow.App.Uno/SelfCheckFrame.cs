@@ -49,16 +49,16 @@ internal static class SelfCheckFrame
             var asa = marco.FrameToolboxSplitter;
             double start = marco.FrameToolboxColumn.ActualWidth;
             double widened = asa.DragBy(40);
-            window.Content.UpdateLayout();
+            window.Content?.UpdateLayout();
             check(Math.Abs(widened - (start + 40)) < 0.51
                     && Math.Abs(marco.FrameToolboxColumn.ActualWidth - widened) < 0.51,
                 $"el asa del cajón ensancha su columna y el marco lo aplica: {start:F0} -> {marco.FrameToolboxColumn.ActualWidth:F0}");
             double ceiling = asa.DragBy(100000);
-            window.Content.UpdateLayout();
+            window.Content?.UpdateLayout();
             check(marco.FrameCanvasColumn.ActualWidth >= marco.FrameCanvasColumn.MinWidth - 0.51,
                 $"el arrastre del asa no deja al lienzo por debajo de su mínimo: {marco.FrameCanvasColumn.ActualWidth:F0} de {marco.FrameCanvasColumn.MinWidth:F0} (tope del cajón {ceiling:F0})");
             asa.DragBy(start - ceiling);
-            window.Content.UpdateLayout();
+            window.Content?.UpdateLayout();
             check(Math.Abs(marco.FrameToolboxColumn.ActualWidth - start) < 0.51,
                 $"el asa devuelve la columna a su ancho de partida: {marco.FrameToolboxColumn.ActualWidth:F0} (era {start:F0})");
 
@@ -66,11 +66,11 @@ internal static class SelfCheckFrame
             double canvasBeforeCollapse = marco.FrameCanvasColumn.ActualWidth;
             double inspectorWidthBefore = marco.FrameInspectorColumn.ActualWidth;
             marco.ApplyInspectorVisibility(false);
-            window.Content.UpdateLayout();
+            window.Content?.UpdateLayout();
             check(marco.FrameInspectorColumn.ActualWidth < 0.51 && marco.FrameCanvasColumn.ActualWidth > canvasBeforeCollapse + (inspectorWidthBefore - 1),
                 $"al cerrar el inspector la columna colapsa a 0 y el lienzo recupera su espacio: lienzo {canvasBeforeCollapse:F0} -> {marco.FrameCanvasColumn.ActualWidth:F0} (+{marco.FrameCanvasColumn.ActualWidth - canvasBeforeCollapse:F0}px)");
             marco.ApplyInspectorVisibility(true);
-            window.Content.UpdateLayout();
+            window.Content?.UpdateLayout();
             check(Math.Abs(marco.FrameInspectorColumn.ActualWidth - inspectorWidthBefore) < 0.51,
                 $"al reabrir el inspector recupera su ancho previo: {marco.FrameInspectorColumn.ActualWidth:F0}px (era {inspectorWidthBefore:F0}px)");
         }

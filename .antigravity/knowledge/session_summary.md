@@ -13,6 +13,38 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 
 ## 0. Hito más reciente
 
+- **300. Activación de Multi-Targeting Multiplataforma (Linux / macOS Skia Desktop) (2026-09-30)**:
+  - **El encargo**: Plan y ejecución de cambios necesarios para funcionamiento multiplataforma (Linux, macOS, Web, Windows).
+  - **🔬 Diagnóstico**: `FileFlow.App.Uno.csproj` atado a Windows App SDK; llamadas a `WinRT.Interop` y APIs nativas de Windows en `MainWindow.xaml.cs` y `UnoFileDialogService.cs` sin directivas condicionales; falta de punto de entrada Skia Desktop (`Program.cs`) y colisión de miembros `Dispose` en `NodeToolboxPanel`.
+  - **🧱 Acciones**:
+    - `FileFlow.App.Uno.csproj` enriquecido con target condicional por SO (`net10.0-windows10.0.19041.0` en Windows, `net10.0-desktop` en Linux/macOS o con `-p:FileFlowTarget=desktop`).
+    - Creado `Program.cs` para Skia Desktop con `UnoPlatformHostBuilder.Create().App(() => new App()).UseX11().UseLinuxFrameBuffer().UseMacOS().UseWin32().Build().Run()` aislado bajo `#if HAS_UNO_SKIA`.
+    - `OwnPicker` condicionado a `#if WINDOWS`, `IsDown` con fallback seguro `try-catch` para no-Windows.
+    - Implementación explícita `IDisposable.Dispose()` en `NodeToolboxPanel` eliminando colisiones entre frameworks.
+    - `FirstDescendant<T>` usando `return default;`.
+    - Resiliencia cultural en `WorkflowDiagnosisTests.cs` admitiendo mensajes de diagnóstico en español e inglés.
+  - **📊 Validación del estado**:
+    - `dotnet build FileFlow.App.Uno -p:FileFlowTarget=desktop`: **0 Advertencia(s), 0 Errores**.
+    - `dotnet build FileFlow.Uno.slnx`: **0 Advertencia(s), 0 Errores**.
+    - `dotnet test FileFlow.slnx`: **1.755 pruebas superadas (100% de éxito)**.
+    - Sonda runtime: `-SelfCheck` verificado con código de salida 0.
+
+- **299. Corrección Limpia de Advertencias de Compilación en Origen (Cero Warnings) (2026-09-30)**:
+  - **El encargo**: Actualmente el compilador arroja numerosos warnings, corregirlos en el código de raíz sin que el compilador los ignore (sin pragmas ni NoWarn).
+  - **🔬 Diagnóstico**: Al compilar bajo C# 14 / .NET 10 y `<Nullable>enable</Nullable>`, existían advertencias de nulabilidad y tipos de referencia:
+    1. `MainWindow.xaml.cs(457)`: `_windowService` desreferenciado sin comprobación nula.
+    2. `Controls/EditorCanvasControl.xaml.cs(62)`: mismatch de delegado en `OnNodesHostLayoutUpdated(object sender, object e)` (debía ser `object? sender`).
+    3. `Platform/SocketConverters.cs`: `SocketMatrix.*(PortViewModel port)` recibiendo posible nulo de `value as PortViewModel` sin ramas para nulo ni valores por defecto en los converters.
+    4. `SelfCheckDialogs.cs`: `Probe<T>` devolvía `T?` sin operador coalesce `??` en asignaciones de cadenas (`pickerTitle`, `pickerListId`, `editorSeed`, `editorBoxId`, `editorTitle`, `catalogBeforeReset`, `surfaceName`); `Truncate` aceptaba `string` en vez de `string?`; y `canvas.Editor.Nodes` en la restauración de grafo carecía de operador elvis seguro.
+    5. `EmptyWorkflowExecutionTests.cs(36)`: desreferencia potencial de `result.ErrorMessage` sin aserción previa.
+  - **🧱 Acciones**:
+    - Corregidos todos los sitios de origen con chequeos defensivos, coalesce `?? string.Empty`, adaptación de firmas y métodos enriquecidos en `SocketMatrix` para devolver valores limpios (`Colors.Transparent`, `1.0`, etc.) ante valores nulos.
+    - Cero uso de directivas `#pragma warning disable` o `<NoWarn>` en proyectos.
+  - **📊 Validación del estado**:
+    - `dotnet build FileFlow.Uno.slnx`: **0 Advertencia(s), 0 Errores**.
+    - `dotnet test FileFlow.slnx`: **1.755 superadas (100%), 0 advertencias, 0 fallos**.
+    - Sondas runtime: `-SelfCheck` y `-SelfCheckDialogs` verificados con código de salida 0.
+
 - **298. Diálogo de Ajustes — Transformación de RadioButtons a Barra de Pestañas Moderna (Tab Bar) (2026-09-30)**:
   - **El encargo**: En el diálogo de ajustes de la imagen transformar todos esos radiobuttons de arriba en pestañas.
   - **🔬 Diagnóstico**: En `SettingsPanel.xaml`, las 6 secciones («Almacenamiento y Rutas», «Apariencia e Idioma», «Rendimiento y Ejecución», «Herramientas Externas», «Modelos de IA» y «Actualizaciones») se presentaban como controles `RadioButton` con su glifo circular clásico por defecto.

@@ -22,6 +22,76 @@
 
 ## Ventana viva
 
+## [2026-09-30] - Hito 300: Activación de Multi-Targeting Multiplataforma (Linux / macOS Skia Desktop)
+
+### 🎯 El encargo
+«haz un plan con todos los cambios necesarios para que funcione en todas las platadormas.» + aprobación del plan de ingeniería para ejecutar las Fases 1 y 2.
+
+### 🔬 El diagnóstico
+- `FileFlow.App.Uno.csproj` estaba atado a un único target de Windows (`net10.0-windows10.0.19041.0`) y referenciaba incondicionalmente paquetes exclusivos de Windows (`Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools`).
+- `MainWindow.xaml.cs` usaba `Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread` directamente sin directivas de plataforma ni fallback defensivo.
+- `UnoFileDialogService.cs` llamaba a `WinRT.Interop.InitializeWithWindow` sin condicional `#if WINDOWS`, lo que impediría la compilación en Linux/macOS.
+- Para el target `net10.0-desktop` (Skia Desktop), faltaba el punto de entrada `Program.cs` con el `UnoPlatformHostBuilder` bajo `#if HAS_UNO_SKIA`, y `EditorCanvasControl.xaml.cs` contenía un `return null;` en `FirstDescendant<T>` que violaba la restricción de tipo de valor en Skia.
+- `NodeToolboxPanel` definía `Dispose()`, entrando en colisión con el método heredado de `FrameworkElement` en Skia (`CS0108`), mientras que en Windows `new` emitía `CS0109`.
+
+### 🧱 El arreglo
+- **Multi-Targeting Dinámico y Seleccionable**:
+  - `FileFlow.App.Uno.csproj` ahora soporta selección automática según el sistema operativo o mediante el parámetro `-p:FileFlowTarget=desktop`:
+    - En Windows (`Windows_NT`): compila `net10.0-windows10.0.19041.0` por defecto.
+    - En Linux / macOS (`OS != Windows_NT`) o con `-p:FileFlowTarget=desktop`: compila `net10.0-desktop` (Skia Desktop para Linux X11/Wayland y macOS).
+  - Paquetes de Windows App SDK y configuraciones MSIX encapsulados bajo `Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"`.
+- **Punto de Entrada Skia Desktop (`Program.cs`)**:
+  - Creado `FileFlow.App.Uno/Program.cs` con `UnoPlatformHostBuilder.Create().App(() => new App()).UseX11().UseLinuxFrameBuffer().UseMacOS().UseWin32().Build().Run()` aislado bajo `#if HAS_UNO_SKIA`.
+- **Abstracción Limpia de APIs Nativas**:
+  - `UnoFileDialogService.cs`: `OwnPicker` protegido bajo `#if WINDOWS`.
+  - `MainWindow.xaml.cs`: `IsDown` protegido con `#if WINDOWS` y fallback seguro con `try-catch` para Skia Desktop.
+  - `EditorCanvasControl.xaml.cs`: `FirstDescendant<T>` migrado a `return default;`.
+  - `NodeToolboxPanel.xaml.cs`: `Dispose` implementado explícitamente (`void IDisposable.Dispose()`) con método auxiliar `UnsubscribeEvents()`, eliminando las colisiones `CS0108`/`CS0109` entre plataformas.
+  - Verificaciones defensivas de no-nulidad añadidas a `XamlRoot` en `DescribeFocused`, `DescribeThief`, `HoldsFocus` y `DescribeInspectorFocus`.
+- **Resiliencia Cultural en Pruebas**:
+  - `WorkflowDiagnosisTests.cs`: Comprobación adaptativa `diagnosis.ErrorSummary.Contains("ningún nodo") || diagnosis.ErrorSummary.Contains("no nodes")` para evitar fallos cuando la suite corre en culturas mixtas (`es-ES`/`en-US`).
+
+### 📊 Validación del estado
+- **Compilación Windows (`net10.0-windows10.0.19041.0`)**: **0 Advertencia(s), 0 Errores**.
+- **Compilación Linux / macOS Desktop (`net10.0-desktop`)**: **0 Advertencia(s), 0 Errores**.
+- **Compilación Solución `FileFlow.Uno.slnx`**: **0 Advertencia(s), 0 Errores**.
+- **Suite completa de pruebas (`dotnet test FileFlow.slnx`)**: **1.755 pruebas superadas (100%), 0 fallos, 0 errores**.
+- **Sonda Uno Runtime (`.\run-uno-fast.ps1 -SelfCheck`)**: **VERIFICADO (exit code 0)**.
+
+## [2026-09-30] - Hito 299: Corrección Limpia de Advertencias de Compilación en Origen (Cero Warnings)
+
+### 🎯 El encargo
+«actualmente el compilador arroja numerosos warnings corrigelos en el codigo, no hagas que el compilador los ignore simplemente sino corrige si arigen en el codigo.»
+
+### 🔬 El diagnóstico
+- Al compilar `FileFlow.Uno.slnx` con C# 14 y .NET 10 bajo `<Nullable>enable</Nullable>`, el compilador emitía advertencias relacionadas con nulabilidad y seguridad de tipos en el código de la capa Uno y tests auxiliares:
+  1. `MainWindow.xaml.cs(457)` (CS8602): Posible desreferencia nula de `_windowService` en la apertura de superficies/diálogos de datos.
+  2. `Controls/EditorCanvasControl.xaml.cs(62, 193)` (CS8622): Mismatch de nulabilidad en el manejador `OnNodesHostLayoutUpdated(object sender, object e)` frente al delegado `EventHandler<object>` (`object? sender`).
+  3. `Platform/SocketConverters.cs(65, 75, 85, 95, 123)` (CS8604): `SocketMatrix.*(PortViewModel port)` recibía el resultado de `value as PortViewModel` (`PortViewModel?`), pudiendo ser nulo en runtime sin fallback definido en el conversor.
+  4. `SelfCheckDialogs.cs` (CS8600, CS8604, CS8602): `Probe<T>` devolvía `T?`, asignado a `string` sin coalesce nulo en `pickerTitle`, `pickerListId`, `editorSeed`, `editorBoxId`, `editorTitle`, `catalogBeforeReset`, `surfaceName`; `Truncate` declaraba `string value` en lugar de `string? value` a pesar de que su cuerpo ya contemplaba `value ?? string.Empty`; y `canvas.Editor.Nodes` en la restauración de grafo carecía de comprobación segura de nulidad.
+  5. `FileFlow.Tests/Unit/App/EmptyWorkflowExecutionTests.cs(36)` (CS8602): Posible desreferencia nula de `result.ErrorMessage` al invocar `.Contains()`.
+
+### 🧱 El arreglo (en el código, sin supresión ni NoWarn)
+- **`MainWindow.xaml.cs`**:
+  - `_windowService` se resuelve con fallback seguro: `var windowService = _windowService ?? App.Services.GetService<IWindowService>(); windowService?.ShowWindow(surface.DialogKey, payload);`.
+- **`Controls/EditorCanvasControl.xaml.cs`**:
+  - Firma alineada con el delegado de WinUI 3: `private void OnNodesHostLayoutUpdated(object? sender, object e)`.
+- **`Platform/SocketConverters.cs`**:
+  - `SocketMatrix` enriquecido para aceptar `PortViewModel? port` con retornos seguros: `BorderColor`, `FillColor` y `TriangleFill` retornan `Colors.Transparent` si `port is null`; `Opacity` y `LabelOpacity` retornan `1.0` si `port is null` (o `0.3`/`0.35` si está atenuado).
+  - Convertidores tipados con `object? value` y `object? parameter` de acuerdo con la interfaz `IValueConverter`.
+- **`SelfCheckDialogs.cs`**:
+  - Adición de coalesce seguro `?? string.Empty` y `?? "Estudio de Scripts"` al resultado de las sondas `Probe(...)`.
+  - Firma de `Truncate` actualizada a `private static string Truncate(string? value)`.
+  - Comprobaciones elvis seguras en la restauración de grafo con `canvas?.Editor?.Nodes.Count`.
+- **`FileFlow.Tests/Unit/App/EmptyWorkflowExecutionTests.cs`**:
+  - Aserción de no-nulidad previa con FluentAssertions: `result.ErrorMessage.Should().NotBeNull();` antes de la comprobación de texto.
+
+### 📊 Validación del estado
+- **Compilación `FileFlow.Uno.slnx`**: **0 Advertencia(s), 0 Errores**.
+- **Compilación y Tests `FileFlow.slnx`**: **1.755 pruebas superadas (100%), 0 errores, 0 warnings**.
+- **Sonda Uno Runtime (`.\run-uno-fast.ps1 -SelfCheck`)**: **VERIFICADO (exit code 0)**.
+- **Sonda Uno Diálogos (`.\run-uno-fast.ps1 -SelfCheckDialogs`)**: **VERIFICADO (exit code 0)**.
+
 ## [2026-09-30] - Hito 298: Diálogo de Ajustes — Transformación de RadioButtons a Barra de Pestañas Moderna (Tab Bar)
 
 ### 🎯 El encargo

@@ -1,26 +1,36 @@
 <Project Sdk="Uno.Sdk/6.7.30">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
-    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <UseWinUI>true</UseWinUI>
+    <!-- Selección de plataforma: por defecto Windows nativo en Windows_NT, Skia Desktop en Linux/macOS, o explícito con -p:FileFlowTarget=desktop -->
+    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(FileFlowTarget)' == 'desktop'">net10.0-desktop</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(FileFlowTarget)' == 'wasm'">net10.0-browserwasm</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(OS)' == 'Windows_NT'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == '' and '$(OS)' != 'Windows_NT'">net10.0-desktop</TargetFramework>
     <UnoSingleProject>true</UnoSingleProject>
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UnoFeatures>Hosting;Configuration;Toolkit</UnoFeatures>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <WindowsPackageType>None</WindowsPackageType>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <ApplicationIcon>..\assets\FileFlow.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
     <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- =================================================================== -->
+  <!-- CONFIGURACIÓN ESPECÍFICA DE WINDOWS (WinUI 3 / Windows App SDK)      -->
+  <!-- =================================================================== -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.250903001" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
   </ItemGroup>

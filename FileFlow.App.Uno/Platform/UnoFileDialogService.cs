@@ -190,7 +190,9 @@ public sealed class UnoFileDialogService : IFileDialogService
     /// </summary>
     private static void OwnPicker(object picker, Window window)
     {
+#if WINDOWS
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(window));
+#endif
     }
 
     /// <summary>El patrón «Todos los archivos (*.*)|*.*» del contrato al FileTypeFilter de WinRT.</summary>

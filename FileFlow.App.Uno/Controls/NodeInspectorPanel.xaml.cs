@@ -546,7 +546,7 @@ public sealed partial class NodeInspectorPanel : UserControl
         try
         {
             return CanvasFocusTrace.Describe(
-                Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot), ancestors: 3);
+                XamlRoot is { } xr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xr) : null, ancestors: 3);
         }
         catch (Exception ex)
         {

@@ -43,7 +43,7 @@ internal static class SelfCheckTree
         return null;
     }
 
-    internal static T Find<T>(object? root) where T : class
+    internal static T? Find<T>(object? root) where T : class
     {
         if (root is T match)
         {
@@ -79,7 +79,7 @@ internal static class SelfCheckTree
     }
 
     /// <summary>El ascendiente de un tipo dado (el ContentPresenter del contenedor, p. ej.).</summary>
-    internal static T FindAscendant<T>(DependencyObject start) where T : DependencyObject
+    internal static T? FindAscendant<T>(DependencyObject start) where T : DependencyObject
     {
         var current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(start);
         while (current is not null)

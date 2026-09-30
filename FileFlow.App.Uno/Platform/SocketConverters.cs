@@ -28,11 +28,18 @@ public static class SocketMatrix
 
     public static Windows.UI.Color FreeFill => Rgb(PortPalette.FreeFill);
 
-    public static Windows.UI.Color BorderColor(PortViewModel port)
-        => port.IsDragSource ? Rgb(PortPalette.DragSourceBorder) : TypeColor(port.TypeKind);
+    public static Windows.UI.Color BorderColor(PortViewModel? port)
+        => port is null
+            ? Microsoft.UI.Colors.Transparent
+            : (port.IsDragSource ? Rgb(PortPalette.DragSourceBorder) : TypeColor(port.TypeKind));
 
-    public static Windows.UI.Color FillColor(PortViewModel port)
+    public static Windows.UI.Color FillColor(PortViewModel? port)
     {
+        if (port is null)
+        {
+            return Microsoft.UI.Colors.Transparent;
+        }
+
         if (port.IsDragSource)
         {
             return Rgb(PortPalette.DragSourceFill);
@@ -41,8 +48,13 @@ public static class SocketMatrix
         return port.IsConnected ? TypeColor(port.TypeKind) : FreeFill;
     }
 
-    public static Windows.UI.Color TriangleFill(PortViewModel port)
+    public static Windows.UI.Color TriangleFill(PortViewModel? port)
     {
+        if (port is null)
+        {
+            return Microsoft.UI.Colors.Transparent;
+        }
+
         if (port.IsDragSource)
         {
             return Rgb(PortPalette.DragSourceFill);
@@ -51,57 +63,57 @@ public static class SocketMatrix
         return port.IsConnected ? TypeColor(port.TypeKind) : FreeFill;
     }
 
-    public static double Opacity(PortViewModel port)
-        => port.IsDimmedDuringDrag ? 0.3 : 1.0;
+    public static double Opacity(PortViewModel? port)
+        => port?.IsDimmedDuringDrag == true ? 0.3 : 1.0;
 
-    public static double LabelOpacity(PortViewModel port)
-        => port.IsDimmedDuringDrag ? 0.35 : 1.0;
+    public static double LabelOpacity(PortViewModel? port)
+        => port?.IsDimmedDuringDrag == true ? 0.35 : 1.0;
 }
 
 /// <summary>El color de borde/stroke del socket según tipo y estado de arrastre.</summary>
 public class SocketColorConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object? parameter, string language)
         => new SolidColorBrush(SocketMatrix.BorderColor(value as PortViewModel));
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException();
 }
 
 /// <summary>El relleno del socket: libre=hueco, conectado=color del tipo, origen de arrastre=primario.</summary>
 public class SocketFillConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object? parameter, string language)
         => new SolidColorBrush(SocketMatrix.FillColor(value as PortViewModel));
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException();
 }
 
 /// <summary>El relleno del triángulo booleano, con la misma matriz.</summary>
 public class SocketTriangleFillConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object? parameter, string language)
         => new SolidColorBrush(SocketMatrix.TriangleFill(value as PortViewModel));
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException();
 }
 
 /// <summary>La opacidad del socket durante un arrastre (el resto de puertos se atenúa a 0.3).</summary>
 public class SocketStateOpacityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object? parameter, string language)
         => SocketMatrix.Opacity(value as PortViewModel);
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException();
 }
 
 /// <summary>El radio de esquina del socket según su forma (círculo píldora, rombo reducido, resto 3).</summary>
 public class SocketRadiusConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object? parameter, string language)
     {
         var shape = value is PortViewModel port ? port.SocketShape : PortSocketShape.Square;
         return shape switch
@@ -112,16 +124,16 @@ public class SocketRadiusConverter : IValueConverter
         };
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException();
 }
 
 /// <summary>La opacidad de la etiqueta del puerto (se atenúa menos que el socket: 0.35).</summary>
 public class SocketLabelOpacityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object Convert(object? value, Type targetType, object? parameter, string language)
         => SocketMatrix.LabelOpacity(value as PortViewModel);
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException();
 }

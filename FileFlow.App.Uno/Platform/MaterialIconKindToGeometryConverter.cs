@@ -47,10 +47,10 @@ public class MaterialIconKindToGeometryConverter : IValueConverter
     /// sin un <c>Source</c> auto-referencial.
     /// </summary>
     public static Microsoft.UI.Xaml.Media.Geometry ToGeometry(MaterialIconKind kind)
-        => (Microsoft.UI.Xaml.Media.Geometry)Instance.Convert(kind, typeof(Microsoft.UI.Xaml.Media.Geometry), null, "en-US")
+        => (Instance.Convert(kind, typeof(Microsoft.UI.Xaml.Media.Geometry), null, "en-US") as Microsoft.UI.Xaml.Media.Geometry)
            ?? Microsoft.UI.Xaml.Media.Geometry.Empty;
 
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object? Convert(object? value, Type targetType, object? parameter, string language)
     {
         if (value is not MaterialIconKind kind)
         {
@@ -168,6 +168,6 @@ public class MaterialIconKindToGeometryConverter : IValueConverter
         return copy;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, string language)
         => throw new NotSupportedException("La geometría del icono no vuelve a convertirse en Kind.");
 }

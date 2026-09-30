@@ -268,10 +268,10 @@ internal static class SelfCheckDialogs
                     "pulsar «{x}» abre el CATÁLOGO DE VARIABLES del host (el diálogo está abierto)");
 
                 int catalogSize = Probe(() => UnoWindowService.ActivePicker?.Vm?.FilteredVariables.Count ?? -1);
-                string pickerTitle = Probe(() => UnoWindowService.ActiveDialog?.Title?.ToString() ?? string.Empty);
+                string pickerTitle = Probe(() => UnoWindowService.ActiveDialog?.Title?.ToString() ?? string.Empty) ?? string.Empty;
                 string pickerListId = Probe(() => UnoWindowService.ActivePicker is { } body
                     ? Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(body.Variables)
-                    : string.Empty);
+                    : string.Empty) ?? string.Empty;
                 Check(catalogSize > 0,
                     "el catálogo abre POBLADO desde el descubrimiento del núcleo: " + catalogSize + " variables");
                 Check(pickerTitle.Length > 0 && pickerListId == "VariablePickerList",
@@ -432,11 +432,11 @@ internal static class SelfCheckDialogs
                 Check(editorPressed && editorOpen,
                     "pulsar «✎» en la fila del texto largo abre el EDITOR DE TEXTO del host");
 
-                string editorSeed = Probe(() => UnoWindowService.ActiveEditor?.Editor.Text ?? string.Empty);
+                string editorSeed = Probe(() => UnoWindowService.ActiveEditor?.Editor.Text ?? string.Empty) ?? string.Empty;
                 string editorBoxId = Probe(() => UnoWindowService.ActiveEditor is { } body
                     ? Microsoft.UI.Xaml.Automation.AutomationProperties.GetAutomationId(body.Editor)
-                    : string.Empty);
-                string editorTitle = Probe(() => UnoWindowService.ActiveDialog?.Title?.ToString() ?? string.Empty);
+                    : string.Empty) ?? string.Empty;
+                string editorTitle = Probe(() => UnoWindowService.ActiveDialog?.Title?.ToString() ?? string.Empty) ?? string.Empty;
                 Check(string.Equals(editorSeed, seedLong, StringComparison.Ordinal),
                     "el editor abre con el VALOR de la fila, no vacío: '" + Truncate(editorSeed) + "'");
                 Check(editorBoxId == "TextEditorBox" && editorTitle.Length > 0,
@@ -732,7 +732,7 @@ internal static class SelfCheckDialogs
                 // La OTRA orden destructiva del gestor —«Restablecer» vacía el catálogo del usuario— pregunta
                 // igual. La sonda la CANCELA: medir no es configurar.
                 int presetsBeforeReset = Probe(() => presetStore.GetPresets().Count);
-                string catalogBeforeReset = Probe(() => string.Join("|", presetStore.GetPresets().Select(p => p.Id)));
+                string catalogBeforeReset = Probe(() => string.Join("|", presetStore.GetPresets().Select(p => p.Id))) ?? string.Empty;
                 bool resetPressed = Step(() =>
                 {
                     Button? reset = UnoWindowService.ActivePresetManager?.ResetAction;
@@ -1036,7 +1036,7 @@ internal static class SelfCheckDialogs
                 // El nombre de la ventana que el aviso tiene que nombrar lo pone el diccionario del plugin (el
                 // host no escribe las palabras): la sonda lo lee en vez de fijar un literal de un idioma.
                 string surfaceName = Probe(() => FileFlow.Sdk.Localization.LocalizationManager.Instance.GetString(
-                    "ScriptStudio_Title", "Estudio de Scripts"));
+                    "ScriptStudio_Title", "Estudio de Scripts")) ?? "Estudio de Scripts";
                 bool desktopOnlyPressed = desktopOnlyAnchored && Step(() =>
                     UnoWindowService.Press(inspector!.ActionControl(desktopOnlyAction)!));
 
@@ -1065,12 +1065,12 @@ internal static class SelfCheckDialogs
                 // ── 5. La escena vuelve a como estaba ──
                 bool graphRestored = Step(() =>
                 {
-                    for (int i = 0; i < 8 && canvas!.Editor!.Nodes.Count > nodesBefore; i++)
+                    for (int i = 0; i < 8 && canvas?.Editor?.Nodes.Count > nodesBefore; i++)
                     {
                         canvas.Editor.UndoRedoService.Undo();
                     }
 
-                    return canvas.Editor.Nodes.Count == nodesBefore;
+                    return canvas?.Editor?.Nodes.Count == nodesBefore;
                 });
                 Check(graphRestored,
                     "el nodo añadido se retira con Undo: el grafo vuelve a " + nodesBefore + " nodo(s)");
@@ -1120,7 +1120,7 @@ internal static class SelfCheckDialogs
         !p.IsToggle && !p.IsSlider && !p.IsDropdown && !p.HasBrowseButton && !p.IsMultiLine;
 
     /// <summary>Un valor para los renglones de medición: entero, en una línea, sin desbordar el informe.</summary>
-    private static string Truncate(string value)
+    private static string Truncate(string? value)
     {
         string flat = (value ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ');
         return flat.Length <= 48 ? flat : flat[..48] + "…";

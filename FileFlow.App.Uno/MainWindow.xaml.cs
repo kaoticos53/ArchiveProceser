@@ -26,7 +26,7 @@ public sealed partial class MainWindow : Window
 {
     /// <summary>Quién tiene el foco según el gestor, en palabras (tipo, nombre y ancestros).</summary>
     private static string ReadFocused(UIElement root) => CanvasFocusTrace.Describe(
-        Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(root.XamlRoot), ancestors: 6);
+        root?.XamlRoot is { } xr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xr) : null, ancestors: 6);
 
     /// <summary>
     /// El enrutador del teclado del editor (hito 252): las teclas no consumidas por nadie van al lienzo.
@@ -59,14 +59,29 @@ public sealed partial class MainWindow : Window
         // resolvió SIN que el lienzo fuera dueño del foco, y de quién lo tenía cuando llegó.
         CanvasFocusTrace.Write($"enrutado tecla={e.Key} consumido={consumed} "
                              + $"enfocado={CanvasFocusTrace.Describe(
-                                 Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(Content.XamlRoot), 3)}");
+                                 Content?.XamlRoot is { } cxr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(cxr) : null, 3)}");
     }
 
     /// <summary>¿Está esa tecla pulsada ahora mismo? (los modificadores de los atajos del menú).</summary>
-    private static bool IsDown(Windows.System.VirtualKey key) =>
-        Microsoft.UI.Input.InputKeyboardSource
+    private static bool IsDown(Windows.System.VirtualKey key)
+    {
+#if WINDOWS
+        return Microsoft.UI.Input.InputKeyboardSource
             .GetKeyStateForCurrentThread(key)
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+#else
+        try
+        {
+            return Microsoft.UI.Input.InputKeyboardSource
+                .GetKeyStateForCurrentThread(key)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        }
+        catch
+        {
+            return false;
+        }
+#endif
+    }
 
     /// <summary>El cuadro de mando del núcleo (sus órdenes las cumplen los manejadores de esta ventana).</summary>
     private ControlBarViewModel? _controlBar;
@@ -454,7 +469,8 @@ public sealed partial class MainWindow : Window
         object? payload = surface.CreateDialogPayload(new NodeCustomActionContext(
             Dialogs: App.Services.GetRequiredService<IDialogService>()));
         CanvasFocusTrace.Write("menu datos=abierto clave=" + surface.DialogKey);
-        _windowService.ShowWindow(surface.DialogKey, payload);
+        var windowService = _windowService ?? App.Services.GetService<IWindowService>();
+        windowService?.ShowWindow(surface.DialogKey, payload);
     }
 
     // ───────────────────────────────────────────────────────────────────────────────

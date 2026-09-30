@@ -23,7 +23,7 @@ namespace FileFlow.App.Uno.Controls;
 /// arrastre fino queda pendiente de la sesión con puntero real, igual que el cajón del escritorio en
 /// su día.
 /// </summary>
-public sealed partial class NodeToolboxPanel : UserControl
+public sealed partial class NodeToolboxPanel : UserControl, IDisposable
 {
     private ToolboxViewModel? _vm;
     private EditorViewModel? _editor;
@@ -431,10 +431,15 @@ public sealed partial class NodeToolboxPanel : UserControl
             }
         }
 
-        return null;
+        return default;
     }
 
-    public void Dispose()
+    void IDisposable.Dispose()
+    {
+        UnsubscribeEvents();
+    }
+
+    public void UnsubscribeEvents()
     {
         LocalizationManager.Instance.LanguageChanged -= OnLanguageChanged;
         if (_vm is not null)

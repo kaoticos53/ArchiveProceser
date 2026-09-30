@@ -110,7 +110,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// hito 252. La cadena es lo que identifica al ladrón cuando el que recibe el foco es anónimo (un
     /// <c>ScrollViewer</c> del inspector): con ella el rastro dice a qué panel pertenece.</summary>
     private string DescribeFocused() => CanvasFocusTrace.Describe(
-        Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot), ancestors: 5);
+        XamlRoot is { } xr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xr) : null, ancestors: 5);
 
     /// <summary>
     /// La ficha del elemento que tiene el foco, para identificarlo cuando NO está en el árbol visual: tipo y
@@ -120,7 +120,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// </summary>
     private string DescribeThief()
     {
-        object? focused = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot);
+        object? focused = XamlRoot is { } xr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xr) : null;
         if (focused is not FrameworkElement element)
         {
             return CanvasFocusTrace.Describe(focused, ancestors: 3);
@@ -190,7 +190,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// <summary>Queda al menos una reconstrucción cuyos contenedores aún no recibieron su posición.</summary>
     private bool _positionsPending = true;
 
-    private void OnNodesHostLayoutUpdated(object sender, object e)
+    private void OnNodesHostLayoutUpdated(object? sender, object e)
     {
         if (!_positionsPending)
         {
@@ -1273,7 +1273,7 @@ public sealed partial class EditorCanvasControl : UserControl
             }
         }
 
-        return null;
+        return default;
     }
 
     private readonly List<(NodeCardView View, EventHandler<PortViewModel> Socket, EventHandler<PortViewModel> Disconnect)> _socketWiring = new();
@@ -1462,7 +1462,7 @@ public sealed partial class EditorCanvasControl : UserControl
             return false;
         }
 
-        var owner = Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot) as DependencyObject;
+        var owner = (XamlRoot is { } xr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xr) : null) as DependencyObject;
         if (IsTextInput(owner) || IsInsideSelf(owner) || IsInsideEditorPanel(owner))
         {
             return false;
@@ -1973,7 +1973,7 @@ public sealed partial class EditorCanvasControl : UserControl
     /// <remarks>Se pregunta al gestor de foco por el elemento enfocado: los dos hosts comparten la
     /// semántica «el foco del lienzo es el de su control», y el atajo sólo llega si es así.</remarks>
     private bool HoldsFocus() => ReferenceEquals(
-        Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(XamlRoot), this);
+        XamlRoot is { } xr ? Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xr) : null, this);
 
     /// <summary>El primer <see cref="Button"/> del subárbol (la barra de zoom), o null si no hay ninguno.</summary>
     private static Button? FirstButton(DependencyObject root)
