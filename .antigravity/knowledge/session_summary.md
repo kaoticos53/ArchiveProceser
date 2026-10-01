@@ -18,6 +18,7 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
     - **Web (WebAssembly)**: Se creó `installer/build-web.ps1` para compilar y empaquetar de forma automatizada los artefactos de `FileFlow.App.Browser.csproj` en `FileFlowStudio-Web-v1.0.0.zip` (22.3 MB con compresión Brotli activada), resolviendo carreras de concurrencia de MSBuild con `-m:1`.
     - **Windows**: Se validó la generación del paquete portable `FileFlowStudio-Portable-v1.0.0-win-x64.zip` (99.9 MB) con manuales PDF y ejemplos de flujo integrados, así como el instalador de Inno Setup (`FileFlow.iss` y `build-installer.ps1`).
     - **Orquestación**: Se actualizaron `publish-all.ps1` e `installer/build-all.ps1` incorporando flags `-IncludeMac` y `-IncludeWeb` para generar todas las distribuciones con un solo comando.
+    - **GitHub Actions Release Workflow ([`.github/workflows/release.yml`](file:///.github/workflows/release.yml))**: Reescrito y modernizado con matriz completa de 4 runners (`windows-latest`, `ubuntu-latest`, `macos-latest`) para compilar de forma paralela los instaladores de Windows (Inno Setup y Portable), Linux (.deb, AppImage, tarball), macOS (.dmg, .zip, .tar.gz para Apple Silicon e Intel) y Web (.zip WebAssembly con Brotli), publicando en GitHub Releases con sumas SHA-256 (`checksums.txt`).
   - **Artefactos validados**:
     - Windows Instalador Setup: `FileFlowStudio-Setup-1.0.0.exe` (88.4 MB con Inno Setup).
     - Windows Portable: `FileFlowStudio-Portable-v1.0.0-win-x64.zip` (99.9 MB).

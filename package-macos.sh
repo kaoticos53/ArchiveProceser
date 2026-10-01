@@ -13,7 +13,7 @@ echo -e "\033[0;36m  Versión: ${VERSION} | Arquitectura: ${ARCH}             \0
 echo -e "\033[0;36m==========================================================\033[0m"
 
 RID="osx-${ARCH}"
-WORK_DIR="${DIST_DIR}/macos_build"
+WORK_DIR="${DIST_DIR}/macos_build_${ARCH}"
 APP_BUNDLE="${DIST_DIR}/FileFlow Studio.app"
 
 rm -rf "${WORK_DIR}" "${APP_BUNDLE}"
@@ -50,9 +50,10 @@ if [ -f "${REPO_ROOT}/assets/FileFlow.png" ]; then
     cp "${REPO_ROOT}/assets/FileFlow.png" "${RESOURCES_DIR}/FileFlow.png"
 fi
 
-echo -e "\n\033[0;33m[3/3] Generando paquetes de distribución (ZIP y DMG)...\033[0m"
+echo -e "\n\033[0;33m[3/3] Generando paquetes de distribución (ZIP, TAR.GZ y DMG)...\033[0m"
 cd "${DIST_DIR}"
 zip -q -r "FileFlowStudio-v${VERSION}-${RID}.zip" "FileFlow Studio.app"
+tar -czf "FileFlowStudio-v${VERSION}-${RID}.tar.gz" "FileFlow Studio.app"
 
 if command -v hdiutil &> /dev/null; then
     hdiutil create -volname "FileFlow Studio" -srcfolder "FileFlow Studio.app" -ov -format UDZO "FileFlowStudio-v${VERSION}-${RID}.dmg"

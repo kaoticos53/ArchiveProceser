@@ -23,6 +23,9 @@
    - Validada la configuración de Inno Setup en [installer/FileFlow.iss](file:///installer/FileFlow.iss) y [installer/build-installer.ps1](file:///installer/build-installer.ps1).
 5. **Orquestación Global**:
    - [publish-all.ps1](file:///publish-all.ps1) y [installer/build-all.ps1](file:///installer/build-all.ps1) unificados y actualizados a .NET 10 con flags `-IncludeMac` y `-IncludeWeb`.
+6. **Workflow de GitHub Actions Modernizado ([`.github/workflows/release.yml`](file:///.github/workflows/release.yml))**:
+   - Actualizado a matriz multi-job completa: `build-windows` (Inno Setup `.exe` + Portable `.zip`), `build-linux` (Debian `.deb`, AppImage y `.tar.gz`), `build-macos` (Apple Silicon e Intel `.dmg`, `.zip` y `.tar.gz`), y `build-web` (WebAssembly estático `.zip`).
+   - El job `publish-release` descarga todos los paquetes con `merge-multiple: true`, genera automáticamente el manifiesto criptográfico SHA-256 (`checksums.txt`) y publica la release oficial en GitHub con notas estructuradas por sistema operativo.
 
 ### 📦 Artefactos Validados en `installer/output/`
 - Windows Instalador Setup: `FileFlowStudio-Setup-1.0.0.exe` (88.4 MB)
