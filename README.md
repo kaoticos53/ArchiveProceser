@@ -2,17 +2,17 @@
 
 <div align="center">
 
-![Platform](https://img.shields.io/badge/.NET-9.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
-![Language](https://img.shields.io/badge/C%23-13.0-239120?style=for-the-badge&logo=csharp&logoColor=white)
-![UI](https://img.shields.io/badge/WPF-Nodify%20MVVM-0078D4?style=for-the-badge&logo=windows&logoColor=white)
+![Platform](https://img.shields.io/badge/.NET-10.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Language](https://img.shields.io/badge/C%23-14.0-239120?style=for-the-badge&logo=csharp&logoColor=white)
+![UI](https://img.shields.io/badge/UI-Avalonia%2012%20(Cross--Platform)-9A4993?style=for-the-badge&logo=avalonia&logoColor=white)
 ![Nodes](https://img.shields.io/badge/Nodes-57%20DAG%20Nodes-38BDF8?style=for-the-badge&logo=diagram-next)
-![Tests](https://img.shields.io/badge/Tests-714%2F714%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=xunit)
+![Tests](https://img.shields.io/badge/Tests-1742%2F1742%20Passing%20(100%25)-brightgreen?style=for-the-badge&logo=xunit)
 ![Telemetry](https://img.shields.io/badge/Telemetry->82.000%20logs%2Fsec-blueviolet?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge&logo=gnu)
 
-**File automation, large-scale processing, and transformation engine powered by interactive Directed Acyclic Graphs (DAG) for Windows.**
+**File automation, large-scale processing, and transformation engine powered by interactive Directed Acyclic Graphs (DAG) for Windows, Linux, macOS, and Web (WebAssembly).**
 
-**Motor de automatización, procesamiento masivo y transformación de archivos basado en Grafos Dirigidos Acíclicos (DAG) interactivos para Windows.**
+**Motor de automatización, procesamiento masivo y transformación de archivos basado en Grafos Dirigidos Acíclicos (DAG) interactivos para Windows, Linux, macOS y Web (WebAssembly).**
 
 [🇬🇧 English](#-english) • [🇪🇸 Español](#-español)
 
@@ -24,7 +24,7 @@
 
 ### 🌟 Key Features
 
-- **Visual DAG Workflow Designer** with Nodify + MVVM.
+- **Cross-Platform Visual DAG Workflow Designer** powered by Avalonia 12 + Nodify + MVVM.
 - **High-performance async engine** using Channels and TPL Dataflow.
 - **Safe-by-default pipelines** with non-destructive behavior and Dry Run simulation.
 - **Local AI inference (ONNX Runtime)** for classification, OCR, detection, and semantic search.
@@ -36,36 +36,109 @@
 
 FileFlow Studio is organized in three main layers:
 
-- **FileFlow.App**: WPF UI (Nodify canvas + MVVM).
+- **FileFlow.App**: Cross-platform presentation layer (Avalonia 12 + Nodify canvas + MVVM).
+- **FileFlow.App.Browser**: WebAssembly host for running the visual pipeline builder in modern web browsers.
 - **FileFlow.Core**: DAG orchestration engine, validation, telemetry, plugin loading.
-- **FileFlow.Sdk**: core contracts (`IFlowNode`, `FileItemContext`, `IFlowExecutionContext`).
+- **FileFlow.Sdk**: Pure contracts (`IFlowNode`, `FileItemContext`, `IFlowExecutionContext`).
 
 Official plugins include: **FileSystem, Archives, Images, Network, AI, Documents, Data, Logic, Scripting, Integrations, Hashing**.
 
-### 🚀 Quick Start
+### 🛠️ Building & Running by Operating System
+
+#### 🪟 Windows (Desktop GUI & CLI)
+
+**Prerequisites**: [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ```powershell
+# 1. Clone repository
 git clone https://github.com/kaoticos53/ArchiveProceser.git
 cd ArchiveProceser
+
+# 2. Build desktop solution
 dotnet build FileFlow.slnx
-dotnet test FileFlow.slnx
+
+# 3. Launch the desktop GUI application
 .\run.ps1
+# Or quick launch without rebuilding:
+.\run.ps1 -Fast
+
+# 4. Run in Headless / CLI mode (command line execution of a pipeline)
+dotnet run --project FileFlow.App/FileFlow.App.csproj -- --run "path\to\workflow.json"
 ```
 
-### 📚 Documentation
+#### 🐧 Linux (Desktop GUI & Headless CLI)
 
-- [System Architecture](docs/architecture.md)
-- [System Specifications (SRS v2.0 Archive)](docs/history/2026-08_srs_especificaciones.md)
-- [User Manual](docs/manual_de_usuario.md)
-- [Testing Guide](docs/guia_de_pruebas.md)
-- [Architecture](docs/architecture.md)
-- [Project Walkthrough](docs/PROJECT_WALKTHROUGH.md)
+**Prerequisites**:
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- X11/Wayland runtime dependencies: `sudo apt install libx11-6 libx11-xcb1 libice6 libsm6 libfontconfig1` (Debian/Ubuntu) or `sudo dnf install libX11 libX11-xcb libICE libSM fontconfig` (Fedora).
+- 7-Zip CLI: `sudo apt install p7zip-full` or `sudo dnf install p7zip`.
 
-### 📄 License
+```bash
+# 1. Build desktop solution
+dotnet build FileFlow.slnx
 
-This project is licensed under **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE).
+# 2. Launch the desktop GUI application
+./run.sh
+# Or quick launch without rebuilding:
+./run.sh --fast
 
----
+# 3. Headless / CLI execution (ideal for servers and Docker containers)
+dotnet run --project FileFlow.App/FileFlow.App.csproj -- --run "/path/to/workflow.json"
+
+# 4. Generate self-contained native Linux binary
+dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r linux-x64 --self-contained
+```
+
+#### 🍎 macOS (Desktop GUI & CLI)
+
+**Prerequisites**:
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- 7-Zip CLI: `brew install sevenzip` or `brew install p7zip`
+
+```bash
+# 1. Build desktop solution
+dotnet build FileFlow.slnx
+
+# 2. Launch GUI via launcher script or dotnet
+./run.sh
+# Or directly via dotnet:
+dotnet run --project FileFlow.App/FileFlow.App.csproj
+
+# 3. Headless / CLI execution
+dotnet run --project FileFlow.App/FileFlow.App.csproj -- --run "/path/to/workflow.json"
+
+# 4. Publish self-contained macOS binary (Apple Silicon / Intel)
+dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r osx-arm64 --self-contained
+# For Intel Macs:
+dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r osx-x64 --self-contained
+```
+
+#### 🌐 Web (WebAssembly / Browser)
+
+**Prerequisites**: [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+```bash
+# 1. Build & Publish the WebAssembly project
+dotnet publish FileFlow.Browser.slnx -c Release
+
+# 2. Run local web server with hot-reload / dev server
+dotnet run --project FileFlow.App.Browser/FileFlow.App.Browser.csproj
+# Access the browser app at http://localhost:5000
+
+# 3. Static Web Hosting
+# The optimized static files (dotnet.wasm, HTML, JS) are generated in:
+# FileFlow.App.Browser/bin/Release/net10.0/browser-wasm/publish/wwwroot
+```
+
+### 🧪 Automated Testing
+
+```powershell
+# Windows
+.\test.ps1
+
+# Linux / macOS
+dotnet test FileFlow.Tests/FileFlow.Tests.csproj
+```
 
 ## 🇪🇸 Español
 
@@ -164,28 +237,94 @@ El nodo **`OperationReportNode`** permite obtener una visión ejecutiva y técni
 
 ---
 
-## 🚀 Inicio Rápido
+## 🛠️ Compilación y Ejecución por Sistema Operativo
 
-### Requisitos Previos
-- **Sistema Operativo**: Windows 10 / Windows 11 (x64)
-- **SDK**: [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+### 🪟 Windows (GUI de Escritorio y CLI / Headless)
 
-### Compilación y Ejecución
+**Requisitos**: [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 ```powershell
 # 1. Clonar el repositorio
 git clone https://github.com/kaoticos53/ArchiveProceser.git
 cd ArchiveProceser
 
-# 2. Compilar toda la solución
+# 2. Compilar la solución de escritorio
 dotnet build FileFlow.slnx
 
-# 3. Ejecutar la suite de pruebas automatizadas
-
-dotnet test FileFlow.slnx
-
-# 4. Lanzar la aplicación FileFlow Studio
+# 3. Lanzar la interfaz gráfica de usuario (GUI)
 .\run.ps1
+# O modo de arranque rápido (sin recompilar):
+.\run.ps1 -Fast
+
+# 4. Modo Headless / CLI (ejecutar un pipeline desde la consola de comandos sin UI)
+dotnet run --project FileFlow.App/FileFlow.App.csproj -- --run "ruta\a\tu_flujo.json"
+```
+
+### 🐧 Linux (GUI de Escritorio y CLI para Servidores / Docker)
+
+**Requisitos**:
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Librerías gráficas X11/Wayland:
+  - Ubuntu / Debian: `sudo apt install libx11-6 libx11-xcb1 libice6 libsm6 libfontconfig1`
+  - Fedora / RHEL: `sudo dnf install libX11 libX11-xcb libICE libSM fontconfig`
+  - Arch Linux: `sudo pacman -S libx11 libice libsm fontconfig`
+- Utilidad 7-Zip CLI: `sudo apt install p7zip-full` o `sudo dnf install p7zip`.
+
+```bash
+# 1. Compilar la solución
+dotnet build FileFlow.slnx
+
+# 2. Lanzar la interfaz gráfica de escritorio
+./run.sh
+# O arranque rápido sin recompilar:
+./run.sh --fast
+
+# 3. Modo Servidor / CLI (procesamiento por lotes desatendido sin entorno gráfico)
+dotnet run --project FileFlow.App/FileFlow.App.csproj -- --run "/ruta/a/tu_flujo.json"
+
+# 4. Generar ejecutable nativo autocontenido para Linux
+dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r linux-x64 --self-contained
+```
+
+### 🍎 macOS (GUI de Escritorio y CLI)
+
+**Requisitos**:
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- Utilidad 7-Zip: `brew install sevenzip` o `brew install p7zip`
+
+```bash
+# 1. Compilar la solución
+dotnet build FileFlow.slnx
+
+# 2. Iniciar la aplicación de escritorio
+./run.sh
+# O directamente vía dotnet:
+dotnet run --project FileFlow.App/FileFlow.App.csproj
+
+# 3. Ejecución por línea de comandos (Headless)
+dotnet run --project FileFlow.App/FileFlow.App.csproj -- --run "/ruta/a/tu_flujo.json"
+
+# 4. Publicar binario autocontenido para macOS (Apple Silicon M1/M2/M3/M4 o Intel)
+dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r osx-arm64 --self-contained
+# Para Macs con Intel:
+dotnet publish FileFlow.App/FileFlow.App.csproj -c Release -r osx-x64 --self-contained
+```
+
+### 🌐 Web (Navegador / WebAssembly)
+
+**Requisitos**: [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+```bash
+# 1. Compilar y publicar los artefactos WebAssembly
+dotnet publish FileFlow.Browser.slnx -c Release
+
+# 2. Ejecutar el servidor de desarrollo local
+dotnet run --project FileFlow.App.Browser/FileFlow.App.Browser.csproj
+# Abra su navegador en http://localhost:5000
+
+# 3. Despliegue en Servidor Web Estático
+# Los archivos estáticos optimizados y precomprimidos con Brotli (dotnet.wasm, HTML, JS) se ubican en:
+# FileFlow.App.Browser/bin/Release/net10.0/browser-wasm/publish/wwwroot
 ```
 
 ---
@@ -194,13 +333,18 @@ dotnet test FileFlow.slnx
 
 FileFlow Studio cuenta con una rigurosa suite de pruebas automatizadas con **100% de cobertura de éxito**:
 
-- **700+ pruebas unitarias, de integración y estrés** ejecutadas bajo xUnit y FluentAssertions.
+- **1.740+ pruebas unitarias, de integración y estrés** ejecutadas bajo xUnit y FluentAssertions.
 - **Aislamiento Total**: Entornos temporales con GUID para operaciones de disco y pruebas deterministas.
 - **Benchmarking Multihilo**: Pruebas de estrés que validan >82.000 logs/segundo en telemetría concurrente.
 
 ```powershell
-# Ejecutar pruebas y generar informe de cobertura
+# En Windows (suite completa de pruebas)
 .\test.ps1
+
+# En Linux / macOS
+dotnet test FileFlow.Tests/FileFlow.Tests.csproj
+
+# Análisis de cobertura de código
 .\coverage.ps1
 ```
 
