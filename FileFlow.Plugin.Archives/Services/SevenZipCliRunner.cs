@@ -13,7 +13,15 @@ public static class SevenZipCliRunner
     [
         @"C:\Program Files\7-Zip\7z.exe",
         @"C:\Program Files (x86)\7-Zip\7z.exe",
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\7-Zip\7z.exe")
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\7-Zip\7z.exe"),
+        "/usr/bin/7z",
+        "/usr/local/bin/7z",
+        "/usr/bin/7za",
+        "/usr/local/bin/7za",
+        "/usr/bin/7zz",
+        "/usr/local/bin/7zz",
+        "/opt/homebrew/bin/7z",
+        "/opt/homebrew/bin/7zz"
     ];
 
     private static string? s_cachedSevenZipPath;
@@ -21,7 +29,7 @@ public static class SevenZipCliRunner
     private static readonly System.Threading.Lock s_cacheLock = new();
 
     /// <summary>
-    /// Busca la ruta del ejecutable 7z.exe en el sistema o valida la ruta personalizada proporcionada.
+    /// Busca la ruta del ejecutable de 7-Zip (7z/7za/7zz) en el sistema o valida la ruta personalizada proporcionada.
     /// </summary>
     public static string? FindSevenZipExecutable(string? customPath = null)
     {
@@ -56,24 +64,23 @@ public static class SevenZipCliRunner
             if (!string.IsNullOrEmpty(pathEnv))
             {
                 var paths = pathEnv.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                string[] candidateNames = OperatingSystem.IsWindows()
+                    ? ["7z.exe", "7za.exe", "7zz.exe"]
+                    : ["7z", "7za", "7zz", "7z.exe", "7za.exe"];
+
                 foreach (var dir in paths)
                 {
                     try
                     {
-                        var candidate = Path.Combine(dir, "7z.exe");
-                        if (File.Exists(candidate))
+                        foreach (var name in candidateNames)
                         {
-                            s_cachedSevenZipPath = candidate;
-                            s_cacheChecked = true;
-                            return candidate;
-                        }
-
-                        var candidateZa = Path.Combine(dir, "7za.exe");
-                        if (File.Exists(candidateZa))
-                        {
-                            s_cachedSevenZipPath = candidateZa;
-                            s_cacheChecked = true;
-                            return candidateZa;
+                            var candidate = Path.Combine(dir, name);
+                            if (File.Exists(candidate))
+                            {
+                                s_cachedSevenZipPath = candidate;
+                                s_cacheChecked = true;
+                                return candidate;
+                            }
                         }
                     }
                     catch { }
@@ -112,7 +119,7 @@ public static class SevenZipCliRunner
                 TotalEntriesCount: 0,
                 EngineUsed: "SevenZipCLI",
                 ValidPasswordUsed: null,
-                ErrorMessage: "El ejecutable 7z.exe no fue encontrado en las rutas estándar de Windows ni en el PATH del sistema.",
+                ErrorMessage: "El ejecutable de 7-Zip (7z/7za) no fue encontrado en las rutas estándar del sistema ni en el PATH.",
                 Warnings: []);
         }
 

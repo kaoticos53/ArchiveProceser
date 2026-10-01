@@ -150,7 +150,8 @@ public class DrawerDataSetDesignerEntryTests
 
     /// <summary>Entrada del cajón del diseñador, localizada por su nombre en el XAML.</summary>
     private static Button? DrawerEntry(Window window) =>
-        window.FindControl<Button>("DrawerDataSetDesignerButton");
+        window.GetLogicalDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "DrawerDataSetDesignerButton")
+        ?? window.FindControl<Button>("DrawerDataSetDesignerButton");
 
     /// <summary>
     /// Ventana principal real (el XAML del cajón tal cual lo ve la aplicación) sobre los view models reales, con

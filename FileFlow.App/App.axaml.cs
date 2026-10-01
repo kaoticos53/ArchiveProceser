@@ -143,6 +143,47 @@ public partial class App : Application
                 _ = splash?.CloseWithFadeAsync();
             }
         }
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+        {
+            // Soporte para entornos Web (WebAssembly / Avalonia.Browser) y vistas únicas (SingleView)
+            var startup = new StartupOrchestrator(s_startupFailures);
+
+            startup.TryExecute(StartupPhase.Resources, RegisterHostResources);
+            startup.TryExecute(StartupPhase.Services, BuildServices);
+
+            IUserPreferencesService? preferences = null;
+            startup.TryExecute(StartupPhase.Preferences, () =>
+            {
+                preferences = LoadPreferences();
+            });
+
+            startup.TryExecute(StartupPhase.Theme, () =>
+            {
+                ApplySavedTheme();
+            });
+
+            FileFlow.Core.Plugins.PluginLoader? pluginLoader = null;
+            startup.TryExecute(StartupPhase.Plugins, () =>
+            {
+                pluginLoader = LoadPlugins();
+            });
+
+            startup.TryExecute(StartupPhase.Shell, () =>
+            {
+                var mainVm = Services.GetRequiredService<ViewModels.MainViewModel>();
+                var mainView = new Views.MainView
+                {
+                    DataContext = mainVm
+                };
+                singleView.MainView = mainView;
+                return mainView;
+            }, out Control? _);
+
+            if (!startup.IsAborted && preferences is not null)
+            {
+                StartBackgroundWork(preferences);
+            }
+        }
 
         base.OnFrameworkInitializationCompleted();
     }

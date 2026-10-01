@@ -25,10 +25,10 @@ jobs:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
+      - name: ⚙️ Configurar .NET 10.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: 📦 Restaurar dependencias
         run: dotnet restore FileFlow.slnx
@@ -86,7 +86,7 @@ jobs:
           retention-days: 7
 
   # -------------------------------------------------------------------------
-  # 2. Verificación de Compilación y Empaquetado en Linux
+  # 2. Verificación de Compilación, Pruebas y Empaquetado en Linux
   # -------------------------------------------------------------------------
   build-linux-validation:
     name: 🐧 Validar Compilación y Empaquetado Linux
@@ -96,15 +96,18 @@ jobs:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
-      - name: ⚙️ Configurar .NET 9.0 SDK
+      - name: ⚙️ Configurar .NET 10.0 SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: 🛠️ Instalar herramientas de Linux
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 file curl wget tar dpkg
+          sudo apt-get install -y libfuse2 file curl wget tar dpkg p7zip-full
+
+      - name: 🧪 Ejecutar pruebas unitarias en Linux
+        run: dotnet test FileFlow.Tests/FileFlow.Tests.csproj -c Release --verbosity normal
 
       - name: 🏗️ Validar generación de instaladores de Linux
         shell: pwsh

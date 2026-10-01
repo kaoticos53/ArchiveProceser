@@ -5,8 +5,8 @@
 > Regenerar: `FILEFLOW_UPDATE_MUTATION_COVERAGE=1 dotnet test --filter MutationDeclarationCoverageTests`.
 
 Mutaciones declaradas: 33
-Subsistemas del producto con alguna mutación: 10 de 15
-Guardias que auditan el repositorio con mutación que las muerda: 6 de 33
+Subsistemas del producto con alguna mutación: 10 de 16
+Guardias que auditan el repositorio con mutación que las muerda: 6 de 34
 
 ## Qué declara cada mutación
 
@@ -46,18 +46,19 @@ Guardias que auditan el repositorio con mutación que las muerda: 6 de 33
 | `token-de-tema-que-desaparece` | `FileFlow.App/Services/ThemeResourceApplier.cs` | `ThemeTokenCompletenessTests` | `DisabledStateLintTests` |
 | `validador-sin-materializar-puertos` | `FileFlow.Core/Engine/GraphValidator.cs` | `GraphValidatorDynamicPortTests` | `GraphValidatorTests` |
 
-## Subsistemas del producto sin ninguna mutación declarada (5 de 15)
+## Subsistemas del producto sin ninguna mutación declarada (6 de 16)
 
 Una mutación por comportamiento que importa; estos proyectos no tienen ninguna, así que ningún
 defecto declarado demuestra que sus pruebas muerdan. Es la lista de trabajo, no un reproche.
 
+- `FileFlow.App.Browser`
 - `FileFlow.Plugin.Documents`
 - `FileFlow.Plugin.Integrations`
 - `FileFlow.Plugin.Network`
 - `FileFlow.Plugin.Scripting`
 - `FileFlow.Plugin.Subflows`
 
-## Guardias del repositorio sin ninguna mutación que las muerda (27 de 33)
+## Guardias del repositorio sin ninguna mutación que las muerda (28 de 34)
 
 Las guardias que auditan el árbol (usan `SourceTree`, `TestRepositoryLocator` o `TestSuiteIndex`) y no
 aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostrado que muerdan.
@@ -69,6 +70,7 @@ aparecen como testigo de ninguna mutación: están escritas, y nadie ha demostra
 - `FileFlow.Tests/Unit/App/MutationDeclarationCoverageTests.cs`
 - `FileFlow.Tests/Unit/App/MutationDeclarationGuardTests.cs`
 - `FileFlow.Tests/Unit/App/NodeEmissionPortGuardTests.cs`
+- `FileFlow.Tests/Unit/App/SingleViewAppLifetimeTests.cs`
 - `FileFlow.Tests/Unit/App/SplashScreenStartupTests.cs`
 - `FileFlow.Tests/Unit/App/ThemeStudioCatalogTests.cs`
 - `FileFlow.Tests/Unit/App/ThemeVariantPropagationTests.cs`

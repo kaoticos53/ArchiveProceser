@@ -1,5 +1,81 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-10-01] - Auditoría Multiplataforma, Plan para Linux & Web y Cierre de Compatibilidad Linux (Hito 211)
+
+### 🎯 El encargo
+
+«Dime si la aplicación está actualmente lista para compilar y ejecutarse en entornos multiplataforma (Windows, Linux, macOS, iPadOS, Web, etc.). Haz un plan para que se pueda ejecutar completamente en Linux y Web, eliminando de momento iPadOS.»
+
+### 🔬 Diagnóstico y Hallazgos
+
+1. **Escritorio (Windows, Linux, macOS)**: La solución completa compila en `net10.0` y corre sobre Avalonia 12 (`Avalonia.Desktop`). Linux y macOS contaban con soporte casi total (~95%), pero existían dos fricciones puntuales:
+   - [ColorPickerService.cs](file:///FileFlow.App/Services/ColorPickerService.cs): Invocaba directamente la API Win32 `comdlg32.dll` (`ChooseColor`) sin comprobar el sistema operativo, lo que generaba `DllNotFoundException` al solicitar color personalizado en Linux/macOS.
+   - [SevenZipCliRunner.cs](file:///FileFlow.Plugin.Archives/Services/SevenZipCliRunner.cs): Buscaba únicamente ejecutables terminados en `.exe` (`7z.exe`, `7za.exe`). En distribuciones Linux y macOS los binarios se distribuyen sin extensión (`7z`, `7za`, `7zz`).
+2. **Móviles (iPadOS/iOS) y Web (WebAssembly)**: No estaban listos por falta de host (`ISingleViewApplicationLifetime`, `Avalonia.Browser`), incompatibilidad de carga dinámica de plugins por `AssemblyLoadContext` desde disco, y la necesidad de adaptar la ingesta de archivos por lotes sin acceso directo a disco del SO.
+
+### 📐 Plan Aprobado: Linux & Web (`linux_and_web_execution_plan.md`)
+
+Se definió una hoja de ruta en 4 fases:
+- **Fase 1**: Compatibilidad 100% Linux (P/Invoke seguro, 7z POSIX, CI con `ubuntu-latest`).
+- **Fase 2**: Desacoplamiento de UI (`MainWindow` a `MainView.axaml` + `ISingleViewApplicationLifetime`).
+- **Fase 3**: Host WebAssembly (`FileFlow.App.Browser` + `Avalonia.Browser`).
+- **Fase 4**: Motor Wasm (`StaticPluginRegistry`, File System Access API para navegador).
+
+### 🛠️ Implementación Fase 1 (Linux 100%)
+
+1. **`ColorPickerService` blindado**: Se añade la guarda `OperatingSystem.IsWindows()` en [ColorPickerService.cs](file:///FileFlow.App/Services/ColorPickerService.cs). En entornos Linux y macOS retorna `null` de forma segura sin disparar llamadas P/Invoke inválidas.
+2. **`SevenZipCliRunner` multiplataforma**:
+   - `Standard7zPaths` incorpora rutas estándar Linux y macOS (`/usr/bin/7z`, `/usr/local/bin/7z`, `/usr/bin/7za`, `/usr/local/bin/7za`, `/usr/bin/7zz`, `/usr/local/bin/7zz`, `/opt/homebrew/bin/7z`, `/opt/homebrew/bin/7zz`).
+   - La búsqueda en `$PATH` evalúa candidatos nativos (`7z`, `7za`, `7zz`) en sistemas no Windows.
+   - Mensajes de error desacoplados de Windows.
+3. **CI en Linux**:
+   - [.github/workflows/ci.yml](file:///.github/workflows/ci.yml) actualizado a .NET 10.0 LTS (`10.0.x`).
+   - Añadido paso formal de ejecución de suite de pruebas unitarias (`dotnet test FileFlow.Tests/FileFlow.Tests.csproj`) en runner `ubuntu-latest`.
+4. **Verificación de publicación y suite**:
+   - Publicación limpia comprobada para `linux-x64` (`dotnet publish -r linux-x64`).
+   - Nueva batería de pruebas: [ColorPickerServiceTests.cs](file:///FileFlow.Tests/Unit/App/ColorPickerServiceTests.cs).
+
+### 🛠️ Implementación Fase 2 (Desacoplamiento de UI y Soporte SingleView)
+
+1. **Extracción de `MainView.axaml`**:
+   - Se desacopla todo el árbol visual interactivo (lienzo Nodify, drawer, scrim de fondo, paneles flotantes, toolbox, barra de herramientas y consola de logs) desde `MainWindow.axaml` hacia el control de usuario independiente [MainView.axaml](file:///FileFlow.App/Views/MainView.axaml) y su code-behind [MainView.axaml.cs](file:///FileFlow.App/Views/MainView.axaml.cs).
+2. **Alojamiento en `MainWindow.axaml`**:
+   - [MainWindow.axaml](file:///FileFlow.App/MainWindow.axaml) queda convertido en un contenedor delgado que aloja `<views:MainView />`, heredando de forma limpia el `DataContext` del Shell sin interferir en el ciclo de vida de los controles hijos.
+3. **Soporte de Lifetimes en `App.axaml.cs`**:
+   - [App.axaml.cs](file:///FileFlow.App/App.axaml.cs) incorpora bifurcación de ciclo de vida:
+     - `IClassicDesktopStyleApplicationLifetime desktop`: asigna `MainWindow` con `DataContext = mainViewModel`.
+     - `ISingleViewApplicationLifetime singleView`: asigna `singleView.MainView = new MainView { DataContext = mainViewModel }`.
+4. **Actualización de Pruebas de UI y Regresión Visual**:
+   - [DrawerDataSetDesignerEntryTests.cs](file:///FileFlow.Tests/Unit/Views/DrawerDataSetDesignerEntryTests.cs): actualizado para localizar el botón del diseñador mediante `GetLogicalDescendants()` sobre `MainWindow.Content`.
+   - [WindowActivationContractTests.cs](file:///FileFlow.Tests/Unit/Views/WindowActivationContractTests.cs): actualizado para aceptar `MainView` como vista principal alojada.
+   - **Regresión visual intacta**: Las 12 pruebas de snapshot (`AppShellVisualRegressionTests`) pasan con 0 diferencias de píxeles.
+
+### 🛠️ Implementación Fase 3 (Host WebAssembly con Avalonia.Browser)
+
+1. **Creación del Proyecto `FileFlow.App.Browser`**:
+   - Creado [FileFlow.App.Browser.csproj](file:///FileFlow.App.Browser/FileFlow.App.Browser.csproj) configurado con el SDK `Microsoft.NET.Sdk.WebAssembly`, TargetFramework `net10.0`, RuntimeIdentifier `browser-wasm` y paquete `Avalonia.Browser` 12.1.2.
+   - Resuelto conflicto `NETSDK1150` referenciando `FileFlow.App` con `Properties="OutputType=Library"`.
+2. **Punto de Entrada Web y Assets HTML/JS**:
+   - [Program.cs](file:///FileFlow.App.Browser/Program.cs): arranca la aplicación en el DOM mediante `BuildAvaloniaApp().StartBrowserAppAsync("out")`.
+   - [index.html](file:///FileFlow.App.Browser/wwwroot/index.html) y [main.js](file:///FileFlow.App.Browser/wwwroot/main.js): integran el runtime WASM oficial de .NET y Avalonia.
+3. **Publicación y Verificación WebAssembly**:
+   - Compilación y publicación Release verificadas: `dotnet publish -c Release` genera artefactos Wasm optimizados y precomprimidos con Brotli (`dotnet.wasm`, `dotnet.js`, `_framework`).
+4. **Pruebas de Contrato de SingleView**:
+   - Creado [SingleViewAppLifetimeTests.cs](file:///FileFlow.Tests/Unit/App/SingleViewAppLifetimeTests.cs) verificando la compatibilidad de `ISingleViewApplicationLifetime`, instanciación de `MainView` en UI thread y existencia del proyecto Browser.
+5. **Robustez e Idempotencia en `SqliteLogStore`**:
+   - [SqliteLogStore.cs](file:///FileFlow.Core/Telemetry/SqliteLogStore.cs): añadido flag `_isDisposed` y captura de `ObjectDisposedException` para garantizar una liberación de recursos segura e idempotente en múltiples contenedores DI.
+
+### ✅ Validación Final
+
+- `dotnet test`: **1.742 superadas + 1 omitida de 1.743** (+4 tests respecto al hito 210), 0 errores.
+- Tiempo total de ejecución del suite: **251.99 s**.
+- Guardias de integridad (`NodeCatalogGuardTests` y `MutationDeclarationCoverageTests`): **Superadas al 100%**.
+- Cobertura de mutaciones: Actualizada en [mutations/COVERAGE.md](file:///mutations/COVERAGE.md).
+- Publicación WebAssembly: **Generada exitosamente**.
+- Publicación Linux Desktop: **Generada exitosamente**.
+
+---
+
 ## [2026-09-24] - La Carpeta de Salida del Flujo Vale una Carpeta en Cualquier Parámetro (Hito 210)
 
 ### 🎯 El encargo

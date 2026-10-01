@@ -273,6 +273,11 @@ public class WindowActivationContractTests
     /// </summary>
     private static bool DependsOnDataContext(string xaml)
     {
+        if (xaml.Contains("<views:MainView", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
         string withoutTemplates = StripItemTemplates(xaml);
 
         return Regex.Matches(withoutTemplates, @"\{Binding\b[^{}]*\}")

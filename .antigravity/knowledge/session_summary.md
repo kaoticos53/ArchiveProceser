@@ -10,6 +10,28 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **211. Multiplataforma Total: Linux 100%, Desacoplamiento de UI (`MainView`) y Host WebAssembly (`FileFlow.App.Browser`) (2026-10-01)**:
+  - **El encargo**: Diagnosticar si la aplicación está lista para compilar y ejecutarse en entornos multiplataforma (Windows, Linux, macOS, iPadOS, Web) y crear un plan para que funcione al 100% en Linux y Web, descartando iPad de momento.
+  - **Diagnóstico y plan**: Plan formal registrado y aprobado en `linux_and_web_execution_plan.md` (4 fases: Fase 1 Linux 100%, Fase 2 Desacoplamiento de UI `MainView`, Fase 3 Host WebAssembly, Fase 4 Motor Wasm).
+  - **Fase 1 (Linux 100%) completada**:
+    - `ColorPickerService.cs`: Protegido con `OperatingSystem.IsWindows()` para prevenir `DllNotFoundException` por P/Invoke a `comdlg32.dll` en Linux y macOS.
+    - `SevenZipCliRunner.cs`: Búsqueda extendida a rutas estándar Linux/macOS (`/usr/bin/7z`, `/usr/local/bin/7z`, `/usr/bin/7za`, `/opt/homebrew/bin/7z`, etc.) y detección de binarios en `$PATH` sin sufijo `.exe` (`7z`, `7za`, `7zz`). Mensaje de error neutral.
+    - CI GitHub Actions (`ci.yml`): Actualizado a .NET 10.0 LTS (`10.0.x`) e incorporación de ejecución de pruebas unitarias sobre `ubuntu-latest`.
+    - Verificación: Publicación comprobada para `linux-x64` y nueva suite de tests `ColorPickerServiceTests.cs`.
+  - **Fase 2 (Desacoplamiento de UI y Soporte SingleView) completada**:
+    - Extracción de `MainView.axaml` y `MainView.axaml.cs`: Todo el árbol visual interactivo (lienzo Nodify, drawer, scrim de fondo, paneles flotantes, toolbox, barra de herramientas y consola de logs) desacoplado de `MainWindow`.
+    - `MainWindow.axaml` aloja `<views:MainView />` heredando limpiamente el DataContext.
+    - `App.axaml.cs` soporta bifurcación nativa de ciclos de vida: `IClassicDesktopStyleApplicationLifetime` (Windows/Linux/macOS) e `ISingleViewApplicationLifetime` (WebAssembly / Navegadores).
+    - Adaptadas pruebas de UI (`DrawerDataSetDesignerEntryTests`, `WindowActivationContractTests`) y suite de regresión visual intacta (12/12 snapshots pasando al 100%).
+  - **Fase 3 (Host WebAssembly con Avalonia.Browser) completada**:
+    - Creado `FileFlow.App.Browser`: Proyecto SDK `Microsoft.NET.Sdk.WebAssembly`, target `net10.0`, runtime `browser-wasm`, paquete `Avalonia.Browser` 12.1.2.
+    - `Program.cs` arrancando con `StartBrowserAppAsync("out")`, assets web en `wwwroot/index.html` y `main.js`.
+    - Publicación Release Wasm verificada exitosamente (`dotnet publish -c Release` emitiendo `dotnet.wasm`, `dotnet.js`, `_framework`).
+    - Suite de pruebas de contrato en `SingleViewAppLifetimeTests.cs`.
+    - Blindaje de `SqliteLogStore.cs`: Idempotencia de `Dispose()`/`DisposeAsync()` con flag `_isDisposed` y protección ante `ObjectDisposedException`.
+  - **Validación final**: `dotnet test` → **1.742 superadas + 1 omitida de 1.743** (+4 tests), 0 errores. Guardias de catálogo y mutaciones 6 de 6 verdes. Publicación para `linux-x64` y `browser-wasm` exitosa.
+  - **Próximos pasos**: Fase 4 (adaptación de ingesta en navegador mediante File System Access API o almacenamiento virtual para flujos en sandbox web).
+
 - **210. La Carpeta de Salida del Flujo Vale una Carpeta en Cualquier Parámetro (2026-09-24)**:
   - **El encargo**: «encuentra y arregla todos los sitios que resuelven la carpeta de salida del flujo (variable `GlobalOutputDir` y sus alias) fuera de `ParameterHelper.ResolveOutputPath`, de modo que valga una carpeta terminada en cualquier parámetro y no el texto declarado» — el pendiente que dejó escrito el hito 209.
   - **🔎 El censo (grep sobre todo el producto, no sobre lo que uno recuerda)**: **cinco formas** de leer la carpeta, ninguna con la regla dentro. (1) `SystemVariablesResolver`: la variable devolvía la metadata tal cual, así que **cualquier** parámetro que no fuera una ruta (mensajes, asuntos, expresiones) recibía la plantilla; (2) `ResolveOutputPath`: la expandía y anclaba **sólo ahí**; (3) **cuatro nodos de IA** (síntesis de voz, detección de voz, anonimizador, subtítulos) con **la misma regla copiada cuatro veces**, leyendo la metadata cruda y con el último escalón en `Directory.GetCurrentDirectory()` —el archivo dentro de la aplicación—; (4) **siete nodos de datos** (CSV, Excel, SQLite, conversor, lookup, los dos lectores) con `Replace("{GlobalOutputDir}", <valor crudo>)`, que además dejaba el token escrito en la ruta si no había metadata; (5) `ExcelReportGeneratorNode` y `PdfMergeNode`, que al escribir **al terminar la ejecución** guardaban el valor crudo o resolvían contra un **elemento vacío** (así que la carpeta del flujo no se veía y las variables del nombre se perdían). Más la barra de estado, que abría `C:\FileFlowOutput` escrito a mano.

@@ -31,7 +31,6 @@ public class UiStyleLintTests
     {
         // Sólo aparecen aquí las vistas que todavía conservan color inline o radios no simétricos: cada
         // fichero migrado desaparece de la lista, de modo que el trinquete no vuelva a subir.
-        ["FileFlow.App/MainWindow.axaml"] = (1, 0),
         ["FileFlow.App/Preview/Controls/FilePreviewerControl.axaml"] = (1, 0),
         ["FileFlow.App/Preview/Controls/ImageCompareSliderControl.axaml"] = (3, 0),
         ["FileFlow.App/Preview/Views/FilePreviewerWindow.axaml"] = (10, 0),

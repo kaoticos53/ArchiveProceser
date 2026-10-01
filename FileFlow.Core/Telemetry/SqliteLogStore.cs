@@ -364,10 +364,23 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
     private static (string WhereClause, Dictionary<string, object> Parameters) BuildFilterClause(LogFilterCriteria? filter)
         => SqliteLogQueryBuilder.BuildFilterClause(filter);
 
+    private bool _isDisposed;
+
     public async ValueTask DisposeAsync()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
         _ingestionChannel.Writer.TryComplete();
-        _cts.Cancel();
+        try
+        {
+            _cts.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+
         try
         {
             await _workerTask.ConfigureAwait(false);
@@ -381,8 +394,19 @@ public sealed class SqliteLogStore : ILogStore, IAsyncDisposable, IDisposable
 
     public void Dispose()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
         _ingestionChannel.Writer.TryComplete();
-        _cts.Cancel();
+        try
+        {
+            _cts.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+
         try
         {
             if (!_workerTask.IsCompleted)

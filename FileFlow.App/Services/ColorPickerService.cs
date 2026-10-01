@@ -30,6 +30,12 @@ public class ColorPickerService : IColorPickerService
 
     public string? PickColorHex()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            // En Linux / macOS / Web evitamos la invocación a comdlg32.dll (Win32)
+            return null;
+        }
+
         var gch = GCHandle.Alloc(CustomColors, GCHandleType.Pinned);
         try
         {
