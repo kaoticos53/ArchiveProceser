@@ -49,7 +49,8 @@
 
   <Target Name="CopyPlugins" AfterTargets="Build;Publish">
     <PropertyGroup>
-      <PluginsTargetFolder>$(TargetDir)Plugins\</PluginsTargetFolder>
+      <PluginsTargetFolder Condition="'$(PublishDir)' != ''">$(PublishDir)Plugins\</PluginsTargetFolder>
+      <PluginsTargetFolder Condition="'$(PublishDir)' == ''">$(TargetDir)Plugins\</PluginsTargetFolder>
     </PropertyGroup>
     <MakeDir Directories="$(PluginsTargetFolder)" />
     <ItemGroup>

@@ -137,6 +137,14 @@ jobs:
             }
           }
 
+      - name: 🧹 Limpiar artefactos previos en el runner
+        shell: pwsh
+        run: |
+          if (Test-Path "installer/output") {
+            Remove-Item -Recurse -Force "installer/output" -ErrorAction SilentlyContinue
+          }
+          New-Item -ItemType Directory -Path "installer/output" -Force | Out-Null
+
       - name: 🏗️ Compilar aplicación y generar instalador .exe
         shell: pwsh
         run: |
@@ -154,6 +162,7 @@ jobs:
       - name: 🧹 Limpiar artefactos intermedios de compilación
         shell: pwsh
         run: |
+          Remove-Item -Recurse -Force FileFlow.App/bin/Release/net10.0/publish -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force FileFlow.App/bin/Release/net10.0-windows/publish -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force FileFlow.App/obj -ErrorAction SilentlyContinue
 

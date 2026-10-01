@@ -59,18 +59,32 @@ public static class PluginRegistryHelper
         ArgumentNullException.ThrowIfNull(loader);
 
         // 1. Plugins distribuidos junto a la aplicación (solo lectura, sin crear carpeta en Program Files)
-        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        string pluginsDirectory = Path.Combine(baseDir, "Plugins");
-        if (Directory.Exists(pluginsDirectory))
+        try
         {
-            loader.LoadPluginDirectory(pluginsDirectory);
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string pluginsDirectory = Path.Combine(baseDir, "Plugins");
+            if (Directory.Exists(pluginsDirectory))
+            {
+                loader.LoadPluginDirectory(pluginsDirectory);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginRegistryHelper] Fallo al escanear plugins locales: {ex.Message}");
         }
 
         // 2. Plugins de usuario instalados dinámicamente
-        string userPluginsDir = FileFlow.Sdk.Storage.AppPaths.PluginsDirectory;
-        if (Directory.Exists(userPluginsDir))
+        try
         {
-            loader.LoadPluginDirectory(userPluginsDir);
+            string userPluginsDir = FileFlow.Sdk.Storage.AppPaths.PluginsDirectory;
+            if (Directory.Exists(userPluginsDir))
+            {
+                loader.LoadPluginDirectory(userPluginsDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginRegistryHelper] Fallo al escanear plugins de usuario: {ex.Message}");
         }
     }
 }

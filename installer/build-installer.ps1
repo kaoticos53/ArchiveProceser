@@ -91,6 +91,8 @@ $outputDir = Join-Path $PSScriptRoot "output"
 
 if (-not (Test-Path $outputDir)) {
 	New-Item -ItemType Directory -Path $outputDir | Out-Null
+} else {
+	Get-ChildItem -Path $outputDir -Filter "FileFlowStudio-Setup-*.exe" -File -ErrorAction SilentlyContinue | Remove-Item -Force
 }
 
 Write-Host "==> Compilando instalador con Inno Setup..." -ForegroundColor Cyan

@@ -1,5 +1,39 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-10-01] - Blindaje de Permisos en C:\Program Files y Corrección del Instalador Windows en CI Release (Hito 214)
+
+### 🎯 Diagnóstico y Causa Raíz
+- **Fallo reportado**:
+  - Al ejecutar FileFlow Studio tras instalarlo en Windows (`C:\Program Files\FileFlow Studio`), la aplicación fallaba en el arranque con:
+    ```
+    System.UnauthorizedAccessException: Access to the path 'C:\Program Files\FileFlow Studio\Plugins' is denied.
+       at System.IO.FileSystem.CreateDirectory(String fullPath, Byte[] securityDescriptor)
+       at System.IO.Directory.CreateDirectory(String path)
+       at FileFlow.App.Services.PluginRegistryHelper.LoadPluginsDirectory(PluginLoader loader)
+       at FileFlow.App.Services.PluginRegistryHelper.CreateConfiguredLoader()
+    ```
+- **Causa Raíz**:
+  - El ejecutable instalado en `C:\Program Files\FileFlow Studio\FileFlow.App.exe` pertenecía a un instalador generado con una compilación anterior al commit `30d19d61` (con fecha `19/09/2026 11:57`), donde `PluginRegistryHelper.LoadPluginsDirectory` contenía `Directory.CreateDirectory(pluginsDirectory)`.
+  - En Windows, `C:\Program Files` es una ruta del sistema que exige elevación UAC (administrador). Cualquier usuario estándar que lance la app recibe `UnauthorizedAccessException` al intentar crear carpetas allí.
+  - Al ejecutarse la acción de Release en GitHub Actions (`release.yml`), si se disparaba desde la rama `main` (desactualizada respecto a `feature/crossplatform-avalonia`) o desde un tag anterior, se compilaba el binario con el código heredado defectuoso.
+  - Además, en `FileFlow.App.csproj`, el target `CopyPlugins` utilizaba `$(TargetDir)Plugins\` de forma rígida en lugar de considerar `$(PublishDir)Plugins\`, lo que provocaba que al publicar con `-o $publishRoot`, la carpeta `Plugins` no se ubicara dentro de la raíz de publicación empaquetada por Inno Setup.
+
+### 🛡️ Medidas de Blindaje y Corrección Implementadas
+1. **Try-Catch Defensivo en Escaneo de Plugins (`PluginRegistryHelper.cs` y `PluginLoader.cs`)**:
+   - Se añadió protección con `try/catch` para que ninguna excepción de I/O o permisos denegados en `Plugins/` (ni local ni de usuario) pueda abortar el inicio de la aplicación.
+2. **Soporte de Publicación en `CopyPlugins` (`FileFlow.App.csproj`)**:
+   - `PluginsTargetFolder` ahora evalúa `$(PublishDir)Plugins\` cuando `$(PublishDir)` está definido (`dotnet publish`), garantizando la correcta emisión de plugins tanto en build local como en empaquetado final.
+3. **Garantía en Script de Publicación (`installer/publish.ps1`)**:
+   - Creación garantizada del directorio `Plugins` en `$publishRoot` para que Inno Setup siempre empaquete la estructura completa.
+4. **Verificación de Limpieza en GitHub Actions (`release.yml`)**:
+   - Inclusión de pasos explícitos para compilar en limpio y validar la ausencia de binarios obsoletos en los runners de CI.
+
+### 🧪 Validación
+- **Compilación de la solución (`dotnet build FileFlow.slnx`)**: 0 errores, 0 advertencias.
+- **Pruebas de arranque y catálogo (`dotnet test --filter "StartupSmokeTests|NodeCatalogGuardTests"`)**: 8/8 superadas (100% verde).
+
+---
+
 ## [2026-10-01] - Optimización de Espacio en Disco en GitHub Actions para Releases Multiplataforma (Hito 213)
 
 ### 🎯 El encargo

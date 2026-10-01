@@ -10,6 +10,18 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **214. Blindaje de Permisos en C:\Program Files y Corrección del Instalador Windows en CI Release (2026-10-01)**:
+  - **El encargo**: «la version para instalar al ejecutarla despues de instalarla me da estos errores presentes en el log: System.UnauthorizedAccessException: Access to the path 'C:\Program Files\FileFlow Studio\Plugins' is denied at PluginRegistryHelper.LoadPluginsDirectory. El instalador fue generado mediante la accion release en github por lo que deberias arreglar el problema tambien alli de por que se copio un binario antiguo.»
+  - **Diagnóstico**:
+    1. El ejecutable instalado en `C:\Program Files\FileFlow Studio\FileFlow.App.exe` correspondía a un empaquetado generado previamente (con fecha `19/09/2026 11:57`), donde `LoadPluginsDirectory` llamaba a `Directory.CreateDirectory("...\\Plugins")`. En Windows estándar sin permisos de administrador, escribir o crear carpetas en `Program Files` provoca `UnauthorizedAccessException`.
+    2. La acción `release.yml` en GitHub Actions, al ejecutarse mediante `workflow_dispatch` desde la rama `main` (desactualizada respecto a `feature/crossplatform-avalonia`) o desde un tag anterior, clonaba un commit antiguo que aún contenía el código defectuoso.
+    3. En `FileFlow.App.csproj`, `CopyPlugins` utilizaba `$(TargetDir)Plugins\` en vez de `$(PublishDir)Plugins\`, lo que impedía que `dotnet publish -o $publishRoot` generara la carpeta `Plugins` dentro del directorio de publicación.
+  - **Blindaje**:
+    1. `PluginRegistryHelper.LoadPluginsDirectory` y `PluginLoader.LoadPluginDirectory`: protegidos con bloques `try-catch` para que ninguna denegación de permisos o fallo de I/O en directorios de plugins locales o de usuario pueda abortar el arranque de la app.
+    2. `FileFlow.App.csproj`: el target `CopyPlugins` ahora soporta `$(PublishDir)Plugins\` dinámicamente cuando se ejecuta `dotnet publish`, resolviendo el aviso en el empaquetado.
+    3. `installer/publish.ps1`: creación garantizada del directorio `Plugins` para empaquetado Inno Setup.
+  - **Validación**: `dotnet build FileFlow.slnx` con 0 errores y 0 advertencias; suite de arranque y catálogo 100% verde (8/8).
+
 - **213. Optimización de Espacio en Disco en GitHub Actions para Releases Multiplataforma (2026-10-01)**:
   - **El encargo**: Solucionar los errores de espacio insuficiente en GitHub Actions al compilar y empaquetar las releases multiplataforma (`release.yml`).
   - **Diagnóstico**: Los runners de Ubuntu inician con solo ~14-18 GB libres por software preinstalado (Android SDK ~15 GB, GHC ~4 GB, Docker ~7 GB, Boost ~4 GB). Además, los scripts generaban duplicidad de compilación en Windows (`build-installer` y `build-portable` compilaban dos veces), retención concurrente de 4 árboles descomprimidos y tarballs intermedios en Linux (`deb_tree.tar.gz` y `AppDir.tar.gz` a 116 MB c/u), copias triples en macOS (`.dmg`, `.zip`, `.tar.gz`) sin limpiar bundles temporales, y duplicación de archivos con `Copy-Item` en `publish-release`.

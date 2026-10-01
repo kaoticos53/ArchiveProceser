@@ -62,22 +62,29 @@ public class PluginLoader
 
     public void LoadPluginDirectory(string pluginsDirectory)
     {
-        if (!Directory.Exists(pluginsDirectory)) return;
-
-        string[] dllFiles = Directory.GetFiles(pluginsDirectory, "*.dll", SearchOption.AllDirectories);
-        foreach (string dllPath in dllFiles)
+        try
         {
-            // Saltar DLLs cuyo ensamblado ya fue registrado (p.ej. por RegisterBuiltInAssemblies)
-            string asmSimpleName = Path.GetFileNameWithoutExtension(dllPath);
-            lock (_dictLock)
+            if (!Directory.Exists(pluginsDirectory)) return;
+
+            string[] dllFiles = Directory.GetFiles(pluginsDirectory, "*.dll", SearchOption.AllDirectories);
+            foreach (string dllPath in dllFiles)
             {
-                if (_registeredAssemblyNames.Contains(asmSimpleName))
+                // Saltar DLLs cuyo ensamblado ya fue registrado (p.ej. por RegisterBuiltInAssemblies)
+                string asmSimpleName = Path.GetFileNameWithoutExtension(dllPath);
+                lock (_dictLock)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[PluginLoader] Skipping already-registered assembly: {asmSimpleName}");
-                    continue;
+                    if (_registeredAssemblyNames.Contains(asmSimpleName))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[PluginLoader] Skipping already-registered assembly: {asmSimpleName}");
+                        continue;
+                    }
                 }
+                LoadPluginAssembly(dllPath);
             }
-            LoadPluginAssembly(dllPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PluginLoader] Error al escanear directorio '{pluginsDirectory}': {ex.Message}");
         }
         // NOTA: ScanCurrentAppDomain() ya NO se llama aquí.
         // Debe invocarse explícitamente desde CreateConfiguredLoader() una sola vez al final.

@@ -75,8 +75,9 @@ if ($LASTEXITCODE -ne 0) {
 	throw "dotnet publish falló con código de salida $LASTEXITCODE"
 }
 
-if (-not (Test-Path (Join-Path $publishRoot "Plugins"))) {
-	Write-Warning "No se encontró la carpeta 'Plugins' en el publish. Verifica el target CopyPlugins en FileFlow.App.csproj."
+$publishPluginsDir = Join-Path $publishRoot "Plugins"
+if (-not (Test-Path $publishPluginsDir)) {
+	New-Item -ItemType Directory -Path $publishPluginsDir -Force | Out-Null
 }
 
 # Copiar ejemplos de flujos
