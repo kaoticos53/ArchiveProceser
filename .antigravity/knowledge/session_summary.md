@@ -10,6 +10,24 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **212. Auditoría y Automatización de Instaladores y Publicación Multiplataforma (2026-10-01)**:
+  - **El encargo**: Revisar la generación de los instaladores y publicación de la aplicación en los diferentes sistemas operativos (Windows, Linux, macOS, Web).
+  - **Diagnóstico y soluciones implementadas**:
+    - **Linux**: Se corrigió `installer/build-linux-installer.ps1`, el cual compilaba el motor headless (`FileFlow.Core.csproj`) a `app/engine/`. Se reconfiguró para compilar `FileFlow.App.csproj` con Avalonia 12 (`SingleFile=true`, autocontenido, preservando `Plugins/`). Se actualizaron los metadatos de empaquetado para Debian (`.deb`), AppImage y Tarball universal con lanzador `fileflow.sh` e integración de escritorio `.desktop`.
+    - **macOS**: Se implementó la infraestructura completa de empaquetado para macOS: bundle canónico `FileFlow Studio.app` con `Contents/Info.plist`, `Contents/PkgInfo`, binario universal/ARM64 en `Contents/MacOS/FileFlow.App` y recursos/iconos en `Contents/Resources/`. Se crearon el script multiplataforma PowerShell `installer/build-macos-installer.ps1` y el script bash nativo `package-macos.sh` (con soporte de compresión `.zip` y creación de `.dmg` con `hdiutil`).
+    - **Web (WebAssembly)**: Se creó `installer/build-web.ps1` para compilar y empaquetar de forma automatizada los artefactos de `FileFlow.App.Browser.csproj` en `FileFlowStudio-Web-v1.0.0.zip` (22.3 MB con compresión Brotli activada), resolviendo carreras de concurrencia de MSBuild con `-m:1`.
+    - **Windows**: Se validó la generación del paquete portable `FileFlowStudio-Portable-v1.0.0-win-x64.zip` (99.9 MB) con manuales PDF y ejemplos de flujo integrados, así como el instalador de Inno Setup (`FileFlow.iss` y `build-installer.ps1`).
+    - **Orquestación**: Se actualizaron `publish-all.ps1` e `installer/build-all.ps1` incorporando flags `-IncludeMac` y `-IncludeWeb` para generar todas las distribuciones con un solo comando.
+  - **Artefactos validados**:
+    - Windows Instalador Setup: `FileFlowStudio-Setup-1.0.0.exe` (88.4 MB con Inno Setup).
+    - Windows Portable: `FileFlowStudio-Portable-v1.0.0-win-x64.zip` (99.9 MB).
+    - Linux Universal: `fileflow-linux-x64-v1.0.0.tar.gz` (115.9 MB).
+    - Linux Debian: `fileflow_1.0.0_amd64_deb_tree.tar.gz` (115.9 MB).
+    - Linux AppImage: `fileflow-linux-x64-v1.0.0.AppDir.tar.gz` (115.9 MB).
+    - macOS Apple Silicon: `FileFlowStudio-v1.0.0-osx-arm64.zip` (65.3 MB) y `.tar.gz` (64.8 MB).
+    - Web WebAssembly: `FileFlowStudio-Web-v1.0.0.zip` (22.3 MB).
+  - **Documentación**: `README.md` actualizado con la sección «Generación de Instaladores y Publicación Multiplataforma» detallando los comandos para cada SO.
+
 - **211. Multiplataforma Total: Linux 100%, Desacoplamiento de UI (`MainView`) y Host WebAssembly (`FileFlow.App.Browser`) (2026-10-01)**:
   - **El encargo**: Diagnosticar si la aplicación está lista para compilar y ejecutarse en entornos multiplataforma (Windows, Linux, macOS, iPadOS, Web) y crear un plan para que funcione al 100% en Linux y Web, descartando iPad de momento.
   - **Diagnóstico y plan**: Plan formal registrado y aprobado en `linux_and_web_execution_plan.md` (4 fases: Fase 1 Linux 100%, Fase 2 Desacoplamiento de UI `MainView`, Fase 3 Host WebAssembly, Fase 4 Motor Wasm).

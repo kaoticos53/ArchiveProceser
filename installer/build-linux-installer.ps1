@@ -33,20 +33,26 @@ New-Item -ItemType Directory -Path $appPayloadDir -Force | Out-Null
 $scParam = if ($FrameworkDependent) { @("--self-contained", "false") } else { @("--self-contained", "true") }
 $pdbParams = @("-p:DebugType=none", "-p:DebugSymbols=false")
 
-# --- 1. Compilación y Publicación de Componentes Linux ---
-Write-Host "`n[1/4] Compilando motor de FileFlow para Linux ($Configuration, $modeLabel)..." -ForegroundColor Yellow
-$coreProject = Join-Path $repoRoot "FileFlow.Core\FileFlow.Core.csproj"
-& dotnet publish $coreProject -c $Configuration -r linux-x64 @scParam @pdbParams -o "$appPayloadDir/engine" | Out-Null
+# --- 1. Compilación y Publicación de la Aplicación Linux ---
+Write-Host "`n[1/4] Compilando FileFlow Studio (GUI y Motor) para Linux ($Configuration, $modeLabel)..." -ForegroundColor Yellow
+$appProject = Join-Path $repoRoot "FileFlow.App\FileFlow.App.csproj"
+$appPublishArgs = @(
+    "publish", $appProject,
+    "-c", $Configuration,
+    "-r", "linux-x64",
+    "-o", $appPayloadDir,
+    "-p:PublishSingleFile=true",
+    "-p:IncludeNativeLibrariesForSelfExtract=true",
+    "-p:EnableCompressionInSingleFile=true"
+) + $scParam + $pdbParams
+& dotnet @appPublishArgs | Out-Null
 
 # Copiar Config/ global de SDK a la app payload
 $sdkConfigDir = Join-Path $repoRoot "FileFlow.Sdk\Config"
 if (Test-Path $sdkConfigDir) {
     $appConfigDest = Join-Path $appPayloadDir "Config"
-    $engineConfigDest = Join-Path $appPayloadDir "engine\Config"
     New-Item -ItemType Directory -Path $appConfigDest -Force | Out-Null
     Copy-Item -Path "$sdkConfigDir\*" -Destination $appConfigDest -Recurse -Force
-    New-Item -ItemType Directory -Path $engineConfigDest -Force | Out-Null
-    Copy-Item -Path "$sdkConfigDir\*" -Destination $engineConfigDest -Recurse -Force
 }
 
 Write-Host "[2/4] Compilando plugins para Linux ($Configuration)..." -ForegroundColor Yellow
@@ -152,7 +158,7 @@ Priority: optional
 Architecture: amd64
 Maintainer: FileFlow Studio Team <info@fileflowstudio.com>
 Description: FileFlow Studio - Advanced DAG-based batch processing, OCR, AI and automation platform.
- FileFlow Studio is a modular workflow automation suite built on .NET 9,
+ FileFlow Studio is a modular workflow automation suite built on .NET 10 and Avalonia UI,
  featuring high-performance DAG pipeline execution, AI integrations,
  resilient archive processing and multimodal vision models.
 "@

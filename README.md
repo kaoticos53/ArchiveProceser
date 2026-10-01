@@ -329,6 +329,58 @@ dotnet run --project FileFlow.App.Browser/FileFlow.App.Browser.csproj
 
 ---
 
+## 📦 Generación de Instaladores y Publicación Multiplataforma
+
+FileFlow Studio dispone de scripts de empaquetado para generar instaladores y distribuciones autocontenidas en cada sistema operativo:
+
+### 🪟 Windows (Instalador Setup y Portable)
+- **Instalador ejecutable Inno Setup** (`.exe` con desinstalador, iconos y accesos directos):
+  ```powershell
+  .\installer\build-installer.ps1 -Version "1.0.0"
+  ```
+- **Versión Portable** (`.zip` sin instalación con manuales PDF y ejemplos):
+  ```powershell
+  .\installer\build-portable.ps1 -Version "1.0.0"
+  ```
+
+### 🐧 Linux (Debian `.deb`, AppImage y Tarball Universal)
+- **Generador de paquetes Linux** (produce `fileflow_1.0.0_amd64.deb`, `fileflow-linux-x64-v1.0.0.AppImage` y `.tar.gz` con script lanzador e integración `.desktop`):
+  ```powershell
+  # Desde Windows / CI con PowerShell:
+  .\installer\build-linux-installer.ps1 -Version "1.0.0" -Distro deb,appimage,tarball
+
+  # O desde Linux nativo:
+  ./package-linux.sh 1.0.0
+  ```
+
+### 🍎 macOS (`.app` Bundle, ZIP Portable y `.dmg`)
+- **Generador de paquete macOS** (construye `FileFlow Studio.app` con `Info.plist`, PkgInfo, iconos y soporte Apple Silicon / Intel):
+  ```powershell
+  # Con PowerShell (multiplataforma):
+  .\installer\build-macos-installer.ps1 -Version "1.0.0" -Runtime "both"   # o osx-arm64 / osx-x64
+
+  # O desde macOS nativo (genera también .dmg con hdiutil):
+  ./package-macos.sh 1.0.0 arm64
+  ```
+
+### 🌐 Web (WebAssembly Distribution)
+- **Generador de paquete Web estático** (compila `FileFlow.App.Browser`, optimiza recursos y comprime con Brotli en `FileFlowStudio-Web-v1.0.0.zip` listo para Nginx, Apache o GitHub Pages):
+  ```powershell
+  .\installer\build-web.ps1 -Version "1.0.0"
+  ```
+
+### 🚀 Orquestador Universal de Publicación
+Para generar todos los artefactos de publicación en un único paso:
+```powershell
+# Publicar todos los binarios nativos (Windows, Linux, macOS y Web)
+.\publish-all.ps1 -Configuration Release -IncludeMac -IncludeWeb
+
+# Compilar todos los instaladores y empaquetados finales en installer/output/
+.\installer\build-all.ps1 -Version "1.0.0" -IncludeMac -IncludeWeb
+```
+
+---
+
 ## 🧪 Pruebas Automatizadas y Calidad
 
 FileFlow Studio cuenta con una rigurosa suite de pruebas automatizadas con **100% de cobertura de éxito**:

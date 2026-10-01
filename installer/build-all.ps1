@@ -19,7 +19,9 @@
 #>
 param(
     [string]$Version = "1.0.0",
-    [switch]$FrameworkDependent
+    [switch]$FrameworkDependent,
+    [switch]$IncludeMac,
+    [switch]$IncludeWeb
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,22 +30,24 @@ $modeLabel = if ($FrameworkDependent) { "Framework-Dependent" } else { "Self-Con
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host " 🚀 FileFlow Studio - Generador Universal de Instaladores " -ForegroundColor Cyan
-Write-Host " Versión: $Version | Modo: $modeLabel" -ForegroundColor Cyan
+Write-Host " Versión: $Version | Modo: $modeLabel | .NET 10" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $installerDir = $PSScriptRoot
 
-# 1. Compilación cruzada Windows y Linux
-Write-Host "`n[1/3] Publicando binarios para Windows y Linux..." -ForegroundColor Yellow
+# 1. Compilación cruzada Windows y Linux (y opcionalmente macOS / Web)
+Write-Host "`n[1/5] Publicando binarios de distribución..." -ForegroundColor Yellow
 $pubParams = @{
     Configuration = "Release"
     FrameworkDependent = $FrameworkDependent
+    IncludeMac = $IncludeMac
+    IncludeWeb = $IncludeWeb
 }
 & (Join-Path $root "publish-all.ps1") @pubParams
 
 # 2. Generación del instalador Linux (Tar.gz, Deb tree, AppDir y AppImage)
-Write-Host "`n[2/3] Generando paquetes e instaladores para Linux..." -ForegroundColor Yellow
+Write-Host "`n[2/5] Generando paquetes e instaladores para Linux..." -ForegroundColor Yellow
 $linuxParams = @{
     Version = $Version
     FrameworkDependent = $FrameworkDependent
@@ -51,7 +55,7 @@ $linuxParams = @{
 & (Join-Path $installerDir "build-linux-installer.ps1") @linuxParams
 
 # 3. Generación del instalador Windows
-Write-Host "`n[3/3] Generando instalador para Windows (Inno Setup)..." -ForegroundColor Yellow
+Write-Host "`n[3/5] Generando instalador para Windows (Inno Setup)..." -ForegroundColor Yellow
 try {
     $selfContained = -not $FrameworkDependent
     & (Join-Path $installerDir "build-installer.ps1") -Version $Version -SelfContained $selfContained
@@ -60,9 +64,31 @@ try {
     Write-Host "Los paquetes de Linux y los binarios de Windows en dist/ siguen estando listos." -ForegroundColor Yellow
 }
 
+# 4. Generación de paquetes para macOS (si se solicitó)
+if ($IncludeMac) {
+    Write-Host "`n[4/5] Generando paquetes para macOS (.app bundle, ZIP y DMG)..." -ForegroundColor Yellow
+    try {
+        & (Join-Path $installerDir "build-macos-installer.ps1") -Version $Version -Runtime "both"
+    } catch {
+        Write-Warning "No se pudieron empaquetar los artefactos de macOS: $_"
+    }
+}
+
+# 5. Generación de distribución WebAssembly (si se solicitó)
+if ($IncludeWeb) {
+    Write-Host "`n[5/5] Generando distribución WebAssembly (Browser)..." -ForegroundColor Yellow
+    try {
+        & (Join-Path $installerDir "build-web.ps1") -Version $Version
+    } catch {
+        Write-Warning "No se pudo compilar el bundle WebAssembly: $_"
+    }
+}
+
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host " ✅ Proceso completado. Artefactos listos en:" -ForegroundColor Green
 Write-Host "    - Windows Binarios: dist/windows-x64/" -ForegroundColor White
 Write-Host "    - Linux Binarios:   dist/linux-x64/" -ForegroundColor White
+if ($IncludeMac) { Write-Host "    - macOS Binarios:   dist/osx-*/" -ForegroundColor White }
+if ($IncludeWeb) { Write-Host "    - WebAssembly:      dist/web-wasm/" -ForegroundColor White }
 Write-Host "    - Instaladores:     installer/output/" -ForegroundColor White
 Write-Host "==========================================================" -ForegroundColor Green

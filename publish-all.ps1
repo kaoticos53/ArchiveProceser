@@ -2,6 +2,10 @@ param(
     [string]$Configuration = "Release",
     [switch]$WindowsOnly,
     [switch]$LinuxOnly,
+    [switch]$MacOnly,
+    [switch]$WebOnly,
+    [switch]$IncludeMac,
+    [switch]$IncludeWeb,
     [switch]$FrameworkDependent,
     [switch]$KeepDebugPdb,
     [switch]$Clean = $true
@@ -11,10 +15,10 @@ $ErrorActionPreference = "Stop"
 $scriptDir = $PSScriptRoot
 if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
 
-$modeName = if ($FrameworkDependent) { "Framework-Dependent (requiere .NET 9 en el sistema)" } else { "Self-Contained (Autocontenido)" }
+$modeName = if ($FrameworkDependent) { "Framework-Dependent (requiere .NET 10 en el sistema)" } else { "Self-Contained (Autocontenido)" }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  FileFlow Studio - Publicación Multiplataforma (.NET 9)  " -ForegroundColor Cyan
+Write-Host "  FileFlow Studio - Publicación Multiplataforma (.NET 10) " -ForegroundColor Cyan
 Write-Host "  Modo: $modeName" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
@@ -34,8 +38,13 @@ $scBoolStr = $isSelfContained.ToString().ToLower()
 
 $pdbFlags = if ($KeepDebugPdb) { @() } else { @("-p:DebugType=none", "-p:DebugSymbols=false") }
 
+$buildWindows = (-not $LinuxOnly) -and (-not $MacOnly) -and (-not $WebOnly)
+$buildLinux   = (-not $WindowsOnly) -and (-not $MacOnly) -and (-not $WebOnly)
+$buildMac     = $MacOnly -or $IncludeMac
+$buildWeb     = $WebOnly -or $IncludeWeb
+
 # --- 1. Publicación para Windows x64 ---
-if (-not $LinuxOnly) {
+if ($buildWindows) {
     $winDist = Join-Path $distDir "windows-x64"
     Write-Host "`n📦 Publicando FileFlow Studio para Windows x64 ($Configuration)..." -ForegroundColor Yellow
     
@@ -71,35 +80,33 @@ if (-not $LinuxOnly) {
     }
 }
 
-# --- 2. Publicación de Motor y Plugins para Linux x64 ---
-if (-not $WindowsOnly) {
+# --- 2. Publicación para Linux x64 ---
+if ($buildLinux) {
     $linuxDist = Join-Path $distDir "linux-x64"
-    Write-Host "`n📦 Publicando componentes del Motor y Plugins de FileFlow para Linux x64 ($Configuration)..." -ForegroundColor Yellow
+    Write-Host "`n📦 Publicando FileFlow Studio (GUI y Motor) para Linux x64 ($Configuration)..." -ForegroundColor Yellow
     
-    $linuxEngineDir = Join-Path $linuxDist "engine"
     $linuxArgs = @(
-        "publish", $coreProject,
+        "publish", $appProject,
         "-c", $Configuration,
         "-r", "linux-x64",
         "--self-contained", $scBoolStr,
-        "-o", $linuxEngineDir
+        "-o", $linuxDist,
+        "-p:PublishSingleFile=true",
+        "-p:IncludeNativeLibrariesForSelfExtract=true",
+        "-p:EnableCompressionInSingleFile=true"
     ) + $pdbFlags
     
     & dotnet @linuxArgs
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ Fallo al compilar el motor para Linux." -ForegroundColor Red
+        Write-Host "❌ Fallo al compilar FileFlow.App para Linux." -ForegroundColor Red
         exit $LASTEXITCODE
     }
 
-    # Copiar Config/ global a Linux (en raíz y en engine/)
+    # Copiar Config/ global a Linux
     $linuxConfigDest = Join-Path $linuxDist "Config"
-    $engineConfigDest = Join-Path $linuxEngineDir "Config"
     if (Test-Path $sdkConfigDir) {
         New-Item -ItemType Directory -Path $linuxConfigDest -Force | Out-Null
         Copy-Item -Path "$sdkConfigDir\*" -Destination $linuxConfigDest -Recurse -Force
-        
-        New-Item -ItemType Directory -Path $engineConfigDest -Force | Out-Null
-        Copy-Item -Path "$sdkConfigDir\*" -Destination $engineConfigDest -Recurse -Force
     }
 
     # Publicar cada plugin en su carpeta dedicada Plugins/{PluginName}/
@@ -150,6 +157,64 @@ if (-not $WindowsOnly) {
 
     $linuxFilesCount = (Get-ChildItem -Path $linuxDist -Recurse -File).Count
     Write-Host "✅ Binarios de Linux generados con éxito en: $linuxDist ($linuxFilesCount archivos)" -ForegroundColor Green
+}
+
+# --- 3. Publicación para macOS (Apple Silicon y x64) ---
+if ($buildMac) {
+    foreach ($macRid in @("osx-arm64", "osx-x64")) {
+        $macDist = Join-Path $distDir $macRid
+        Write-Host "`n📦 Publicando FileFlow Studio para macOS ($macRid, $Configuration)..." -ForegroundColor Yellow
+        
+        $macArgs = @(
+            "publish", $appProject,
+            "-c", $Configuration,
+            "-r", $macRid,
+            "--self-contained", $scBoolStr,
+            "-o", $macDist,
+            "-p:PublishSingleFile=true",
+            "-p:IncludeNativeLibrariesForSelfExtract=true",
+            "-p:EnableCompressionInSingleFile=true"
+        ) + $pdbFlags
+        
+        & dotnet @macArgs
+        if ($LASTEXITCODE -eq 0) {
+            $macConfigDest = Join-Path $macDist "Config"
+            if (Test-Path $sdkConfigDir) {
+                New-Item -ItemType Directory -Path $macConfigDest -Force | Out-Null
+                Copy-Item -Path "$sdkConfigDir\*" -Destination $macConfigDest -Recurse -Force
+            }
+            if (-not $KeepDebugPdb) {
+                Get-ChildItem -Path $macDist -Filter "*.pdb" -Recurse | Remove-Item -Force -ErrorAction SilentlyContinue
+            }
+            $macCount = (Get-ChildItem -Path $macDist -Recurse -File).Count
+            Write-Host "✅ Binarios de macOS ($macRid) generados con éxito en: $macDist ($macCount archivos)" -ForegroundColor Green
+        } else {
+            Write-Warning "Fallo al compilar versión de macOS ($macRid)."
+        }
+    }
+}
+
+# --- 4. Publicación para Web (WebAssembly / Avalonia.Browser) ---
+if ($buildWeb) {
+    $webDist = Join-Path $distDir "web-wasm"
+    Write-Host "`n📦 Publicando FileFlow Studio para Web (WebAssembly / browser-wasm, $Configuration)..." -ForegroundColor Yellow
+    
+    $browserSln = Join-Path $scriptDir "FileFlow.Browser.slnx"
+    $webArgs = @(
+        "publish", $browserSln,
+        "-c", $Configuration
+    )
+    
+    & dotnet @webArgs
+    $wasmPublishDir = Join-Path $scriptDir "FileFlow.App.Browser\bin\$Configuration\net10.0\browser-wasm\publish\wwwroot"
+    if (Test-Path $wasmPublishDir) {
+        New-Item -ItemType Directory -Path $webDist -Force | Out-Null
+        Copy-Item -Path "$wasmPublishDir\*" -Destination $webDist -Recurse -Force
+        $webFilesCount = (Get-ChildItem -Path $webDist -Recurse -File).Count
+        Write-Host "✅ Artefactos WebAssembly generados con éxito en: $webDist ($webFilesCount archivos)" -ForegroundColor Green
+    } else {
+        Write-Warning "No se encontró el directorio de salida WebAssembly en '$wasmPublishDir'."
+    }
 }
 
 $totalFiles = (Get-ChildItem -Path $distDir -Recurse -File).Count

@@ -47,6 +47,8 @@ dist/
 installer/publish/
 installer/output/
 installer/temp_linux_build/
+installer/temp_macos_build/
+installer/temp_web_build/
 release-assets/
 squashfs-root/
 appimagetool*

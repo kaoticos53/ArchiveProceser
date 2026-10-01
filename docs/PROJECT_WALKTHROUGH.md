@@ -1,5 +1,40 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-10-01] - Auditoría y Automatización de Instaladores y Publicación Multiplataforma (Hito 212)
+
+### 🎯 El encargo
+
+«Revisa la generación de los instaladores y publicación de la aplicación en los diferentes sistemas operativos.»
+
+### 🔬 Diagnóstico y Hallazgos del Empaquetado
+
+1. **Linux**:
+   - El script legacy [installer/build-linux-installer.ps1](file:///installer/build-linux-installer.ps1) publicaba `FileFlow.Core.csproj` hacia `app/engine/` en lugar de la GUI de Avalonia `FileFlow.App.csproj`.
+   - El control Debian (`control`) y las dependencias de runtime no contemplaban `.NET 10`.
+   - Se resolvió publicando `FileFlow.App.csproj` con `SingleFile=true`, autocontenido, conservando la carpeta `Plugins/` para el `PluginLoader`, y actualizando los metadatos de Debian y AppImage.
+2. **macOS**:
+   - No existía script de empaquetado ni metadata canónica de bundle (`Info.plist`) para macOS.
+   - Se creó [installer/macos/Info.plist](file:///installer/macos/Info.plist), el script multiplataforma PowerShell [installer/build-macos-installer.ps1](file:///installer/build-macos-installer.ps1) y el script bash [package-macos.sh](file:///package-macos.sh) para generar `.app`, `.zip` y `.dmg`.
+3. **Web (WebAssembly)**:
+   - Se creó [installer/build-web.ps1](file:///installer/build-web.ps1) para compilar y empaquetar de forma automatizada los artefactos de [FileFlow.App.Browser.csproj](file:///FileFlow.App.Browser/FileFlow.App.Browser.csproj) en un archivo ZIP precomprimido con Brotli (`FileFlowStudio-Web-v1.0.0.zip`), listo para desplegar en Nginx, Apache o GitHub Pages.
+   - Se optimizó el proceso con `-m:1` para evitar colisiones de bloqueo de ficheros en el paso interno de Wasm.
+4. **Windows**:
+   - Validado [installer/build-portable.ps1](file:///installer/build-portable.ps1) generando el paquete portable ZIP con manuales PDF integrados.
+   - Validada la configuración de Inno Setup en [installer/FileFlow.iss](file:///installer/FileFlow.iss) y [installer/build-installer.ps1](file:///installer/build-installer.ps1).
+5. **Orquestación Global**:
+   - [publish-all.ps1](file:///publish-all.ps1) y [installer/build-all.ps1](file:///installer/build-all.ps1) unificados y actualizados a .NET 10 con flags `-IncludeMac` y `-IncludeWeb`.
+
+### 📦 Artefactos Validados en `installer/output/`
+- Windows Instalador Setup: `FileFlowStudio-Setup-1.0.0.exe` (88.4 MB)
+- Windows Portable: `FileFlowStudio-Portable-v1.0.0-win-x64.zip` (99.9 MB)
+- Linux Universal: `fileflow-linux-x64-v1.0.0.tar.gz` (115.9 MB)
+- Linux Debian: `fileflow_1.0.0_amd64_deb_tree.tar.gz` (115.9 MB)
+- Linux AppImage: `fileflow-linux-x64-v1.0.0.AppDir.tar.gz` (115.9 MB)
+- macOS Apple Silicon: `FileFlowStudio-v1.0.0-osx-arm64.zip` (65.3 MB) y `.tar.gz` (64.8 MB)
+- Web WebAssembly: `FileFlowStudio-Web-v1.0.0.zip` (22.3 MB)
+
+---
+
 ## [2026-10-01] - Auditoría Multiplataforma, Plan para Linux & Web y Cierre de Compatibilidad Linux (Hito 211)
 
 ### 🎯 El encargo
