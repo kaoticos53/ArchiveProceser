@@ -130,6 +130,8 @@ try {
 if (Test-Path $tarGzOutput) {
     $tarSize = [math]::Round(((Get-Item $tarGzOutput).Length / 1MB), 2)
     Write-Host "  [OK] Bundle universal generado: $tarGzName ($tarSize MB)" -ForegroundColor Green
+    # Liberar espacio del árbol descomprimido
+    Remove-Item -Recurse -Force "$workDir/fileflow-linux-x64-$Version" -ErrorAction SilentlyContinue
 }
 
 # --- 3. Crear Estructura de Paquete Debian (.deb) ---
@@ -170,19 +172,6 @@ $debPostInst = "#!/bin/sh`nset -e`nchmod +x /usr/lib/fileflow/fileflow.sh 2>/dev
 $debPostRm = "#!/bin/sh`nset -e`nif command -v update-desktop-database >/dev/null 2>&1; then`n    update-desktop-database /usr/share/applications || true`nfi`nexit 0`n"
 [System.IO.File]::WriteAllText("$debRoot/DEBIAN/postrm", $debPostRm, (New-Object System.Text.UTF8Encoding($false)))
 
-$debTarOutput = Join-Path $outputDir "fileflow_${Version}_amd64_deb_tree.tar.gz"
-Push-Location $workDir
-try {
-    Compress-TarGz "fileflow_${Version}_amd64" $debTarOutput
-} finally {
-    Pop-Location
-}
-
-if (Test-Path $debTarOutput) {
-    $debSize = [math]::Round(((Get-Item $debTarOutput).Length / 1MB), 2)
-    Write-Host "  [OK] Paquete Debian (.deb tree) generado: fileflow_${Version}_amd64_deb_tree.tar.gz ($debSize MB)" -ForegroundColor Green
-}
-
 # Compilación directa de archivo .deb si dpkg-deb está disponible (nativamente o vía WSL)
 $debPackageFile = Join-Path $outputDir "fileflow_${Version}_amd64.deb"
 $wslAvailable = $false
@@ -204,7 +193,22 @@ if (Get-Command "dpkg-deb" -ErrorAction SilentlyContinue) {
 if (Test-Path $debPackageFile) {
     $debPkgSize = [math]::Round(((Get-Item $debPackageFile).Length / 1MB), 2)
     Write-Host "  [OK] Paquete Debian (.deb) generado: fileflow_${Version}_amd64.deb ($debPkgSize MB)" -ForegroundColor Green
+} else {
+    # Solo generar tarball del árbol si no hay dpkg-deb disponible
+    $debTarOutput = Join-Path $outputDir "fileflow_${Version}_amd64_deb_tree.tar.gz"
+    Push-Location $workDir
+    try {
+        Compress-TarGz "fileflow_${Version}_amd64" $debTarOutput
+    } finally {
+        Pop-Location
+    }
+    if (Test-Path $debTarOutput) {
+        $debSize = [math]::Round(((Get-Item $debTarOutput).Length / 1MB), 2)
+        Write-Host "  [OK] Árbol Debian (.deb tree) generado: fileflow_${Version}_amd64_deb_tree.tar.gz ($debSize MB)" -ForegroundColor Green
+    }
 }
+# Liberar espacio del árbol deb descomprimido
+Remove-Item -Recurse -Force $debRoot -ErrorAction SilentlyContinue
 
 # --- 4. Crear Estructura y Paquete AppImage (.AppDir & .AppImage) ---
 Write-Host "`n[4/4] Generando estructura y ejecutable AppImage..." -ForegroundColor Yellow
@@ -226,33 +230,10 @@ if (Test-Path $iconPng) {
     Copy-Item $iconPng "$appDir/usr/share/icons/hicolor/256x256/apps/fileflow.png" -Force
 }
 
-$appDirTarOutput = Join-Path $outputDir "fileflow-linux-x64-v${Version}.AppDir.tar.gz"
-Push-Location $workDir
-try {
-    Compress-TarGz "FileFlow.AppDir" $appDirTarOutput
-} finally {
-    Pop-Location
-}
-
-if (Test-Path $appDirTarOutput) {
-    $appDirSize = [math]::Round(((Get-Item $appDirTarOutput).Length / 1MB), 2)
-    Write-Host "  [OK] Bundle AppDir (.tar.gz) generado: fileflow-linux-x64-v${Version}.AppDir.tar.gz ($appDirSize MB)" -ForegroundColor Green
-}
-
-# Compilación directa de .AppImage ejecutable mediante WSL si está presente
 $appImageFile = Join-Path $outputDir "FileFlow-v${Version}-x86_64.AppImage"
 $flatpakOutFile = Join-Path $outputDir "FileFlow-v${Version}-x86_64.flatpak"
 
 $isNativeLinux = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Linux)
-$wslAvailable = $false
-if (-not $isNativeLinux) {
-    try {
-        $wslCheck = wsl uname 2>$null
-        if ($wslCheck -like "*Linux*") { $wslAvailable = $true }
-    } catch {
-        $wslAvailable = $false
-    }
-}
 
 if ($isNativeLinux) {
     Write-Host "  -> Compilando binario ejecutable .AppImage nativamente en Linux..." -ForegroundColor DarkGray
@@ -262,16 +243,6 @@ if ($isNativeLinux) {
     if (Test-Path $appImageFile) {
         $appImgSize = [math]::Round(((Get-Item $appImageFile).Length / 1MB), 2)
         Write-Host "  [OK] Ejecutable AppImage generado: FileFlow-v${Version}-x86_64.AppImage ($appImgSize MB)" -ForegroundColor Green
-    }
-
-    if (Get-Command "flatpak-builder" -ErrorAction SilentlyContinue) {
-        Write-Host "  -> Compilando paquete .flatpak nativamente..." -ForegroundColor DarkGray
-        $flatpakScript = Join-Path $scriptDir "linux/flatpak/build-flatpak.sh"
-        & bash "$flatpakScript" "$Version" "$flatpakOutFile" 2>$null
-        if (Test-Path $flatpakOutFile) {
-            $flatpakSize = [math]::Round(((Get-Item $flatpakOutFile).Length / 1MB), 2)
-            Write-Host "  [OK] Paquete Flatpak generado: FileFlow-v${Version}-x86_64.flatpak ($flatpakSize MB)" -ForegroundColor Green
-        }
     }
 } elseif ($wslAvailable) {
     Write-Host "  -> Compilando binario ejecutable .AppImage vía subsistema Linux (WSL)..." -ForegroundColor DarkGray
@@ -286,21 +257,25 @@ if ($isNativeLinux) {
         $appImgSize = [math]::Round(((Get-Item $appImageFile).Length / 1MB), 2)
         Write-Host "  [OK] Ejecutable AppImage generado: FileFlow-v${Version}-x86_64.AppImage ($appImgSize MB)" -ForegroundColor Green
     }
+}
 
-    # Compilación de Flatpak (.flatpak) si flatpak-builder está instalado en WSL
-    $wslFlatpakScript = "/mnt/" + (Join-Path $scriptDir "linux\flatpak\build-flatpak.sh").Substring(0,1).ToLower() + (Join-Path $scriptDir "linux\flatpak\build-flatpak.sh").Substring(2).Replace('\', '/')
-    $wslFlatpakOut = "/mnt/" + $flatpakOutFile.Substring(0,1).ToLower() + $flatpakOutFile.Substring(2).Replace('\', '/')
-    
-    $checkFlatpak = wsl which flatpak-builder 2>$null
-    if (-not [string]::IsNullOrWhiteSpace($checkFlatpak)) {
-        Write-Host "  -> Compilando paquete .flatpak vía subsistema Linux (WSL)..." -ForegroundColor DarkGray
-        & wsl bash "$wslFlatpakScript" "$Version" "$wslFlatpakOut" 2>$null
-        if (Test-Path $flatpakOutFile) {
-            $flatpakSize = [math]::Round(((Get-Item $flatpakOutFile).Length / 1MB), 2)
-            Write-Host "  [OK] Paquete Flatpak generado: FileFlow-v${Version}-x86_64.flatpak ($flatpakSize MB)" -ForegroundColor Green
-        }
+# Solo generar AppDir tarball si no se pudo crear el .AppImage ejecutable
+if (-not (Test-Path $appImageFile)) {
+    $appDirTarOutput = Join-Path $outputDir "fileflow-linux-x64-v${Version}.AppDir.tar.gz"
+    Push-Location $workDir
+    try {
+        Compress-TarGz "FileFlow.AppDir" $appDirTarOutput
+    } finally {
+        Pop-Location
+    }
+    if (Test-Path $appDirTarOutput) {
+        $appDirSize = [math]::Round(((Get-Item $appDirTarOutput).Length / 1MB), 2)
+        Write-Host "  [OK] Bundle AppDir (.tar.gz) generado: fileflow-linux-x64-v${Version}.AppDir.tar.gz ($appDirSize MB)" -ForegroundColor Green
     }
 }
+# Liberar espacio del árbol AppDir y del payload
+Remove-Item -Recurse -Force $appDir -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force $appPayloadDir -ErrorAction SilentlyContinue
 
 # Limpiar temporales de compilación
 Remove-Item -Recurse -Force $workDir -ErrorAction SilentlyContinue

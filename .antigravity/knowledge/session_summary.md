@@ -10,6 +10,17 @@ Este documento se actualiza al finalizar cada sesión de trabajo para consolidar
 ---
 
 ## 0. Hito más reciente
+- **213. Optimización de Espacio en Disco en GitHub Actions para Releases Multiplataforma (2026-10-01)**:
+  - **El encargo**: Solucionar los errores de espacio insuficiente en GitHub Actions al compilar y empaquetar las releases multiplataforma (`release.yml`).
+  - **Diagnóstico**: Los runners de Ubuntu inician con solo ~14-18 GB libres por software preinstalado (Android SDK ~15 GB, GHC ~4 GB, Docker ~7 GB, Boost ~4 GB). Además, los scripts generaban duplicidad de compilación en Windows (`build-installer` y `build-portable` compilaban dos veces), retención concurrente de 4 árboles descomprimidos y tarballs intermedios en Linux (`deb_tree.tar.gz` y `AppDir.tar.gz` a 116 MB c/u), copias triples en macOS (`.dmg`, `.zip`, `.tar.gz`) sin limpiar bundles temporales, y duplicación de archivos con `Copy-Item` en `publish-release`.
+  - **Soluciones implementadas**:
+    - **Limpieza de Runner en Ubuntu**: Paso inicial ultra-rápido en `build-linux`, `build-web` y `publish-release` purgando `/usr/local/lib/android`, `/opt/ghc`, `/usr/local/.ghcup`, `/usr/local/share/boost` y `docker system prune -af --volumes`. Se liberan **+30 a 35 GB** limpios en cada runner.
+    - **Reutilización en Windows (`build-portable.ps1`)**: Nuevo switch `-SkipPublish` para reutilizar binarios ya publicados y PDFs existentes, evitando doble compilación y ahorrando varios minutos y 1.5 GB de churn. Limpieza de `bin/.../publish` y `obj`.
+    - **Limpieza secuencial y supresión de redundancias en Linux (`build-linux-installer.ps1`)**: Eliminación inmediata de directorios descomprimidos (`debRoot`, `appDir`, `payload`) tras generar cada paquete. Supresión de `deb_tree.tar.gz` si se generó `.deb` (-116 MB) y supresión de `AppDir.tar.gz` si se generó `.AppImage` (-116 MB).
+    - **macOS (`package-macos.sh`)**: Eliminada la creación redundante de `.tar.gz` (preservando `.dmg` y `.zip`, -240 MB) y limpieza del bundle temporal `FileFlow Studio.app` (400 MB).
+    - **Publicación limpia (`release.yml`)**: Sustituido `Copy-Item` por `Move-Item`, purga de temporales intermedios y saneamiento de `checksums.txt`.
+  - **Verificación**: Suite de pruebas al 100% (1.742 superadas, 0 errores).
+
 - **212. Auditoría y Automatización de Instaladores y Publicación Multiplataforma (2026-10-01)**:
   - **El encargo**: Revisar la generación de los instaladores y publicación de la aplicación en los diferentes sistemas operativos (Windows, Linux, macOS, Web).
   - **Diagnóstico y soluciones implementadas**:

@@ -50,17 +50,17 @@ if [ -f "${REPO_ROOT}/assets/FileFlow.png" ]; then
     cp "${REPO_ROOT}/assets/FileFlow.png" "${RESOURCES_DIR}/FileFlow.png"
 fi
 
-echo -e "\n\033[0;33m[3/3] Generando paquetes de distribución (ZIP, TAR.GZ y DMG)...\033[0m"
+echo -e "\n\033[0;33m[3/3] Generando paquetes de distribución (ZIP y DMG)...\033[0m"
 cd "${DIST_DIR}"
 zip -q -r "FileFlowStudio-v${VERSION}-${RID}.zip" "FileFlow Studio.app"
-tar -czf "FileFlowStudio-v${VERSION}-${RID}.tar.gz" "FileFlow Studio.app"
 
 if command -v hdiutil &> /dev/null; then
     hdiutil create -volname "FileFlow Studio" -srcfolder "FileFlow Studio.app" -ov -format UDZO "FileFlowStudio-v${VERSION}-${RID}.dmg"
     echo -e "\033[0;32m✅ Imagen DMG generada: dist/FileFlowStudio-v${VERSION}-${RID}.dmg\033[0m"
 fi
 
-rm -rf "${WORK_DIR}"
+# Limpiar payload intermedio y bundle descomprimido para liberar espacio en disco
+rm -rf "${WORK_DIR}" "${APP_BUNDLE}"
 echo -e "\n\033[0;32m==========================================================\033[0m"
 echo -e "\033[0;32m  ¡Paquetes para macOS listos en ${DIST_DIR}!             \033[0m"
 echo -e "\033[0;32m==========================================================\033[0m"

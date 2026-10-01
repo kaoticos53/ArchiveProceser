@@ -24,7 +24,8 @@
 param(
 	[string]$Version = "1.0.0",
 	[string]$Runtime = "win-x64",
-	$SelfContained = $true
+	$SelfContained = $true,
+	[switch]$SkipPublish
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,12 +47,16 @@ Write-Host "SelfContained:  $isSelfContained" -ForegroundColor Gray
 Write-Host "Destino ZIP:    $zipPath" -ForegroundColor Gray
 Write-Host ""
 
-# 1. Compilar y publicar binarios
-Write-Host "==> [Paso 1/4] Publicando binarios con publish.ps1..." -ForegroundColor Cyan
-& (Join-Path $PSScriptRoot "publish.ps1") -Configuration "Release" -Runtime $Runtime -SelfContained $isSelfContained -SingleFile $true
+# 1. Compilar y publicar binarios si no se solicita omitir
+if (-not $SkipPublish -or -not (Test-Path $publishDir)) {
+	Write-Host "==> [Paso 1/4] Publicando binarios con publish.ps1..." -ForegroundColor Cyan
+	& (Join-Path $PSScriptRoot "publish.ps1") -Configuration "Release" -Runtime $Runtime -SelfContained $isSelfContained -SingleFile $true
 
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path $publishDir)) {
-	throw "La publicación de binarios falló."
+	if ($LASTEXITCODE -ne 0 -or -not (Test-Path $publishDir)) {
+		throw "La publicación de binarios falló."
+	}
+} else {
+	Write-Host "==> [Paso 1/4] Reutilizando binarios ya publicados en: $publishDir" -ForegroundColor Green
 }
 
 # 2. Preparar carpeta temporal portable

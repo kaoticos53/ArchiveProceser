@@ -144,12 +144,18 @@ jobs:
           Write-Host "Generando instalador de Windows para versión $ver..."
           .\installer\build-installer.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
 
-      - name: 🗜️ Generar paquete portable autónomo .zip
+      - name: 🗜️ Generar paquete portable autónomo .zip (reutilizando binarios ya compilados)
         shell: pwsh
         run: |
           $ver = "${{ needs.resolve-version.outputs.clean_version }}"
           Write-Host "Generando paquete portable autónomo para versión $ver..."
-          .\installer\build-portable.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true
+          .\installer\build-portable.ps1 -Version "$ver" -Runtime "win-x64" -SelfContained $true -SkipPublish
+
+      - name: 🧹 Limpiar artefactos intermedios de compilación
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force FileFlow.App/bin/Release/net10.0-windows/publish -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force FileFlow.App/obj -ErrorAction SilentlyContinue
 
       - name: 📤 Subir artefactos de Windows
         uses: actions/upload-artifact@v4
@@ -170,6 +176,19 @@ jobs:
     needs: resolve-version
     runs-on: ubuntu-latest
     steps:
+      - name: 🧹 Optimizar espacio en disco del runner (Ubuntu)
+        shell: bash
+        run: |
+          echo "==> Espacio en disco antes de optimización:"
+          df -h /
+          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
+          sudo rm -rf /opt/ghc 2>/dev/null || true
+          sudo rm -rf /usr/local/.ghcup 2>/dev/null || true
+          sudo rm -rf /usr/local/share/boost 2>/dev/null || true
+          sudo docker system prune -af --volumes 2>/dev/null || true
+          echo "==> Espacio en disco tras optimización:"
+          df -h /
+
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
         with:
@@ -192,20 +211,24 @@ jobs:
           Write-Host "Generando distribuciones de Linux para versión $ver..."
           .\installer\build-linux-installer.ps1 -Version "$ver" -Distro deb,appimage,tarball
 
+      - name: 🧹 Limpiar temporales de compilación de Linux
+        shell: bash
+        run: |
+          rm -rf FileFlow.App/bin FileFlow.App/obj 2>/dev/null || true
+
       - name: 📤 Subir artefactos de Linux
         uses: actions/upload-artifact@v4
         with:
           name: linux-packages
           path: |
-            installer/output/*.tar.gz
+            installer/output/fileflow-linux-x64-*.tar.gz
             installer/output/*.deb
             installer/output/*.AppImage
-            installer/output/*.flatpak
           if-no-files-found: warn
           retention-days: 7
 
   # -------------------------------------------------------------------------
-  # 4. Job de Compilación y Empaquetado para macOS (.app, .dmg, .zip, .tar.gz)
+  # 4. Job de Compilación y Empaquetado para macOS (.app, .dmg, .zip)
   # -------------------------------------------------------------------------
   build-macos:
     name: 🍎 Empaquetar para macOS (.app, DMG, ZIP)
@@ -232,13 +255,17 @@ jobs:
           echo "Empaquetando para macOS x64..."
           ./package-macos.sh "$VER" x64
 
+      - name: 🧹 Limpiar temporales de compilación de macOS
+        shell: bash
+        run: |
+          rm -rf FileFlow.App/bin FileFlow.App/obj 2>/dev/null || true
+
       - name: 📤 Subir artefactos de macOS
         uses: actions/upload-artifact@v4
         with:
           name: macos-packages
           path: |
             dist/*.zip
-            dist/*.tar.gz
             dist/*.dmg
           if-no-files-found: error
           retention-days: 7
@@ -251,6 +278,15 @@ jobs:
     needs: resolve-version
     runs-on: ubuntu-latest
     steps:
+      - name: 🧹 Optimizar espacio en disco del runner (Ubuntu)
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
+          sudo rm -rf /opt/ghc 2>/dev/null || true
+          sudo rm -rf /usr/local/.ghcup 2>/dev/null || true
+          sudo rm -rf /usr/local/share/boost 2>/dev/null || true
+          sudo docker system prune -af --volumes 2>/dev/null || true
+
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
         with:
@@ -268,6 +304,11 @@ jobs:
           Write-Host "Generando paquete WebAssembly para versión $ver..."
           .\installer\build-web.ps1 -Version "$ver"
 
+      - name: 🧹 Limpiar temporales de compilación Web
+        shell: bash
+        run: |
+          rm -rf FileFlow.Web/bin FileFlow.Web/obj 2>/dev/null || true
+
       - name: 📤 Subir artefactos de Web
         uses: actions/upload-artifact@v4
         with:
@@ -284,6 +325,15 @@ jobs:
     needs: [resolve-version, build-windows, build-linux, build-macos, build-web]
     runs-on: ubuntu-latest
     steps:
+      - name: 🧹 Optimizar espacio en disco del runner (Ubuntu)
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android 2>/dev/null || true
+          sudo rm -rf /opt/ghc 2>/dev/null || true
+          sudo rm -rf /usr/local/.ghcup 2>/dev/null || true
+          sudo rm -rf /usr/local/share/boost 2>/dev/null || true
+          sudo docker system prune -af --volumes 2>/dev/null || true
+
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
 
@@ -299,20 +349,25 @@ jobs:
           $assetsDir = "release-assets"
           $checksumFile = "$assetsDir/checksums.txt"
           
-          # Aplanar archivos si quedara alguna subcarpeta
-          $allFiles = Get-ChildItem -Path $assetsDir -File -Recurse | Where-Object {
-            $_.Extension -in @(".exe", ".zip", ".gz", ".deb", ".AppImage", ".flatpak", ".dmg", ".pdf") -or $_.Name -like "*.tar.gz"
+          # Aplanar archivos si quedara alguna subcarpeta usando Move-Item (evita duplicar en disco)
+          $subFiles = Get-ChildItem -Path $assetsDir -File -Recurse | Where-Object {
+            $_.DirectoryName -ne (Resolve-Path $assetsDir).Path
           }
-          foreach ($f in $allFiles) {
+          foreach ($f in $subFiles) {
             $dest = Join-Path $assetsDir $f.Name
-            if ($f.FullName -ne $dest) {
-              Copy-Item $f.FullName -Destination $dest -Force
-            }
+            Move-Item -Path $f.FullName -Destination $dest -Force
           }
+          # Eliminar subcarpetas vacías
+          Get-ChildItem -Path $assetsDir -Directory | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          # Purgar cualquier archivo intermedio que no sea para el usuario final
+          Get-ChildItem -Path $assetsDir -File | Where-Object {
+            $_.Name -like "*deb_tree.tar.gz" -or $_.Name -like "*.AppDir.tar.gz"
+          } | Remove-Item -Force -ErrorAction SilentlyContinue
 
           # Seleccionar archivos para el checksum
           $filesToHash = Get-ChildItem -Path $assetsDir -File | Where-Object { 
-            ($_.Extension -in @(".exe", ".zip", ".deb", ".AppImage", ".flatpak", ".dmg", ".pdf") -or $_.Name -like "*.tar.gz") -and $_.Name -ne "checksums.txt"
+            ($_.Extension -in @(".exe", ".zip", ".deb", ".AppImage", ".dmg", ".pdf") -or $_.Name -like "*.tar.gz") -and $_.Name -ne "checksums.txt"
           } | Sort-Object Name
 
           $checksums = foreach ($file in $filesToHash) {
@@ -363,10 +418,10 @@ jobs:
             #### 🍎 macOS (Apple Silicon & Intel)
             - 🍏 **Apple Silicon (M1/M2/M3/M4):**
               - Imagen de disco: `FileFlowStudio-v${{ needs.resolve-version.outputs.clean_version }}-osx-arm64.dmg`
-              - Archivo Comprimido: `FileFlowStudio-v${{ needs.resolve-version.outputs.clean_version }}-osx-arm64.zip` / `.tar.gz`
+              - Archivo Comprimido: `FileFlowStudio-v${{ needs.resolve-version.outputs.clean_version }}-osx-arm64.zip`
             - 💻 **Intel (x64):**
               - Imagen de disco: `FileFlowStudio-v${{ needs.resolve-version.outputs.clean_version }}-osx-x64.dmg`
-              - Archivo Comprimido: `FileFlowStudio-v${{ needs.resolve-version.outputs.clean_version }}-osx-x64.zip` / `.tar.gz`
+              - Archivo Comprimido: `FileFlowStudio-v${{ needs.resolve-version.outputs.clean_version }}-osx-x64.zip`
 
             #### 🌐 Web (WebAssembly / Navegador)
             - 🌐 **Paquete WebAssembly Estático:** `FileFlowStudio-Web-v${{ needs.resolve-version.outputs.clean_version }}.zip`
@@ -396,10 +451,9 @@ jobs:
           files: |
             release-assets/*.exe
             release-assets/*.zip
-            release-assets/*.tar.gz
+            release-assets/fileflow-linux-x64-*.tar.gz
             release-assets/*.deb
             release-assets/*.AppImage
-            release-assets/*.flatpak
             release-assets/*.dmg
             release-assets/*.pdf
             release-assets/checksums.txt

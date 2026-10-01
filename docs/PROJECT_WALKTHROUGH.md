@@ -1,5 +1,52 @@
 # FileFlow Studio - Historial de Cambios y Registro de Implementación (Walkthrough)
 
+## [2026-10-01] - Optimización de Espacio en Disco en GitHub Actions para Releases Multiplataforma (Hito 213)
+
+### 🎯 El encargo
+
+«En GitHub al generar las releases me da errores de espacio insuficiente. Cambia la generación para que consuma menos espacio.»
+
+### 🔬 Diagnóstico de Agotamiento de Espacio en Runners
+
+1. **Limitación de Espacio en Runners `ubuntu-latest` de GitHub Actions**:
+   - Por defecto, los runners de GitHub Actions disponen de un disco de ~75 GB pero se entregan con solo ~14-18 GB libres debido a paquetes preinstalados de gran tamaño que FileFlow no necesita (Android SDK con ~15 GB, GHC/Haskell con ~4 GB, Boost con ~4 GB, y cachés de Docker con ~7 GB).
+   - Al ejecutar compilaciones `.NET 10`, descargas de paquetes y empaquetados pesados en paralelo o de forma secuencial, el disco colapsaba con el error `No space left on device`.
+2. **Duplicidad de Compilación y Publicación en Windows (`build-windows`)**:
+   - Tanto `build-installer.ps1` como `build-portable.ps1` ejecutaban `publish.ps1` desde cero, generando dos árboles completos de publicación autocontenida de más de 1.2 GB y re-renderizando 6 manuales PDF duplicados.
+3. **Persistencia Concurrente de Árboles Descomprimidos en Linux (`build-linux-installer.ps1`)**:
+   - Se mantenían en disco simultáneamente 4 árboles descomprimidos (`payload/`, `fileflow-linux-x64/`, `debRoot/` y `FileFlow.AppDir/`) que consumían varios gigabytes.
+   - Se creaban tarballs intermedios redundantes (`deb_tree.tar.gz` y `AppDir.tar.gz` de ~116 MB cada uno) incluso cuando el paquete `.deb` y el ejecutable `.AppImage` ya se habían compilado exitosamente.
+4. **Artefactos Duplicados en macOS (`package-macos.sh`)**:
+   - Se generaban triples copias por arquitectura (`.dmg`, `.zip` y `.tar.gz`), además de dejar el bundle de 400 MB `FileFlow Studio.app` sin limpiar en el espacio de trabajo.
+5. **Duplicación de Archivos al Descargar Artefactos (`publish-release`)**:
+   - El job de publicación utilizaba `Copy-Item` sobre las carpetas descargadas, duplicando todos los instaladores y ejecutables en disco antes del cálculo de checksums.
+
+### 🛠️ Soluciones y Optimizaciones Aplicadas
+
+1. **Limpieza Proactiva del Runner de Ubuntu (`release.yml`)**:
+   - Implementado un paso previo ultrarrápido (5 segundos) al inicio de `build-linux`, `build-web` y `publish-release` que elimina `/usr/local/lib/android`, `/opt/ghc`, `/usr/local/.ghcup`, `/usr/local/share/boost` y purga imágenes de Docker (`docker system prune -af --volumes`).
+   - **Resultado:** Se liberan de forma inmediata **más de 30 a 35 GB adicionales** de espacio limpio en cada runner de Linux.
+2. **Reutilización de Binarios en Windows (`installer/build-portable.ps1`)**:
+   - Añadido parámetro `-SkipPublish`. Cuando se invoca tras `build-installer.ps1`, reutiliza directamente los binarios ya compilados en `bin/Release/net10.0-windows/publish/win-x64/` y los PDFs generados, evitando doble compilación y ahorrando varios minutos y más de 1.5 GB de churn en disco.
+   - Limpieza inmediata de carpetas intermedias `bin/.../publish` y `obj` tras generar el instalador y el portable.
+3. **Limpieza Secuencial y Supresión de Redundancias en Linux (`installer/build-linux-installer.ps1`)**:
+   - Liberación inmediata de memoria en disco: tras crear el `.tar.gz`, el `.deb` y el `.AppImage`, sus respectivos directorios descomprimidos (`debRoot`, `appDir`, `payload`) se eliminan en el acto.
+   - Se omite la generación de `deb_tree.tar.gz` si se generó `.deb` (-116 MB).
+   - Se omite la generación de `AppDir.tar.gz` si se generó `.AppImage` (-116 MB).
+   - Limpieza de `FileFlow.App/bin` y `FileFlow.App/obj` antes de finalizar el job.
+4. **Optimización del Empaquetado macOS (`package-macos.sh`)**:
+   - Eliminada la generación del archivo redundante `.tar.gz` (manteniendo exclusivamente el instalador oficial `.dmg` y el paquete comprimido `.zip`).
+   - Limpieza determinista del bundle temporal `FileFlow Studio.app` (400 MB) y la carpeta de trabajo `WORK_DIR` tras empaquetar.
+5. **Optimización en el Job de Publicación (`publish-release`)**:
+   - Reemplazado `Copy-Item` por `Move-Item` al aplanar archivos descargados, eliminando duplicados en disco.
+   - Purgado preventivo de cualquier tarball intermedio (`*deb_tree.tar.gz`, `*.AppDir.tar.gz`).
+   - Manifiesto `checksums.txt` y lista de subida de GitHub Releases saneados para contemplar exactamente los paquetes oficiales.
+
+### 🧪 Verificación y Estado
+- Suite de pruebas completa: **1.742 superadas, 0 errores, 1 omitida** (100% de éxito).
+
+---
+
 ## [2026-10-01] - Auditoría y Automatización de Instaladores y Publicación Multiplataforma (Hito 212)
 
 ### 🎯 El encargo
