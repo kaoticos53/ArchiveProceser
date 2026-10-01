@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="FileFlow.App.Browser/FileFlow.App.Browser.csproj" />
   <Project Path="FileFlow.App/FileFlow.App.csproj" />
   <Project Path="FileFlow.Core/FileFlow.Core.csproj" />
   <Project Path="FileFlow.Plugin.AI/FileFlow.Plugin.AI.csproj" />
@@ -14,6 +15,4 @@
   <Project Path="FileFlow.Plugin.Scripting/FileFlow.Plugin.Scripting.csproj" />
   <Project Path="FileFlow.Plugin.Subflows/FileFlow.Plugin.Subflows.csproj" />
   <Project Path="FileFlow.Sdk/FileFlow.Sdk.csproj" />
-  <Project Path="FileFlow.Tests/FileFlow.Tests.csproj" />
 </Solution>
-
