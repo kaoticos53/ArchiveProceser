@@ -26,6 +26,12 @@
 6. **Workflow de GitHub Actions Modernizado ([`.github/workflows/release.yml`](file:///.github/workflows/release.yml))**:
    - Actualizado a matriz multi-job completa: `build-windows` (Inno Setup `.exe` + Portable `.zip`), `build-linux` (Debian `.deb`, AppImage y `.tar.gz`), `build-macos` (Apple Silicon e Intel `.dmg`, `.zip` y `.tar.gz`), y `build-web` (WebAssembly estático `.zip`).
    - El job `publish-release` descarga todos los paquetes con `merge-multiple: true`, genera automáticamente el manifiesto criptográfico SHA-256 (`checksums.txt`) y publica la release oficial en GitHub con notas estructuradas por sistema operativo.
+7. **Auditoría y Puesta al Día del Servicio de Autoactualización ([`AppUpdateService.cs`](file:///FileFlow.App/Services/AppUpdateService.cs))**:
+   - Añadidos formatos `AppPackagingFormat.MacOsDmg` y `AppPackagingFormat.WebAssembly` en el SDK (`IAppUpdateService.cs`).
+   - Detección precisa de entornos: `OperatingSystem.IsBrowser()` para Web, `portable.dat` para modo portable de Windows, y `OperatingSystem.IsMacOS()` para macOS.
+   - Resolución de assets actualizada para los nombres exactos publicados en GitHub Releases (`FileFlowStudio-Setup-*.exe`, `FileFlowStudio-Portable-*-win-x64.zip`, `FileFlow-*-x86_64.AppImage`, `fileflow_*_amd64.deb`, `fileflow-linux-x64-*.tar.gz`, `FileFlowStudio-*-osx-{arm64|x64}.dmg`, `FileFlowStudio-Web-*.zip`).
+   - Aplicación de actualización adaptada: soporte de `open` para macOS y prevención de llamadas P/Invoke o subprocesos en sandbox WebAssembly.
+   - Batería de pruebas unitarias actualizada y superada al 100% (14 de 14 pruebas en `AppUpdateServiceTests.cs`).
 
 ### 📦 Artefactos Validados en `installer/output/`
 - Windows Instalador Setup: `FileFlowStudio-Setup-1.0.0.exe` (88.4 MB)

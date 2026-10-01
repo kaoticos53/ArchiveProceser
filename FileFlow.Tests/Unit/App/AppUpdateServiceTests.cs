@@ -55,6 +55,9 @@ public class AppUpdateServiceTests
             new("fileflow_1.5.0_amd64.deb", "https://github.com/.../deb", 90000000, ""),
             new("fileflow-linux-x64-v1.5.0.tar.gz", "https://github.com/.../tar.gz", 88000000, ""),
             new("fileflow-linux-x64-v1.5.0.AppDir.tar.gz", "https://github.com/.../AppDir.tar.gz", 88000000, ""),
+            new("FileFlowStudio-v1.5.0-osx-arm64.dmg", "https://github.com/.../osx-arm64.dmg", 65000000, ""),
+            new("FileFlowStudio-v1.5.0-osx-x64.dmg", "https://github.com/.../osx-x64.dmg", 68000000, ""),
+            new("FileFlowStudio-Web-v1.5.0.zip", "https://github.com/.../Web.zip", 22000000, ""),
             new("checksums.txt", "https://github.com/.../checksums.txt", 1024, "")
         };
 
@@ -65,7 +68,10 @@ public class AppUpdateServiceTests
             ["FileFlow-v1.5.0-x86_64.AppImage"] = "hash_appimage",
             ["FileFlow-v1.5.0-x86_64.flatpak"] = "hash_flatpak",
             ["fileflow_1.5.0_amd64.deb"] = "hash_deb",
-            ["fileflow-linux-x64-v1.5.0.tar.gz"] = "hash_targz"
+            ["fileflow-linux-x64-v1.5.0.tar.gz"] = "hash_targz",
+            ["FileFlowStudio-v1.5.0-osx-arm64.dmg"] = "hash_mac_arm64",
+            ["FileFlowStudio-v1.5.0-osx-x64.dmg"] = "hash_mac_x64",
+            ["FileFlowStudio-Web-v1.5.0.zip"] = "hash_web_wasm"
         };
 
         // Act & Assert
@@ -95,6 +101,16 @@ public class AppUpdateServiceTests
         var linuxTarGz = AppUpdateService.ResolveAssetForPlatform(assets, AppPackagingFormat.LinuxGenericTarball, checksumTable);
         linuxTarGz.Should().NotBeNull();
         linuxTarGz!.Name.Should().Be("fileflow-linux-x64-v1.5.0.tar.gz");
+
+        var macOs = AppUpdateService.ResolveAssetForPlatform(assets, AppPackagingFormat.MacOsDmg, checksumTable);
+        macOs.Should().NotBeNull();
+        macOs!.Name.Should().Contain("osx");
+        macOs.Sha256Hash.Should().NotBeNullOrWhiteSpace();
+
+        var web = AppUpdateService.ResolveAssetForPlatform(assets, AppPackagingFormat.WebAssembly, checksumTable);
+        web.Should().NotBeNull();
+        web!.Name.Should().Be("FileFlowStudio-Web-v1.5.0.zip");
+        web.Sha256Hash.Should().Be("hash_web_wasm");
     }
 
     [Fact]

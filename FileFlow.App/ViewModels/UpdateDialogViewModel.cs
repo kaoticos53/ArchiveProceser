@@ -31,6 +31,8 @@ public partial class UpdateDialogViewModel : ObservableObject
         AppPackagingFormat.LinuxFlatpak => "Linux Flatpak (.flatpak)",
         AppPackagingFormat.LinuxDebPackage => "Debian / Ubuntu (.deb)",
         AppPackagingFormat.LinuxGenericTarball => "Linux Portable (.tar.gz)",
+        AppPackagingFormat.MacOsDmg => "macOS App (.dmg)",
+        AppPackagingFormat.WebAssembly => "Web / Navegador",
         _ => "Portable / Universal"
     };
 

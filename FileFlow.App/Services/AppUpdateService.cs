@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -43,9 +44,19 @@ public sealed class AppUpdateService : IAppUpdateService
     {
         try
         {
+            if (OperatingSystem.IsBrowser())
+            {
+                return AppPackagingFormat.WebAssembly;
+            }
+
             if (OperatingSystem.IsWindows())
             {
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                if (File.Exists(Path.Combine(baseDir, "portable.dat")))
+                {
+                    return AppPackagingFormat.WindowsPortable;
+                }
+
                 string uninstaller = Path.Combine(baseDir, "unins000.exe");
                 if (File.Exists(uninstaller))
                 {
@@ -83,6 +94,10 @@ public sealed class AppUpdateService : IAppUpdateService
                 }
 
                 return AppPackagingFormat.LinuxGenericTarball;
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                return AppPackagingFormat.MacOsDmg;
             }
         }
         catch
@@ -285,11 +300,29 @@ public sealed class AppUpdateService : IAppUpdateService
                           assets.FirstOrDefault(a => a.Name.EndsWith(".AppImage", StringComparison.OrdinalIgnoreCase));
                 break;
 
+            case AppPackagingFormat.MacOsDmg:
+                bool isArm64 = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
+                string macArch = isArm64 ? "arm64" : "x64";
+                matched = assets.FirstOrDefault(a => a.Name.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase) && a.Name.Contains(macArch, StringComparison.OrdinalIgnoreCase)) ??
+                          assets.FirstOrDefault(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && a.Name.Contains("osx", StringComparison.OrdinalIgnoreCase) && a.Name.Contains(macArch, StringComparison.OrdinalIgnoreCase)) ??
+                          assets.FirstOrDefault(a => a.Name.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase)) ??
+                          assets.FirstOrDefault(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && a.Name.Contains("osx", StringComparison.OrdinalIgnoreCase));
+                break;
+
+            case AppPackagingFormat.WebAssembly:
+                matched = assets.FirstOrDefault(a => a.Name.Contains("Web", StringComparison.OrdinalIgnoreCase) && a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+                break;
+
             default:
                 if (OperatingSystem.IsWindows())
                 {
                     matched = assets.FirstOrDefault(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) ??
                               assets.FirstOrDefault(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    matched = assets.FirstOrDefault(a => a.Name.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase)) ??
+                              assets.FirstOrDefault(a => a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && a.Name.Contains("osx", StringComparison.OrdinalIgnoreCase));
                 }
                 else if (OperatingSystem.IsLinux())
                 {
@@ -536,11 +569,24 @@ public sealed class AppUpdateService : IAppUpdateService
                 Process.Start(new ProcessStartInfo { FileName = "flatpak-spawn", Arguments = "--host flatpak update com.fileflowstudio.FileFlow", UseShellExecute = true });
                 break;
 
+            case AppPackagingFormat.MacOsDmg:
+                Process.Start(new ProcessStartInfo { FileName = "open", Arguments = $"\"{downloadedFilePath}\"", UseShellExecute = true });
+                Environment.Exit(0);
+                break;
+
+            case AppPackagingFormat.WebAssembly:
+                // En WebAssembly la actualización se produce recargando la página con los nuevos artefactos Wasm
+                return Task.CompletedTask;
+
             default:
                 // Abrir archivo descargado en el explorador
                 if (OperatingSystem.IsWindows())
                 {
                     Process.Start(new ProcessStartInfo { FileName = "explorer.exe", Arguments = $"/select,\"{downloadedFilePath}\"", UseShellExecute = true });
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    Process.Start(new ProcessStartInfo { FileName = "open", Arguments = $"\"{downloadedFilePath}\"", UseShellExecute = true });
                 }
                 else if (OperatingSystem.IsLinux())
                 {

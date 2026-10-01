@@ -54,6 +54,16 @@ public enum AppPackagingFormat
     LinuxGenericTarball,
 
     /// <summary>
+    /// Paquete de distribución para macOS (.dmg o .app bundle).
+    /// </summary>
+    MacOsDmg,
+
+    /// <summary>
+    /// Aplicación ejecutada en navegador mediante WebAssembly (Avalonia.Browser).
+    /// </summary>
+    WebAssembly,
+
+    /// <summary>
     /// Formato o entorno desconocido.
     /// </summary>
     Unknown
